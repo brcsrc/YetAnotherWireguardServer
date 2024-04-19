@@ -1,3 +1,10 @@
+# build proc output
+build/
+.gradle/
+
+# intellij
+.idea
+
 # Compiled class file
 *.class
 

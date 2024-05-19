@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -exuo pipefail
+
+function create_client_config() {
+  local config_name="$1"
+  local client_private_key_name="$2"
+  local client_cidr="$3"
+  local client_dns="$4"
+  local server_public_key_name="$5"
+  local server_endpoint="$6"
+  local server_listen_port="$7"
+  local allowed_ips="$8"
+
+  stat "/etc/wireguard/${client_private_key_name}"
+  local client_private_key=$(cat "/etc/wireguard/${client_private_key_name}")
+
+  stat "/etc/wireguard/${server_public_key_name}"
+  local server_public_key=$(cat "/etc/wireguard/${server_public_key_name}")
+
+
+  local config="$(cat << EOF
+[Interface]
+PrivateKey = $client_private_key
+Address = $client_cidr
+DNS = $client_dns
+[Peer]
+PublicKey = $server_public_key
+Endpoint = $server_endpoint:$server_listen_port
+AllowedIPs = $allowed_ips
+EOF
+)"
+echo "$config" > "/etc/wireguard/${config_name}.conf"
+}
+
+function main() {
+  set +u
+  while true; do
+    case "$1" in
+      --config-name              ) CONFIG_NAME=$2; shift 2 ;;
+      --client-private-key-name ) CLIENT_PRIVATE_KEY_NAME=$2; shift 2 ;;
+      --client-cidr             ) CLIENT_CIDR=$2; shift 2 ;;
+      --client-dns              ) CLIENT_DNS=$2; shift 2 ;;
+      --server-public-key-name  ) SERVER_PUBLIC_KEY_NAME=$2; shift 2;;
+      --server-endpoint         ) SERVER_ENDPOINT=$2; shift 2 ;;
+      --server-listen-port      ) SERVER_LISTEN_PORT=$2; shift 2 ;;
+      --allowed-ips             ) ALLOWED_IPS=$2; shift 2 ;;
+      -- ) shift; break ;;
+    * ) break ;;
+    esac
+  done
+  set -u
+
+  create_client_config "$CONFIG_NAME" "$CLIENT_PRIVATE_KEY_NAME" "$CLIENT_CIDR" "$CLIENT_DNS" "$SERVER_PUBLIC_KEY_NAME" "$SERVER_ENDPOINT" "$SERVER_LISTEN_PORT" "$ALLOWED_IPS"
+}
+main "$@"

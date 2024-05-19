@@ -1,6 +1,5 @@
 package com.brcsrc.yaws.shell;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 

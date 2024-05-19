@@ -6,7 +6,7 @@ FROM gradle:8.7.0-jdk21-alpine as build-backend
 WORKDIR /opt
 COPY . .
 ARG SKIP_TESTS=false
-RUN if [ "$SKIP_TESTS" = "false" ]; then \
+RUN if [ "$SKIP_TESTS" == "false" ]; then \
     apk update && \
     apk add openrc wireguard-tools iproute2 && \
     ./gradlew test --info; \
@@ -23,5 +23,7 @@ RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub  https://apk.corretto.aws/amazo
     apk update && \
     apk add --no-cache openrc wireguard-tools iproute2 amazon-corretto-21
 COPY --from=build-backend /opt/build/libs/yaws-0.0.1-SNAPSHOT.jar .
-
-CMD ["tail", "-f", "/dev/null"]
+COPY shell/ shell/
+COPY entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["entrypoint.sh"]

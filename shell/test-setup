@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+set -exuo pipefail
+
+# network
+nework_cidr="10.200.0.0/24"
+
+# server
+server_cidr="10.200.0.1/24"
+server_endpoint="127.0.0.1"
+listen_port="51820"
+server_public_key_name="server-public-key-001"
+server_private_key_name="server-private-key-001"
+server_config_name="wg99"
+
+# client
+client_config_name="test-client"
+client_cidr="10.200.0.2/32"
+client_dns="1.1.1.1"
+client_allowed_ips="0.0.0.0/0"
+client_public_key_name="client-public-key-001"
+client_private_key_name="client-private-key-001"
+
+# create keys
+./create-key-pair \
+  --private-key-name "$server_private_key_name" \
+  --public-key-name "$server_public_key_name"
+
+
+# create server config
+./create-server-config \
+  --config-name "$server_config_name" \
+  --server-cidr "$server_cidr" \
+  --listen-port "$listen_port" \
+  --private-key-name "$server_private_key_name"
+
+
+
+# test iptables is able to be manipulated
+./configure-iptables \
+  --operation add-network \
+  --network-cidr "$nework_cidr"
+# check rules created
+iptables -C INPUT -s "$server_cidr" -j ACCEPT
+iptables -C OUTPUT -d "$server_cidr" -j ACCEPT
+
+# remove network
+./configure-iptables \
+  --operation remove-network \
+  --network-cidr "$nework_cidr"
+
+# check rules are absent
+set +e
+iptables -C INPUT -s "$server_cidr" -j ACCEPT
+[ $? -ne 0 ] || exit 1
+iptables -C OUTPUT -d "$server_cidr" -j ACCEPT
+[ $? -ne 0 ] || exit 1
+set -e
+
+# add back for remainder of test
+./configure-iptables \
+  --operation add-network \
+  --network-cidr "$nework_cidr"
+
+
+
+# bring up wg interface, depends on create-server-config
+wg-quick up "$server_config_name"
+
+
+
+# create client
+./create-key-pair \
+  --private-key-name "$client_private_key_name" \
+  --public-key-name "$client_public_key_name"
+
+# test clients can be added and removed
+./add-peer-to-server \
+  --config-name "$server_config_name" \
+  --client-cidr "$client_cidr" \
+  --client-public-key-name "$client_public_key_name"
+
+client_added=$(cat "/etc/wireguard/${server_config_name}.conf" | grep "$client_cidr")
+[ -z "$client_added" ] && exit 1
+
+./remove-peer-from-server \
+  --config-name "$server_config_name" \
+  --client-cidr "$client_cidr" \
+  --client-public-key-name "$client_public_key_name"
+
+# should not get match for removed client in config
+set +e
+cat "/etc/wireguard/${server_config_name}.conf" | grep -wq "$client_cidr"
+[ $? -eq 0 ] && exit 1
+set -e
+
+# add back to continue
+./add-peer-to-server \
+  --config-name "$server_config_name" \
+  --client-cidr "$client_cidr" \
+  --client-public-key-name "$client_public_key_name"
+
+./create-client-config \
+  --config-name "$client_config_name" \
+  --client-private-key-name "$client_private_key_name" \
+  --client-cidr "$client_cidr" \
+  --client-dns "$client_dns" \
+  --server-public-key-name "$server_public_key_name" \
+  --server-endpoint "$server_endpoint" \
+  --server-listen-port "$listen_port" \
+  --allowed-ips "$client_allowed_ips"
+
+last_level="$?"
+echo "completed successfully"
+exit $last_level
+
+

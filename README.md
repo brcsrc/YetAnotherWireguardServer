@@ -2,6 +2,11 @@
 
 ## Development
 
+##### cache java dependencies locally
+```shell
+./gradlew copyDependenciesToLocalRepo
+```
+
 ##### Build
 ```shell
 docker build . -t yaws
@@ -29,6 +34,12 @@ docker run \
  -d yaws:latest && \
 docker exec -it yaws bash
 ```
+
+##### build and run tests
+```shell
+docker build --build-arg TEST_ONLY=true . -t yaws
+```
+
 if tests fail they should surface in stage 2
 ```shell
 63.95 > Task :test FAILED

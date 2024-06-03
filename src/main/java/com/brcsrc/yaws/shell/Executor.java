@@ -15,7 +15,7 @@ public class Executor {
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             while ((line = reader.readLine()) != null) {
-                stdout.append(line);
+                stdout.append(line).append("\n");
             }
             exitCode = process.waitFor();
 

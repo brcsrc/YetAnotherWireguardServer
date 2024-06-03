@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -exuo pipefail
+
 # start openrc
 openrc
 touch /run/openrc/softlevel

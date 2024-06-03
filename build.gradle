@@ -13,6 +13,18 @@ version = '0.0.1-SNAPSHOT'
 java {
 	sourceCompatibility = '21'
 }
+
+task checkJarExists {
+	doLast {
+		def jarFile = file('build/libs/yaws-0.0.1-SNAPSHOT.jar')
+		if (!jarFile.exists()) {
+			configurations.runtimeClasspath.resolve()
+		}
+	}
+}
+
+test.dependsOn checkJarExists
+
 // create local dir 'lib' and run ./gradlew copyDependenciesToLocalRepo
 task copyDependenciesToLocalRepo(type: Copy) {
 	from configurations.runtimeClasspath
@@ -32,6 +44,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.session:spring-session-core'
+	implementation 'org.xerial:sqlite-jdbc:3.36.0.3'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 }

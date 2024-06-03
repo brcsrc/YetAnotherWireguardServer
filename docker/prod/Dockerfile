@@ -7,17 +7,10 @@ WORKDIR /opt
 COPY build.gradle settings.gradle ./
 COPY gradle gradle
 COPY gradlew gradlew
-COPY shell/ shell/
+COPY shell/* .
 COPY src/ src/
 COPY lib/ lib/
 RUN ./gradlew build -x test --no-daemon;
-RUN apk update && \
-    apk add openrc wireguard-tools iproute2
-ARG SKIP_TESTS=false
-RUN if [ "$SKIP_TESTS" == "false" ]; then \
-    ./gradlew test --info; \
-    fi
-
 
 #### stage 3 build environment ###
 FROM alpine:3.14 as final
@@ -30,7 +23,7 @@ RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub  https://apk.corretto.aws/amazo
 
 RUN apk add --no-cache openrc wireguard-tools iproute2
 COPY --from=build-backend /opt/build/libs/yaws-0.0.1-SNAPSHOT.jar .
-COPY shell/ shell/
-COPY entrypoint.sh /usr/local/bin/
+COPY shell/* .
+COPY docker/prod/entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["entrypoint.sh"]

@@ -13,6 +13,7 @@ function add_network() {
 
 function remove_network() {
   local network_cidr="$1"
+
   iptables -D OUTPUT -d "$network_cidr" -j ACCEPT
   iptables -D INPUT -s "$network_cidr" -j ACCEPT
   iptables -t nat -D POSTROUTING -s "$network_cidr" -o eth0 -j MASQUERADE

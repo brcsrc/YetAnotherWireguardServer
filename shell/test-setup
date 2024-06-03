@@ -5,12 +5,12 @@ set -exuo pipefail
 nework_cidr="10.200.0.0/24"
 
 # server
-server_cidr="10.200.0.1/24"
-server_endpoint="127.0.0.1"
-listen_port="51820"
-server_public_key_name="server-public-key-001"
-server_private_key_name="server-private-key-001"
-server_config_name="wg99"
+network_cidr="10.200.0.1/24"
+network_endpoint="127.0.0.1"
+network_listen_port="51820"
+network_public_key_name="server-public-key-001"
+network_private_key_name="server-private-key-001"
+network_config_name="wg99"
 
 # client
 client_config_name="test-client"
@@ -22,16 +22,16 @@ client_private_key_name="client-private-key-001"
 
 # create keys
 ./create-key-pair \
-  --private-key-name "$server_private_key_name" \
-  --public-key-name "$server_public_key_name"
+  --private-key-name "$network_private_key_name" \
+  --public-key-name "$network_public_key_name"
 
 
 # create server config
-./create-server-config \
-  --config-name "$server_config_name" \
-  --server-cidr "$server_cidr" \
-  --listen-port "$listen_port" \
-  --private-key-name "$server_private_key_name"
+./create-network-config \
+  --config-name "$network_config_name" \
+  --network-cidr "$network_cidr" \
+  --network-listen-port "$network_listen_port" \
+  --network-private-key-name "$network_private_key_name"
 
 
 
@@ -40,8 +40,8 @@ client_private_key_name="client-private-key-001"
   --operation add-network \
   --network-cidr "$nework_cidr"
 # check rules created
-iptables -C INPUT -s "$server_cidr" -j ACCEPT
-iptables -C OUTPUT -d "$server_cidr" -j ACCEPT
+iptables -C INPUT -s "$network_cidr" -j ACCEPT
+iptables -C OUTPUT -d "$network_cidr" -j ACCEPT
 
 # remove network
 ./configure-iptables \
@@ -50,9 +50,9 @@ iptables -C OUTPUT -d "$server_cidr" -j ACCEPT
 
 # check rules are absent
 set +e
-iptables -C INPUT -s "$server_cidr" -j ACCEPT
+iptables -C INPUT -s "$network_cidr" -j ACCEPT
 [ $? -ne 0 ] || exit 1
-iptables -C OUTPUT -d "$server_cidr" -j ACCEPT
+iptables -C OUTPUT -d "$network_cidr" -j ACCEPT
 [ $? -ne 0 ] || exit 1
 set -e
 
@@ -64,7 +64,7 @@ set -e
 
 
 # bring up wg interface, depends on create-server-config
-wg-quick up "$server_config_name"
+wg-quick up "$network_config_name"
 
 
 
@@ -74,28 +74,28 @@ wg-quick up "$server_config_name"
   --public-key-name "$client_public_key_name"
 
 # test clients can be added and removed
-./add-peer-to-server \
-  --config-name "$server_config_name" \
+./add-peer-to-network \
+  --config-name "$network_config_name" \
   --client-cidr "$client_cidr" \
   --client-public-key-name "$client_public_key_name"
 
-client_added=$(cat "/etc/wireguard/${server_config_name}.conf" | grep "$client_cidr")
+client_added=$(cat "/etc/wireguard/${network_config_name}.conf" | grep "$client_cidr")
 [ -z "$client_added" ] && exit 1
 
-./remove-peer-from-server \
-  --config-name "$server_config_name" \
+./remove-peer-from-network \
+  --config-name "$network_config_name" \
   --client-cidr "$client_cidr" \
   --client-public-key-name "$client_public_key_name"
 
 # should not get match for removed client in config
 set +e
-cat "/etc/wireguard/${server_config_name}.conf" | grep -wq "$client_cidr"
+cat "/etc/wireguard/${network_config_name}.conf" | grep -wq "$client_cidr"
 [ $? -eq 0 ] && exit 1
 set -e
 
 # add back to continue
-./add-peer-to-server \
-  --config-name "$server_config_name" \
+./add-peer-to-network \
+  --config-name "$network_config_name" \
   --client-cidr "$client_cidr" \
   --client-public-key-name "$client_public_key_name"
 
@@ -104,9 +104,9 @@ set -e
   --client-private-key-name "$client_private_key_name" \
   --client-cidr "$client_cidr" \
   --client-dns "$client_dns" \
-  --server-public-key-name "$server_public_key_name" \
-  --server-endpoint "$server_endpoint" \
-  --server-listen-port "$listen_port" \
+  --network-public-key-name "$network_public_key_name" \
+  --network-endpoint "$network_endpoint" \
+  --network-listen-port "$network_listen_port" \
   --allowed-ips "$client_allowed_ips"
 
 last_level="$?"

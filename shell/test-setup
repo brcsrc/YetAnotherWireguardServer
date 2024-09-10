@@ -33,8 +33,6 @@ client_private_key_name="client-private-key-001"
   --network-listen-port "$network_listen_port" \
   --network-private-key-name "$network_private_key_name"
 
-
-
 # test iptables is able to be manipulated
 ./configure-iptables \
   --operation add-network \
@@ -61,12 +59,8 @@ set -e
   --operation add-network \
   --network-cidr "$nework_cidr"
 
-
-
-# bring up wg interface, depends on create-server-config
+# bring up wg interface, depends on create-network-config
 wg-quick up "$network_config_name"
-
-
 
 # create client
 ./create-key-pair \

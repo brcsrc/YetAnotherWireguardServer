@@ -22,5 +22,8 @@ iptables-restore < /etc/iptables/rules.v4
 echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
 sysctl -w net.ipv4.ip_forward=1
 
+# init db
+sqlite3 yaws.db ".read init.sql"
+
 # hold open # TODO real entrypoint
 tail -f /dev/null

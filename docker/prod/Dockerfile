@@ -21,9 +21,10 @@ RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub  https://apk.corretto.aws/amazo
     apk update && \
     apk add amazon-corretto-21
 
-RUN apk add --no-cache openrc wireguard-tools iproute2
+RUN apk add --no-cache openrc wireguard-tools iproute2 sqlite
 COPY --from=build-backend /opt/build/libs/yaws-0.0.1-SNAPSHOT.jar .
 COPY shell/* .
+COPY sql/* .
 COPY docker/prod/entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["entrypoint.sh"]

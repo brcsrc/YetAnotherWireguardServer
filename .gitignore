@@ -11,6 +11,12 @@ build/
 # Log file
 *.log
 
+# databases
+*.db
+
+# wg confs
+client.conf
+
 # BlueJ files
 *.ctxt
 

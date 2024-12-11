@@ -41,15 +41,24 @@ repositories {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-security'
+	// http and api documentation
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.session:spring-session-core'
-	implementation 'org.xerial:sqlite-jdbc:3.36.0.3'
+	implementation 'org.springdoc:springdoc-openapi-ui:1.6.10'
 
+	// security
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// persistence
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'javax.persistence:javax.persistence-api:2.2'
+	implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
+	implementation 'org.hibernate.orm:hibernate-community-dialects:6.3.1.Final'
+
+	// testing
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 }
-
 
 
 tasks.named('test') {

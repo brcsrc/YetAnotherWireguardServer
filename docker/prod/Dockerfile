@@ -2,7 +2,7 @@
 
 
 ### stage 2 build java artifact ###
-FROM gradle:8.7.0-jdk21-alpine as build-backend
+FROM gradle:8.7.0-jdk21-alpine as build-spring
 WORKDIR /opt
 COPY build.gradle settings.gradle ./
 COPY gradle gradle
@@ -22,7 +22,7 @@ RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub  https://apk.corretto.aws/amazo
     apk add amazon-corretto-21
 
 RUN apk add --no-cache openrc wireguard-tools iproute2 sqlite
-COPY --from=build-backend /opt/build/libs/yaws-0.0.1-SNAPSHOT.jar .
+COPY --from=build-spring /opt/build/libs/yaws-0.0.1-SNAPSHOT.jar .
 COPY shell/* .
 COPY sql/* .
 COPY docker/prod/entrypoint.sh /usr/local/bin/

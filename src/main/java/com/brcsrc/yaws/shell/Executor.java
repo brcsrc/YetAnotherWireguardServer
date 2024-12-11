@@ -5,7 +5,6 @@ import java.io.InputStreamReader;
 
 
 public class Executor {
-
     public static ExecutionResult runCommand(String command) {
         StringBuilder stdout = new StringBuilder();
         int exitCode = 1;

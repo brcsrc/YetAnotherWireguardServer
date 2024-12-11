@@ -7,6 +7,12 @@
 ./gradlew copyDependenciesToLocalRepo
 ```
 
+
+#### Build just the spring application without tests
+```shell
+./gradlew build -x test
+```
+
 ##### Build for development
 ```shell
 \
@@ -15,6 +21,7 @@ docker run \
  --privileged \
  --cap-add=NET_ADMIN \
  -p 0.0.0.0:51820:51820/udp \
+-p 0.0.0.0:8080:8080/tcp \
  --name yaws \
  -d yaws:latest && \
 docker exec -it yaws bash

@@ -4,7 +4,6 @@ COPY build.gradle settings.gradle ./
 COPY gradle gradle
 COPY gradlew gradlew
 COPY shell/* .
-COPY sql/* .
 COPY src/ src/
 COPY lib/ lib/
 RUN apk update && \

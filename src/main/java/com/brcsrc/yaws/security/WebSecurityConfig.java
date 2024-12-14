@@ -23,10 +23,11 @@ public class WebSecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeRequests()
-                .requestMatchers("/login", "/register", "/networks").permitAll()  // Allow access to login and register
-                .anyRequest().authenticated()  // Protect other routes
+                .requestMatchers("/login", "/register", "/networks").permitAll()  // these are allowed for now
+                .anyRequest().authenticated()  // protects other routes
                 .and()
-                .formLogin().disable();  // Disable the default login page
+                .formLogin().disable() // disable the default login page
+                .csrf().disable();  // TODO
         return http.build();
     }
 }

@@ -2,7 +2,7 @@
 set -exuo pipefail
 
 # network
-nework_cidr="10.200.0.0/24"
+network_cidr="10.200.0.0/24"
 
 # server
 network_cidr="10.200.0.1/24"
@@ -25,7 +25,6 @@ client_private_key_name="client-private-key-001"
   --private-key-name "$network_private_key_name" \
   --public-key-name "$network_public_key_name"
 
-
 # create server config
 ./create-network-config \
   --config-name "$network_config_name" \
@@ -36,7 +35,7 @@ client_private_key_name="client-private-key-001"
 # test iptables is able to be manipulated
 ./configure-iptables \
   --operation add-network \
-  --network-cidr "$nework_cidr"
+  --network-cidr "$network_cidr"
 # check rules created
 iptables -C INPUT -s "$network_cidr" -j ACCEPT
 iptables -C OUTPUT -d "$network_cidr" -j ACCEPT
@@ -44,7 +43,7 @@ iptables -C OUTPUT -d "$network_cidr" -j ACCEPT
 # remove network
 ./configure-iptables \
   --operation remove-network \
-  --network-cidr "$nework_cidr"
+  --network-cidr "$network_cidr"
 
 # check rules are absent
 set +e
@@ -57,7 +56,7 @@ set -e
 # add back for remainder of test
 ./configure-iptables \
   --operation add-network \
-  --network-cidr "$nework_cidr"
+  --network-cidr "$network_cidr"
 
 # bring up wg interface, depends on create-network-config
 wg-quick up "$network_config_name"

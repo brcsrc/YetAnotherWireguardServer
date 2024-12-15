@@ -33,6 +33,14 @@ public class NetworkService {
         return this.repository.findAll();
     }
 
+    public Network describeNetwork(String networkName) {
+        Optional<Network> existingNetwork = this.repository.findByNetworkName(networkName);
+        if (existingNetwork.isEmpty()) {
+            throw new BadRequestException(String.format("network '%s' does not exist", networkName));
+        }
+        return existingNetwork.get();
+    }
+
     public Network createNetwork(Network network) {
         if (network.getNetworkName().length() > 64 || !network.getNetworkName().matches("^[a-zA-Z0-9]+$")) {
             String errMsg = "networkName must be alphanumeric without spaces and no more than 64 characters";

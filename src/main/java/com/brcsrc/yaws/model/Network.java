@@ -4,20 +4,35 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-
 import jakarta.persistence.Table;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Null;
 
 @Entity
 @Table(name = "networks")
 public class Network {
 
     @Id
+    @NotNull
+    @Schema(description = "unique, alphanumeric name for the network")
     private String networkName;
+    @NotNull
+    @Schema(description = "CIDR block for the network")
     private String networkCidr;
+    @NotNull
+    @Schema(description = "server listen port for the network")
     private String networkListenPort;
+
+    @Null
     private String networkPrivateKeyName;
+    @Null
     private String networkPublicKeyName;
+    @Null
     private String networkTag;
+
+    // internal use only
     @Enumerated(EnumType.STRING)
     private NetworkStatus networkStatus;
 

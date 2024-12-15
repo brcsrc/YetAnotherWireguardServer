@@ -29,6 +29,13 @@ public class NetworkController {
         return this.networkService.getAllNetworks();
     }
 
+    @Operation(summary = "Describe Network", description = "describe a network")
+    @GetMapping("/api/v1/networks/{networkName}")
+    public Network describeNetwork(@PathVariable String networkName) {
+        logger.info("received DescribeNetwork request");
+        return this.networkService.describeNetwork(networkName);
+    }
+
     @Operation(summary = "Create Network", description = "create a network")
     @PostMapping("/api/v1/networks")
     public Network createNetwork(@RequestBody Network network) {
@@ -36,7 +43,7 @@ public class NetworkController {
         return this.networkService.createNetwork(network);
     }
 
-    @Operation(summary = "Delete Network", description = "Delete a network")
+    @Operation(summary = "Delete Network", description = "delete a network")
     @DeleteMapping("/api/v1/networks/{networkName}")
     public Network DeleteNetwork(@PathVariable String networkName) {
         logger.info("received DeleteNetwork request: {}", networkName);

@@ -8,9 +8,14 @@
 ```
 
 
-#### Build just the spring application without tests
+##### Build just the spring application without tests
 ```shell
 ./gradlew build -x test
+```
+
+##### Clean dependencies and rebuild
+```shell
+./gradlew clean && ./gradlew build -x test
 ```
 
 ##### Build for development
@@ -26,6 +31,12 @@ docker run \
  -d yaws:latest && \
 docker exec -it yaws bash
 ```
+
+##### View Swagger UI
+http://<hostname>:8080/swagger-ui/index.html
+
+##### View OpenAPI schema
+http://<hostname>:8080/v3/api-docs
 
 ##### build and run backend tests
 ```shell

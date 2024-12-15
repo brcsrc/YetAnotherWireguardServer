@@ -44,7 +44,7 @@ dependencies {
 	// http and api documentation
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.session:spring-session-core'
-	implementation 'org.springdoc:springdoc-openapi-ui:1.6.10'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
 
 	// security
 	implementation 'org.springframework.boot:spring-boot-starter-security'

@@ -10,9 +10,13 @@ import com.brcsrc.yaws.shell.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
+import java.io.File;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @Service
 public class NetworkService {
@@ -100,6 +104,8 @@ public class NetworkService {
             // mark the network for removal
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.repository.save(network);
+            // cleanup network on separate thread
+            CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
             throw new InternalServerException("failed to create network");
         }
 
@@ -124,6 +130,7 @@ public class NetworkService {
                     createNetConfigExecResult.getStdout()));
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.repository.save(network);
+            CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
             throw new InternalServerException("failed to create network");
         }
 
@@ -143,6 +150,7 @@ public class NetworkService {
                     configureIptablesExecResult.getStdout()));
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.repository.save(network);
+            CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
             throw new InternalServerException("failed to create network");
         }
 
@@ -158,12 +166,105 @@ public class NetworkService {
                     wgUpExecResul.getStdout()));
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.repository.save(network);
+            CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
             throw new InternalServerException("failed to create network");
         }
 
         network.setNetworkStatus(NetworkStatus.ACTIVE);
         savedNetwork = this.repository.save(network);
         return savedNetwork;
+    }
+
+    @Async
+    CompletableFuture<Network> asyncRemoveNetworkFromSystem(Network network) {
+        boolean errorsOnRemoval = false;
+        try {
+            logger.info("asyncRemoveNetworkFromSystem called on thread: " + Thread.currentThread().getName());
+
+            //TODO delete all client configs from clients and network_clients tables
+
+            logger.info("bringing down the wireguard interface");
+            final String wgDownCommand = String.format("wg-quick down %s", network.getNetworkName());
+            ExecutionResult wgDownExecResult = Executor.runCommand(wgDownCommand);
+            // if this fails it is not necessarily a problem but should be attempted
+            if (wgDownExecResult.getExitCode() != 0) {
+                errorsOnRemoval = true;
+                logger.error(String.format(
+                        "command: '%s' exited %s with reason: %s",
+                        wgDownCommand,
+                        wgDownExecResult.getExitCode(),
+                        wgDownExecResult.getStdout()));
+            }
+
+            // add rules to iptables to allow traffic to network
+            logger.info("removing iptable rules for network");
+            final String configureIptablesCommand = String.join(" ",
+                    "./configure-iptables",
+                    "--operation", "remove-network",
+                    "--network-cidr", network.getNetworkCidr()
+            );
+            ExecutionResult configureIptablesExecResult = Executor.runCommand(configureIptablesCommand);
+            if (configureIptablesExecResult.getExitCode() != 0) {
+                errorsOnRemoval = true;
+                logger.error(String.format(
+                        "command: '%s' exited %s with reason: %s",
+                        configureIptablesCommand,
+                        configureIptablesExecResult.getExitCode(),
+                        configureIptablesExecResult.getStdout()));
+            }
+
+            // remove the files. not needed for wireguard but keeps disk space down
+            logger.info("removing wireguard config for network");
+            final String absPathConfig = String.format("/etc/wireguard/%s.conf", network.getNetworkName());
+            File config = new File(absPathConfig);
+            if (!config.delete()) {
+                errorsOnRemoval = true;
+                logger.error(String.format("failed to delete %s", absPathConfig));
+            }
+            logger.info("removing key pair");
+            final String absPathPrviKey = String.format("/etc/wireguard/%s", network.getNetworkPrivateKeyName());
+            File privateKey = new File(absPathPrviKey);
+            if (!privateKey.delete()) {
+                errorsOnRemoval = true;
+                logger.error(String.format("failed to delete %s", absPathPrviKey));
+            }
+            final String absPathPublicKey = String.format("/etc/wireguard/%s", network.getNetworkPublicKeyName());
+            File publicKey = new File(absPathPublicKey);
+            if (!publicKey.delete()) {
+                errorsOnRemoval = true;
+                logger.error(String.format("failed to delete %s", absPathPublicKey));
+            }
+
+        } catch (Exception e) {
+            logger.error("error in cleaning up network, removing thread");
+            Thread.currentThread().interrupt();
+        }
+
+        if (!errorsOnRemoval) {
+            network.setNetworkStatus(NetworkStatus.DELETED);
+            this.repository.delete(network);
+        }
+
+        return CompletableFuture.completedFuture(network);
+    }
+
+    public Network deleteNetwork(String networkName) {
+        Optional<Network> existingNetwork = this.repository.findByNetworkName(networkName);
+        if (existingNetwork.isEmpty()) {
+            throw new BadRequestException(String.format("network '%s' does not exist", networkName));
+        }
+        Network network = existingNetwork.get();
+
+        CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
+        try {
+            Network deletedNetwork = deletedNetworkFuture.get();
+            network.setNetworkStatus(NetworkStatus.DELETED);
+            this.repository.delete(network);
+            return network;
+        } catch (InterruptedException | ExecutionException e) {
+            logger.error(String.format("error in asyncRemoveNetworkFromSystem for network '%s': %s", networkName, e));
+            throw new InternalServerException("error in deleting network");
+        }
     }
 }
 

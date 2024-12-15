@@ -20,6 +20,7 @@ public class Executor {
 
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
+            stdout.append(e.toString());
         }
         return new ExecutionResult(stdout.toString(), exitCode);
     }

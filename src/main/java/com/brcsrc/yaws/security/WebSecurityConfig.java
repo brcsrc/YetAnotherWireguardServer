@@ -23,11 +23,19 @@ public class WebSecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeRequests()
-                .requestMatchers("/login", "/register", "/networks").permitAll()  // these are allowed for now
+                .requestMatchers(
+                        "/login",
+                        "/register",
+                        "/api/v1/networks/**",
+                        "/swagger-ui/**",       // Swagger UI static resources
+                        "/swagger-ui.html",     // Swagger UI main page
+                        "/v3/api-docs/**",      // OpenAPI docs
+                        "/api-docs/**"        // Alternative path
+                ).permitAll()  // these are allowed for now
                 .anyRequest().authenticated()  // protects other routes
                 .and()
                 .formLogin().disable() // disable the default login page
-                .csrf().disable();  // TODO
+                .csrf().disable();  // TODO reenable later
         return http.build();
     }
 }

@@ -12,9 +12,7 @@ import java.util.List;
 @RestController
 public class NetworkController {
 
-    @Autowired
-    NetworkService networkService;
-
+    private final NetworkService networkService;
     private static final Logger logger = LoggerFactory.getLogger(NetworkController.class);
 
     @Autowired

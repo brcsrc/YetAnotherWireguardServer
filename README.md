@@ -33,10 +33,10 @@ docker exec -it yaws bash
 ```
 
 ##### View Swagger UI
-http://<hostname>:8080/swagger-ui/index.html
+http://localhost:8080/swagger-ui/index.html
 
 ##### View OpenAPI schema
-http://<hostname>:8080/v3/api-docs
+http://localhost:8080/v3/api-docs
 
 ##### build and run backend tests
 ```shell

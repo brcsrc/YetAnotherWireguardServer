@@ -19,6 +19,6 @@ public interface NetworkRepository extends JpaRepository<Network, String> {
             "OR (n.networkListenPort = :networkListenPort AND n.networkListenPort IS NOT NULL)")
     boolean existsByNetworkNameOrNetworkCidrOrListenPort(@Param("networkName") String networkName,
                                                          @Param("networkCidr") String networkCidr,
-                                                         @Param("networkListenPort") String networkListenPort);
+                                                         @Param("networkListenPort") int networkListenPort);
 
 }

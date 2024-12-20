@@ -7,6 +7,7 @@ import com.brcsrc.yaws.model.NetworkStatus;
 import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.shell.ExecutionResult;
 import com.brcsrc.yaws.shell.Executor;
+import com.brcsrc.yaws.utility.IPUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,8 +49,7 @@ public class NetworkService {
             throw new BadRequestException(errMsg);
         }
 
-        String ipv4Cidr = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(3[0-2]|[1-2][0-9]|[0-9]))$";
-        if (!network.getNetworkCidr().matches(ipv4Cidr)) {
+        if (!IPUtils.isValidIpv4Cidr(network.getNetworkCidr())) {
             String errMsg = "networkCidr is invalid";
             logger.error(errMsg);
             throw new BadRequestException(errMsg);
@@ -59,20 +59,6 @@ public class NetworkService {
         if (subnetMask < 24) {
             // TODO support larger networks
             String errMsg = "subnet mask must not be less than 24";
-            logger.error(errMsg);
-            throw new BadRequestException(errMsg);
-        }
-
-        int requestedPort;
-        try {
-            requestedPort = Integer.parseInt(network.getNetworkListenPort());
-        } catch (NumberFormatException e) {
-            String errMsg = "networkListenPort must be an integer";
-            logger.error(errMsg);
-            throw new BadRequestException(errMsg);
-        }
-        if (requestedPort < 1 || requestedPort > 65535) {
-            String errMsg = "networkPort must be greater than or equal to 1 or less than or equal to 65535";
             logger.error(errMsg);
             throw new BadRequestException(errMsg);
         }
@@ -126,7 +112,7 @@ public class NetworkService {
                 "./create-network-config",
                 "--config-name", network.getNetworkName(),
                 "--network-cidr", network.getNetworkCidr(),
-                "--network-listen-port", network.getNetworkListenPort(),
+                "--network-listen-port", String.valueOf(network.getNetworkListenPort()),
                 "--network-private-key-name", network.getNetworkPrivateKeyName()
         );
         ExecutionResult createNetConfigExecResult = Executor.runCommand(createNetworkConfigCommand);

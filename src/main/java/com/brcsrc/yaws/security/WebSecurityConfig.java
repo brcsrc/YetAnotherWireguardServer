@@ -27,6 +27,7 @@ public class WebSecurityConfig {
                         "/login",
                         "/register",
                         "/api/v1/networks/**",
+                        "/api/v1/clients/**",
                         "/swagger-ui/**",       // Swagger UI static resources
                         "/swagger-ui.html",     // Swagger UI main page
                         "/v3/api-docs/**",      // OpenAPI docs

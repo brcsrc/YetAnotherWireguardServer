@@ -7,8 +7,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Null;
+import jakarta.validation.constraints.*;
 
 @Entity
 @Table(name = "networks")
@@ -18,17 +17,24 @@ public class Network {
     @NotNull
     @Schema(description = "unique, alphanumeric name for the network")
     private String networkName;
+
     @NotNull
+    @Pattern(regexp = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(3[0-2]|[1-2][0-9]|[0-9]))$")
     @Schema(description = "CIDR block for the network")
     private String networkCidr;
+
     @NotNull
+    @Min(1025)
+    @Max(65535)
     @Schema(description = "server listen port for the network")
-    private String networkListenPort;
+    private int networkListenPort;
 
     @Null
     private String networkPrivateKeyName;
+
     @Null
     private String networkPublicKeyName;
+
     @Null
     private String networkTag;
 
@@ -53,11 +59,11 @@ public class Network {
         this.networkCidr = networkCidr;
     }
 
-    public String getNetworkListenPort() {
+    public int getNetworkListenPort() {
         return networkListenPort;
     }
 
-    public void setNetworkListenPort(String networkListenPort) {
+    public void setNetworkListenPort(int networkListenPort) {
         this.networkListenPort = networkListenPort;
     }
 

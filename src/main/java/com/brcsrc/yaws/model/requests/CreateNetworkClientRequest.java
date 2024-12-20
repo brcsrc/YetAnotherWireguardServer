@@ -1,25 +1,34 @@
-package com.brcsrc.yaws.model;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+package com.brcsrc.yaws.model.requests;
 
-@Entity
-@Table(name = "clients")
-public class Client {
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 
-    // not adding validations here for now since this is used behind CreateNetworkClientRequest
+public class CreateNetworkClientRequest {
 
-    @Id
+    private final String validIpv4AddressRegex = "^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$";
+    private final String validIpv4CidrRegex = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(3[0-2]|[1-2][0-9]|[0-9]))$";
+
+    @NotBlank(message = "Client name is required")
     private String clientName;
-    private String clientPrivateKeyName;
-    private String clientPublicKeyName;
+
+    @Pattern(regexp = validIpv4CidrRegex)
     private String clientCidr;
+
+    @Pattern(regexp = validIpv4AddressRegex)
     private String clientDns;
+
+    // TODO add custom validator
     private String allowedIps;
-    private String networkPublicKeyName;
+
+    @NotBlank(message = "Network name is required")
+    private String networkName;
+
+    @Pattern(regexp = validIpv4AddressRegex)
     private String networkEndpoint;
-    private int networkListenPort;
+
     private String clientTag;
+
+
 
     public String getClientName() {
         return clientName;
@@ -27,14 +36,6 @@ public class Client {
 
     public void setClientName(String clientName) {
         this.clientName = clientName;
-    }
-
-    public String getClientPrivateKeyName() {
-        return clientPrivateKeyName;
-    }
-
-    public void setClientPrivateKeyName(String clientPrivateKeyName) {
-        this.clientPrivateKeyName = clientPrivateKeyName;
     }
 
     public String getClientCidr() {
@@ -61,20 +62,12 @@ public class Client {
         this.allowedIps = allowedIps;
     }
 
-    public String getNetworkPublicKeyName() {
-        return networkPublicKeyName;
+    public String getNetworkName() {
+        return networkName;
     }
 
-    public void setNetworkPublicKeyName(String networkPublicKeyName) {
-        this.networkPublicKeyName = networkPublicKeyName;
-    }
-
-    public String getClientPublicKeyName() {
-        return clientPublicKeyName;
-    }
-
-    public void setClientPublicKeyName(String clientPublicKeyName) {
-        this.clientPublicKeyName = clientPublicKeyName;
+    public void setNetworkName(String networkName) {
+        this.networkName = networkName;
     }
 
     public String getNetworkEndpoint() {
@@ -83,14 +76,6 @@ public class Client {
 
     public void setNetworkEndpoint(String networkEndpoint) {
         this.networkEndpoint = networkEndpoint;
-    }
-
-    public int getNetworkListenPort() {
-        return networkListenPort;
-    }
-
-    public void setNetworkListenPort(int networkListenPort) {
-        this.networkListenPort = networkListenPort;
     }
 
     public String getClientTag() {
@@ -103,16 +88,16 @@ public class Client {
 
     @Override
     public String toString() {
-        return "Client{" +
+        return "CreateNetworkClientRequest{" +
                 "clientName='" + clientName + '\'' +
-                ", clientPrivateKeyName='" + clientPrivateKeyName + '\'' +
                 ", clientCidr='" + clientCidr + '\'' +
                 ", clientDns='" + clientDns + '\'' +
                 ", allowedIps='" + allowedIps + '\'' +
-                ", networkPublicKeyName='" + networkPublicKeyName + '\'' +
+                ", networkName='" + networkName + '\'' +
                 ", networkEndpoint='" + networkEndpoint + '\'' +
-                ", networkListenPort='" + networkListenPort + '\'' +
                 ", clientTag='" + clientTag + '\'' +
                 '}';
     }
 }
+
+

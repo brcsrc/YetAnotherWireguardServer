@@ -66,5 +66,7 @@ tasks.named('test') {
 	// make test run verbose
 	testLogging {
 		events("passed", "skipped", "failed", "standard_out", "standard_error")
+		exceptionFormat = "full"  // This ensures that the full stack trace is shown
+		showStandardStreams = true  // Optional: Shows standard output (useful for logging)
 	}
 }

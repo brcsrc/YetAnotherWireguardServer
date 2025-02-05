@@ -61,7 +61,7 @@ public class NetworkClientService {
         client.setNetworkListenPort(existingNetwork.getNetworkListenPort());
         client.setNetworkPublicKeyName(existingNetwork.getNetworkPublicKeyName());
 
-        // build key names from network name
+        // build key names from client name
         client.setClientPrivateKeyName(client.getClientName() + "-private-key");
         client.setClientPublicKeyName(client.getClientName() + "-public-key");
 

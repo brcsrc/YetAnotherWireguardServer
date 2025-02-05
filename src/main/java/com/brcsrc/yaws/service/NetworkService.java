@@ -177,7 +177,7 @@ public class NetworkService {
 
             //TODO delete all client configs from clients and network_clients tables
 
-            logger.info("bringing down the wireguard interface");
+            logger.info(String.format("bringing down the wireguard interface %s", network.getNetworkName()));
             final String wgDownCommand = String.format("wg-quick down %s", network.getNetworkName());
             ExecutionResult wgDownExecResult = Executor.runCommand(wgDownCommand);
             // if this fails it is not necessarily a problem but should be attempted
@@ -191,7 +191,7 @@ public class NetworkService {
             }
 
             // add rules to iptables to allow traffic to network
-            logger.info("removing iptable rules for network");
+            logger.info(String.format("removing iptable rules for network %s", network.getNetworkName()));
             final String configureIptablesCommand = String.join(" ",
                     "./configure-iptables",
                     "--operation", "remove-network",
@@ -208,14 +208,18 @@ public class NetworkService {
             }
 
             // remove the files. not needed for wireguard but keeps disk space down
-            logger.info("removing wireguard config for network");
+            logger.info(String.format("removing wireguard config for network %s", network.getNetworkName()));
             final String absPathConfig = String.format("/etc/wireguard/%s.conf", network.getNetworkName());
             File config = new File(absPathConfig);
             if (!config.delete()) {
                 errorsOnRemoval = true;
                 logger.error(String.format("failed to delete %s", absPathConfig));
             }
-            logger.info("removing key pair");
+            logger.info(String.format(
+                    "removing key pair '%s' '%s'",
+                    network.getNetworkPrivateKeyName(),
+                    network.getNetworkPublicKeyName()
+            ));
             final String absPathPrviKey = String.format("/etc/wireguard/%s", network.getNetworkPrivateKeyName());
             File privateKey = new File(absPathPrviKey);
             if (!privateKey.delete()) {

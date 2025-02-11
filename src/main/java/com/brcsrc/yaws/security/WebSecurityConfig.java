@@ -31,7 +31,8 @@ public class WebSecurityConfig {
                         "/swagger-ui/**",       // Swagger UI static resources
                         "/swagger-ui.html",     // Swagger UI main page
                         "/v3/api-docs/**",      // OpenAPI docs
-                        "/api-docs/**"        // Alternative path
+                        "/api-docs/**",        // Alternative path
+                        "/error"            // without this, any client exception thrown is thrown as a 403 instead
                 ).permitAll()  // these are allowed for now
                 .anyRequest().authenticated()  // protects other routes
                 .and()

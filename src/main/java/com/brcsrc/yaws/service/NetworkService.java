@@ -11,8 +11,11 @@ import com.brcsrc.yaws.utility.IPUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.io.File;
 import java.util.List;
 import java.util.Optional;
@@ -46,21 +49,31 @@ public class NetworkService {
         if (network.getNetworkName().length() > 64 || !network.getNetworkName().matches("^[a-zA-Z0-9]+$")) {
             String errMsg = "networkName must be alphanumeric without spaces and no more than 64 characters";
             logger.error(errMsg);
-            throw new BadRequestException(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
 
+        // TODO check against 0.0.0.0
         if (!IPUtils.isValidIpv4Cidr(network.getNetworkCidr())) {
             String errMsg = "networkCidr is invalid";
             logger.error(errMsg);
-            throw new BadRequestException(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
 
-        int subnetMask = Integer.parseInt(network.getNetworkCidr().split("/")[1]);
+        String[] cidr = network.getNetworkCidr().split("/");
+
+        int subnetMask = Integer.parseInt(cidr[1]);
         if (subnetMask < 24) {
             // TODO support larger networks
             String errMsg = "subnet mask must not be less than 24";
             logger.error(errMsg);
-            throw new BadRequestException(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        int networkInterfaceAddress = Integer.parseInt(cidr[0].split("\\.")[3]);
+        if (networkInterfaceAddress == 0 || networkInterfaceAddress > 254) {
+            String errMsg = "network interface address must be between .1 and .254";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
 
         boolean resourcesInUse = this.repository.existsByNetworkNameOrNetworkCidrOrListenPort(
@@ -70,7 +83,7 @@ public class NetworkService {
         if (resourcesInUse) {
             String errMsg = "network already exists by requested networkName or networkCidr or networkListenPort";
             logger.error(errMsg);
-            throw new BadRequestException(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
 
         logger.info(String.format("creating network '%s'", network.getNetworkName()));
@@ -103,7 +116,6 @@ public class NetworkService {
             throw new InternalServerException("failed to create network");
         }
 
-        // create the wireguard network config
         logger.info(String.format(
                 "creating wireguard network config: CIDR = %s, listen port = %s",
                 network.getNetworkCidr(),
@@ -151,13 +163,13 @@ public class NetworkService {
         // since this network is newly created we need bring it up in wireguard
         logger.info("bringing up the wireguard interface");
         final String wgUpCommand = String.format("wg-quick up %s", network.getNetworkName());
-        ExecutionResult wgUpExecResul = Executor.runCommand(wgUpCommand);
-        if (wgUpExecResul.getExitCode() != 0) {
+        ExecutionResult wgUpExecResult = Executor.runCommand(wgUpCommand);
+        if (wgUpExecResult.getExitCode() != 0) {
             logger.error(String.format(
                     "command: '%s' exited %s with reason: %s",
                     wgUpCommand,
-                    wgUpExecResul.getExitCode(),
-                    wgUpExecResul.getStdout()));
+                    wgUpExecResult.getExitCode(),
+                    wgUpExecResult.getStdout()));
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.repository.save(network);
             CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
@@ -166,6 +178,7 @@ public class NetworkService {
 
         network.setNetworkStatus(NetworkStatus.ACTIVE);
         savedNetwork = this.repository.save(network);
+        logger.info("CreateNetwork operation complete");
         return savedNetwork;
     }
 
@@ -239,7 +252,6 @@ public class NetworkService {
         }
 
         if (!errorsOnRemoval) {
-            network.setNetworkStatus(NetworkStatus.DELETED);
             this.repository.delete(network);
         }
 
@@ -256,7 +268,6 @@ public class NetworkService {
         CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
         try {
             Network deletedNetwork = deletedNetworkFuture.get();
-            network.setNetworkStatus(NetworkStatus.DELETED);
             this.repository.delete(network);
             return network;
         } catch (InterruptedException | ExecutionException e) {

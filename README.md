@@ -42,7 +42,7 @@ http://localhost:8080/v3/api-docs
 ```shell
 \
 docker build -f docker/test/test.Dockerfile -t yaws-tests . && \
-docker run \
+docker run --rm \
  --privileged \
  --cap-add=NET_ADMIN \
  --name yaws-tests \

@@ -1,0 +1,238 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-02-09T21:53:10.663Z",
+  "__export_source": "insomnia.desktop.app:v10.3.0",
+  "resources": [
+    {
+      "_id": "req_b72c8965061d4039ab6ea0e872390448",
+      "parentId": "fld_482b6c99f8d3409ea76d7a6d4640d6f5",
+      "modified": 1739137953889,
+      "created": 1739137900382,
+      "url": "http://localhost:8080/api/v1/clients",
+      "name": "CreateNetworkClient",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"clientName\": \"Client1\",\n  \"clientCidr\": \"10.100.0.2/32\",\n  \"clientDns\": \"1.1.1.1\",\n  \"allowedIps\": \"0.0.0.0/0\",\n  \"networkName\": \"Network1\",\n  \"networkEndpoint\": \"127.0.0.1\",\n  \"clientTag\": \"mobile client config 1\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "User-Agent",
+          "value": "insomnia/10.3.0"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1739137900382,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_482b6c99f8d3409ea76d7a6d4640d6f5",
+      "parentId": "fld_ffd60b8bb65e4e83a5bf8d8575064565",
+      "modified": 1739137892785,
+      "created": 1739137892785,
+      "name": "NetworkClients",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1739137892785,
+      "environmentType": "kv",
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_ffd60b8bb65e4e83a5bf8d8575064565",
+      "parentId": "wrk_scratchpad",
+      "modified": 1739137474838,
+      "created": 1739137474838,
+      "name": "yaws",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1739137474838,
+      "environmentType": "kv",
+      "_type": "request_group"
+    },
+    {
+      "_id": "wrk_scratchpad",
+      "parentId": null,
+      "modified": 1729659940294,
+      "created": 1729659940294,
+      "name": "Scratch Pad",
+      "description": "",
+      "scope": "collection",
+      "_type": "workspace"
+    },
+    {
+      "_id": "req_da7e86fe72ac440fa08c9258be8a9d6a",
+      "parentId": "fld_8fa02ca01d224660be96c051dbd13424",
+      "modified": 1739137842788,
+      "created": 1739137603414,
+      "url": "http://localhost:8080/api/v1/networks",
+      "name": "ListNetworks",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "User-Agent",
+          "value": "insomnia/10.3.0"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1739137830936,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_8fa02ca01d224660be96c051dbd13424",
+      "parentId": "fld_ffd60b8bb65e4e83a5bf8d8575064565",
+      "modified": 1739137872777,
+      "created": 1739137824143,
+      "name": "Network",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1739137824143,
+      "environmentType": "kv",
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_bdf97167810042e3bd2378f57e25b524",
+      "parentId": "fld_8fa02ca01d224660be96c051dbd13424",
+      "modified": 1739137840147,
+      "created": 1739137663734,
+      "url": "http://localhost:8080/api/v1/networks/Network1",
+      "name": "DescribeNetworks",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "User-Agent",
+          "value": "insomnia/10.3.0"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1739137830836,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_ceb16b8b666d45749c074a5064e8ed58",
+      "parentId": "fld_8fa02ca01d224660be96c051dbd13424",
+      "modified": 1739137837047,
+      "created": 1739137711094,
+      "url": "http://localhost:8080/api/v1/networks",
+      "name": "CreateNetwork",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"networkName\": \"Network1\",\n  \"networkCidr\": \"10.100.0.0/24\",\n  \"networkListenPort\": \"51820\",\n  \"networkTag\": \"net1\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "User-Agent",
+          "value": "insomnia/10.3.0"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1739137830736,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_684eb49429a240a6a5de2916d4a0c0b1",
+      "parentId": "fld_8fa02ca01d224660be96c051dbd13424",
+      "modified": 1739137830707,
+      "created": 1739137762162,
+      "url": "http://localhost:8080/api/v1/networks/Network1",
+      "name": "DeleteNetwork",
+      "description": "",
+      "method": "DELETE",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "User-Agent",
+          "value": "insomnia/10.3.0"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1739137830636,
+      "isPrivate": false,
+      "pathParameters": [],
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "env_99d30891da4bdcebc63947a8fc17f076de878684",
+      "parentId": "wrk_scratchpad",
+      "modified": 1729659960316,
+      "created": 1729659960316,
+      "name": "Base Environment",
+      "data": {},
+      "dataPropertyOrder": null,
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1729659960316,
+      "_type": "environment"
+    },
+    {
+      "_id": "jar_99d30891da4bdcebc63947a8fc17f076de878684",
+      "parentId": "wrk_scratchpad",
+      "modified": 1729659960404,
+      "created": 1729659960404,
+      "name": "Default Jar",
+      "cookies": [],
+      "_type": "cookie_jar"
+    }
+  ]
+}

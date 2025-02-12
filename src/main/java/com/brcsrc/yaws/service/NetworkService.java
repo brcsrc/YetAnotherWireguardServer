@@ -40,7 +40,9 @@ public class NetworkService {
     public Network describeNetwork(String networkName) {
         Optional<Network> existingNetwork = this.repository.findByNetworkName(networkName);
         if (existingNetwork.isEmpty()) {
-            throw new BadRequestException(String.format("network '%s' does not exist", networkName));
+            String errMsg = String.format("network '%s' does not exist", networkName);
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
         return existingNetwork.get();
     }
@@ -190,17 +192,25 @@ public class NetworkService {
 
             //TODO delete all client configs from clients and network_clients tables
 
-            logger.info(String.format("bringing down the wireguard interface %s", network.getNetworkName()));
-            final String wgDownCommand = String.format("wg-quick down %s", network.getNetworkName());
-            ExecutionResult wgDownExecResult = Executor.runCommand(wgDownCommand);
-            // if this fails it is not necessarily a problem but should be attempted
-            if (wgDownExecResult.getExitCode() != 0) {
-                errorsOnRemoval = true;
-                logger.error(String.format(
-                        "command: '%s' exited %s with reason: %s",
-                        wgDownCommand,
-                        wgDownExecResult.getExitCode(),
-                        wgDownExecResult.getStdout()));
+            logger.info(String.format("bringing down the wireguard interface '%s'", network.getNetworkName()));
+
+            final String checkWgIFaceExistsCmd = String.format("wg show %s", network.getNetworkName());
+            ExecutionResult checkWgIFaceExistsCmdResult = Executor.runCommand(checkWgIFaceExistsCmd);
+            boolean wgIFaceExists = (checkWgIFaceExistsCmdResult.getExitCode() == 0);
+
+            if (wgIFaceExists) {
+                final String wgDownCommand = String.format("wg-quick down %s", network.getNetworkName());
+                ExecutionResult wgDownExecResult = Executor.runCommand(wgDownCommand);
+                if (wgDownExecResult.getExitCode() != 0) {
+                    errorsOnRemoval = true;
+                    logger.error(String.format(
+                            "command: '%s' exited %s with reason: %s",
+                            wgDownCommand,
+                            wgDownExecResult.getExitCode(),
+                            wgDownExecResult.getStdout()));
+                }
+            } else {
+                logger.info(String.format("wireguard interface '%s' does not exist", network.getNetworkName()));
             }
 
             // add rules to iptables to allow traffic to network
@@ -212,7 +222,7 @@ public class NetworkService {
             );
             ExecutionResult configureIptablesExecResult = Executor.runCommand(configureIptablesCommand);
             if (configureIptablesExecResult.getExitCode() != 0) {
-                errorsOnRemoval = true;
+                //errorsOnRemoval = true; // TODO this also exits non 0 if the chain does not exist which should not be an error for this operation
                 logger.error(String.format(
                         "command: '%s' exited %s with reason: %s",
                         configureIptablesCommand,
@@ -224,10 +234,15 @@ public class NetworkService {
             logger.info(String.format("removing wireguard config for network %s", network.getNetworkName()));
             final String absPathConfig = String.format("/etc/wireguard/%s.conf", network.getNetworkName());
             File config = new File(absPathConfig);
-            if (!config.delete()) {
-                errorsOnRemoval = true;
-                logger.error(String.format("failed to delete %s", absPathConfig));
+            if (config.exists()) {
+                if (!config.delete()) {
+                    errorsOnRemoval = true;
+                    logger.error(String.format("failed to delete %s", absPathConfig));
+                }
+            } else {
+                logger.info(String.format("/etc/wireguard/%s.conf does not exist", network.getNetworkName()));
             }
+
             logger.info(String.format(
                     "removing key pair '%s' '%s'",
                     network.getNetworkPrivateKeyName(),
@@ -235,16 +250,26 @@ public class NetworkService {
             ));
             final String absPathPrviKey = String.format("/etc/wireguard/%s", network.getNetworkPrivateKeyName());
             File privateKey = new File(absPathPrviKey);
-            if (!privateKey.delete()) {
-                errorsOnRemoval = true;
-                logger.error(String.format("failed to delete %s", absPathPrviKey));
+            if (privateKey.exists()) {
+                if (!privateKey.delete()) {
+                    errorsOnRemoval = true;
+                    logger.error(String.format("failed to delete %s", absPathPrviKey));
+                }
+            } else {
+                logger.info(String.format("/etc/wireguard/%s does not exist", network.getNetworkPrivateKeyName()));
             }
+
             final String absPathPublicKey = String.format("/etc/wireguard/%s", network.getNetworkPublicKeyName());
             File publicKey = new File(absPathPublicKey);
-            if (!publicKey.delete()) {
-                errorsOnRemoval = true;
-                logger.error(String.format("failed to delete %s", absPathPublicKey));
+            if (publicKey.exists()) {
+                if (!publicKey.delete()) {
+                    errorsOnRemoval = true;
+                    logger.error(String.format("failed to delete %s", absPathPublicKey));
+                }
+            } else {
+                logger.info(String.format("/etc/wireguard/%s does not exist", network.getNetworkPublicKeyName()));
             }
+
 
         } catch (Exception e) {
             logger.error("error in cleaning up network, removing thread");
@@ -252,6 +277,10 @@ public class NetworkService {
         }
 
         if (!errorsOnRemoval) {
+            logger.info(String.format(
+                    "asyncRemoveNetworkFromSystem completed successfully for network %s",
+                    network.getNetworkName())
+            );
             this.repository.delete(network);
         }
 
@@ -261,14 +290,18 @@ public class NetworkService {
     public Network deleteNetwork(String networkName) {
         Optional<Network> existingNetwork = this.repository.findByNetworkName(networkName);
         if (existingNetwork.isEmpty()) {
-            throw new BadRequestException(String.format("network '%s' does not exist", networkName));
+            String errMsg = String.format("network '%s' does not exist", networkName);
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
         Network network = existingNetwork.get();
 
         CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
         try {
             Network deletedNetwork = deletedNetworkFuture.get();
+            // if ExeceptionExecution is not thrown then the async job was successful
             this.repository.delete(network);
+            network.setNetworkStatus(NetworkStatus.DELETED);
             return network;
         } catch (InterruptedException | ExecutionException e) {
             logger.error(String.format("error in asyncRemoveNetworkFromSystem for network '%s': %s", networkName, e));

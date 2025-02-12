@@ -1,6 +1,7 @@
 package com.brcsrc.yaws.api;
 
 import com.brcsrc.yaws.model.Network;
+import com.brcsrc.yaws.model.NetworkStatus;
 import com.brcsrc.yaws.model.wireguard.NetworkConfig;
 import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.service.NetworkService;
@@ -74,12 +75,23 @@ public class NetworkControllerTests {
         HttpEntity<String> entity = TestHelpers.createTestEntity(network);
 
         // execute
-        ResponseEntity<String> response = restTemplate.exchange(baseUrl, HttpMethod.POST, entity, String.class);
+        ResponseEntity<Network> response = restTemplate.exchange(baseUrl, HttpMethod.POST, entity, Network.class);
 
         // assert
         assertEquals(200, response.getStatusCode().value());
+        Network createdNetwork = response.getBody();
+        assert createdNetwork != null;
+
         Optional<Network> networkFromDb = networkRepository.findByNetworkName(testNetworkName);
         assert networkFromDb.isPresent();
+
+        Network readNetworkFromDb = networkFromDb.get();
+
+        assertEquals(testNetworkName, readNetworkFromDb.getNetworkName());
+        assertEquals(testNetworkCidr, readNetworkFromDb.getNetworkCidr());
+        assertEquals(testNetworkListenPort, readNetworkFromDb.getNetworkListenPort());
+        assertEquals(testNetworkTag, readNetworkFromDb.getNetworkTag());
+        assertEquals(NetworkStatus.ACTIVE, readNetworkFromDb.getNetworkStatus());
 
         // check that the config file is in wireguard directory and is valid
         NetworkConfig networkConfig = WireguardConfigReaderUtils.readNetworkConfig(String.format("%s.conf", network.getNetworkName()));
@@ -281,5 +293,63 @@ public class NetworkControllerTests {
         assertEquals(51821, networks.get(0).getNetworkListenPort());
         assertEquals("net2", networks.get(0).getNetworkTag());
     }
+
+    @Test
+    public void testDescribeNetworkDescribesNetwork() throws Exception {
+        // create a network via networkService
+        Network network = new Network();
+        network.setNetworkName(testNetworkName);
+        network.setNetworkCidr(testNetworkCidr);
+        network.setNetworkListenPort(testNetworkListenPort);
+        network.setNetworkTag(testNetworkTag);
+        networkService.createNetwork(network);
+
+        String describeNetworkUrl = String.format("%s/%s", baseUrl, testNetworkName);
+        ResponseEntity<Network> describeNetworkResponse = restTemplate.exchange(
+                describeNetworkUrl,
+                HttpMethod.GET,
+                null,
+                Network.class
+        );
+
+        assertEquals(200, describeNetworkResponse.getStatusCode().value());
+        Network describedNetwork = describeNetworkResponse.getBody();
+        assert describedNetwork != null;
+
+        assertEquals(testNetworkName, describedNetwork.getNetworkName());
+        assertEquals(testNetworkCidr, describedNetwork.getNetworkCidr());
+        assertEquals(testNetworkListenPort, describedNetwork.getNetworkListenPort());
+        assertEquals(testNetworkTag, describedNetwork.getNetworkTag());
+
+    }
+
+    @Test
+    public void testDeleteNetworkDeletesNetwork() throws Exception {
+        Network network = new Network();
+        network.setNetworkName(testNetworkName);
+        network.setNetworkCidr(testNetworkCidr);
+        network.setNetworkListenPort(testNetworkListenPort);
+        network.setNetworkTag(testNetworkTag);
+        networkService.createNetwork(network);
+
+        String deleteNetworkUrl = String.format("%s/%s", baseUrl, testNetworkName);
+        ResponseEntity<Network> deleteNetworkResponse = restTemplate.exchange(
+                deleteNetworkUrl,
+                HttpMethod.DELETE,
+                null,
+                Network.class
+        );
+
+        assertEquals(200, deleteNetworkResponse.getStatusCode().value());
+        Network deletedNetwork = deleteNetworkResponse.getBody();
+        assert deletedNetwork != null;
+
+        assertEquals(testNetworkName, deletedNetwork.getNetworkName());
+        assertEquals(testNetworkCidr, deletedNetwork.getNetworkCidr());
+        assertEquals(testNetworkListenPort, deletedNetwork.getNetworkListenPort());
+        assertEquals(testNetworkTag, deletedNetwork.getNetworkTag());
+        assertEquals(NetworkStatus.DELETED, deletedNetwork.getNetworkStatus());
+    }
+
 }
 

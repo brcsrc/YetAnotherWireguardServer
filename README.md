@@ -2,7 +2,17 @@
 
 ## Development
 
-##### cache java dependencies locally
+### generate gradle wrapper
+```shell
+gradle wrapper
+```
+
+### cache gradle jars and zip locally (sppeds up image build)
+```shell
+./gradlew downloadGradleBin
+```
+
+##### cache java dependencies locally (speeds up image build)
 ```shell
 ./gradlew copyDependenciesToLocalRepo
 ```

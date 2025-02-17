@@ -36,9 +36,27 @@ docker run \
  --privileged \
  --cap-add=NET_ADMIN \
  -p 0.0.0.0:51820:51820/udp \
--p 0.0.0.0:8080:8080/tcp \
+ -p 0.0.0.0:8080:8080/tcp \
  --name yaws \
- -d yaws:latest && \
+ -d \
+ yaws:latest && \
+docker exec -it yaws bash
+```
+
+##### Build for development and pass the sqlite db through to project filesystem
+> you have to already have the DB available. you can run the above command and then copy it with `docker cp yaws:/opt/yaws.db .`
+```shell
+\
+docker build -f docker/prod/Dockerfile -t yaws . && \
+docker run \
+ --privileged \
+ --cap-add=NET_ADMIN \
+ -p 0.0.0.0:51820:51820/udp \
+ -p 0.0.0.0:8080:8080/tcp \
+ -v $(pwd)/yaws.db:/opt/yaws.db \
+ --name yaws \
+ -d \
+ yaws:latest && \
 docker exec -it yaws bash
 ```
 

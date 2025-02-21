@@ -1,15 +1,27 @@
 package com.brcsrc.yaws.api;
 
-import com.brcsrc.yaws.model.Network;
-import com.brcsrc.yaws.service.NetworkService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-import io.swagger.v3.oas.annotations.Operation;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.brcsrc.yaws.model.Network;
+import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
+import com.brcsrc.yaws.service.NetworkService;
+
+import io.swagger.v3.oas.annotations.Operation;
+
 @RestController
+@RequestMapping("/api/v1/networks")
 public class NetworkController {
 
     private final NetworkService networkService;
@@ -21,31 +33,37 @@ public class NetworkController {
     }
 
     @Operation(summary = "List Networks", description = "list all networks")
-    @GetMapping("/api/v1/networks")
+    @GetMapping
     public List<Network> listNetworks() {
         logger.info("received ListNetwork request");
         return this.networkService.getAllNetworks();
     }
 
     @Operation(summary = "Describe Network", description = "describe a network")
-    @GetMapping("/api/v1/networks/{networkName}")
+    @GetMapping("/{networkName}")
     public Network describeNetwork(@PathVariable String networkName) {
         logger.info("received DescribeNetwork request");
         return this.networkService.describeNetwork(networkName);
     }
 
     @Operation(summary = "Create Network", description = "create a network")
-    @PostMapping("/api/v1/networks")
+    @PostMapping
     public Network createNetwork(@RequestBody Network network) {
         logger.info("received CreateNetwork request: {}", network);
         return this.networkService.createNetwork(network);
     }
 
     @Operation(summary = "Delete Network", description = "delete a network")
-    @DeleteMapping("/api/v1/networks/{networkName}")
+    @DeleteMapping("/{networkName}")
     public Network DeleteNetwork(@PathVariable String networkName) {
         logger.info("received DeleteNetwork request: {}", networkName);
         return this.networkService.deleteNetwork(networkName);
     }
-}
 
+    @Operation(summary = "Update Network Tag", description = "Update the tag of a network")
+    @PatchMapping("/{networkName}/tag")
+    public Network updateNetworkTag(@PathVariable String networkName, @RequestBody UpdateNetworkRequest updateNetworkRequest) {
+        logger.info("received UpdateNetworkTag request, updating network {} with new tag: {}", networkName, updateNetworkRequest.getNewTag());
+        return this.networkService.updateNetworkTag(networkName, updateNetworkRequest.getNewTag());
+    }
+}

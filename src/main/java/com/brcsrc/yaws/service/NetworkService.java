@@ -1,13 +1,11 @@
 package com.brcsrc.yaws.service;
 
-import com.brcsrc.yaws.exceptions.BadRequestException;
-import com.brcsrc.yaws.exceptions.InternalServerException;
-import com.brcsrc.yaws.model.Network;
-import com.brcsrc.yaws.model.NetworkStatus;
-import com.brcsrc.yaws.persistence.NetworkRepository;
-import com.brcsrc.yaws.shell.ExecutionResult;
-import com.brcsrc.yaws.shell.Executor;
-import com.brcsrc.yaws.utility.IPUtils;
+import java.io.File;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,11 +14,13 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.File;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import com.brcsrc.yaws.exceptions.InternalServerException;
+import com.brcsrc.yaws.model.Network;
+import com.brcsrc.yaws.model.NetworkStatus;
+import com.brcsrc.yaws.persistence.NetworkRepository;
+import com.brcsrc.yaws.shell.ExecutionResult;
+import com.brcsrc.yaws.shell.Executor;
+import com.brcsrc.yaws.utility.IPUtils;
 
 @Service
 public class NetworkService {
@@ -307,6 +307,20 @@ public class NetworkService {
             logger.error(String.format("error in asyncRemoveNetworkFromSystem for network '%s': %s", networkName, e));
             throw new InternalServerException("error in deleting network");
         }
+    }
+
+    // updateNetwork function
+    // Function to update the tag of a network, given the network name and the new tag, and return the updated network
+    public Network updateNetworkTag(String networkName, String newTag) {
+        Optional<Network> existingNetwork = this.repository.findByNetworkName(networkName);
+        if (existingNetwork.isEmpty()) {
+            String errMsg = String.format("network '%s' does not exist", networkName);
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+        Network network = existingNetwork.get();
+        network.setNetworkTag(newTag);
+        return this.repository.save(network);
     }
 }
 

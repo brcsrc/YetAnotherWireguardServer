@@ -1,6 +1,7 @@
 package com.brcsrc.yaws.api;
 
 import com.brcsrc.yaws.model.Client;
+import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
 import com.brcsrc.yaws.model.NetworkClient;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
@@ -23,17 +24,24 @@ public class NetworkClientController {
     public NetworkClientController(NetworkClientService networkClientService) { this.networkClientService = networkClientService;}
 
     @Operation(summary = "Create Network Client", description = "create a client for a specific network")
-    @PostMapping("/api/v1/clients")
+    @PostMapping(Constants.BASE_URL + "/clients")
     public NetworkClient createNetworkClient(@RequestBody CreateNetworkClientRequest createNetworkClientRequest) {
         logger.info("received CreateNetworkClient request");
         return this.networkClientService.addClientToNetwork(createNetworkClientRequest);
     }
 
     @Operation(summary = "List Network Clients", description = "list clients for a specific network")
-    @GetMapping("/api/v1/clients")
+    @GetMapping(Constants.BASE_URL + "/clients")
     public List<Client> listNetworkClients(@RequestBody ListNetworkClientsRequest listNetworkClientsRequest) {
         logger.info("received ListNetworkClients request");
         return this.networkClientService.listNetworkClients(listNetworkClientsRequest);
+    }
+
+    @Operation(summary = "Delete Network Client", description = "delete a specific client for a network")
+    @DeleteMapping("/api/v1/clients/{networkName}/{clientName}")
+    public NetworkClient deleteNetworkClient(@PathVariable String networkName, @PathVariable String clientName) {
+        logger.info("received DeleteNetwork request");
+        return this.networkClientService.deleteNetworkClient(networkName, clientName);
     }
 
 }

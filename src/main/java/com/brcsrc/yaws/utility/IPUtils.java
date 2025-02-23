@@ -1,17 +1,17 @@
 package com.brcsrc.yaws.utility;
 
+import com.brcsrc.yaws.model.Constants;
+
 import java.util.Arrays;
 import java.util.Objects;
 
 public class IPUtils {
     public static boolean isValidIpv4Cidr(String cidr) {
-        String validIpv4CidrRegex = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(3[0-2]|[1-2][0-9]|[0-9]))$";
-        return cidr.matches(validIpv4CidrRegex);
+        return cidr.matches(Constants.IPV4_CIDR_REGEXP);
     }
 
     public static boolean isValidIpv4Address(String address) {
-        String validIpv4AddressRegex = "^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$";
-        return address.matches(validIpv4AddressRegex);
+        return address.matches(Constants.IPV4_ADDRESS_REGEXP);
     }
 
     public static boolean isValidEndpoint(String endpoint) {

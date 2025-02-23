@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestIPUtils {
+public class IPUtilsTests {
 
     @Test
     public void testIsValidIpv4CidrReturnsTrueOnValidIpv4Cidr() {

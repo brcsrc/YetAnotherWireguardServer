@@ -1,13 +1,11 @@
 package com.brcsrc.yaws.model;
 
-import com.brcsrc.yaws.model.Client;
-import com.brcsrc.yaws.model.Network;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity

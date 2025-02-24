@@ -1,17 +1,8 @@
 package com.brcsrc.yaws.service;
 
-import com.brcsrc.yaws.exceptions.InternalServerException;
-import com.brcsrc.yaws.model.Client;
-import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
-import com.brcsrc.yaws.model.Network;
-import com.brcsrc.yaws.model.NetworkClient;
-import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
-import com.brcsrc.yaws.persistence.ClientRepository;
-import com.brcsrc.yaws.persistence.NetworkClientRepository;
-import com.brcsrc.yaws.persistence.NetworkRepository;
-import com.brcsrc.yaws.shell.ExecutionResult;
-import com.brcsrc.yaws.shell.Executor;
-import com.brcsrc.yaws.utility.IPUtils;
+import java.util.List;
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +10,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
-import java.util.Optional;
+import com.brcsrc.yaws.exceptions.InternalServerException;
+import com.brcsrc.yaws.model.Client;
+import com.brcsrc.yaws.model.Network;
+import com.brcsrc.yaws.model.NetworkClient;
+import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
+import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
+import com.brcsrc.yaws.persistence.ClientRepository;
+import com.brcsrc.yaws.persistence.NetworkClientRepository;
+import com.brcsrc.yaws.persistence.NetworkRepository;
+import com.brcsrc.yaws.shell.ExecutionResult;
+import com.brcsrc.yaws.shell.Executor;
+import com.brcsrc.yaws.utility.IPUtils;
 
 @Service
 public class NetworkClientService {
@@ -189,11 +190,21 @@ public class NetworkClientService {
         return this.netClientRepository.save(networkClient);
     }
 
+    // List Network Clients and return list of Clients objects from a single Network
     public List<Client> listNetworkClients(ListNetworkClientsRequest request) {
         checkNetworkExists(request.getNetworkName());
         // TODO pagination
         return this.netClientRepository.findClientsByNetworkName(request.getNetworkName());
     }
 
-    //public NetworkClient removeClientFromNetwork() {}
+    // Describe a Network Client and return the Network and Client objects of that defined relationship
+    public NetworkClient describeNetworkClient(String networkName, String clientName) {
+        NetworkClient networkClient = this.netClientRepository.findByNetworkClientByNetworkNameAndClientName(networkName, clientName);
+        if (networkClient == null) {
+            String errMsg = String.format("client '%s' not found on network '%s'", clientName, networkName);
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errMsg);
+        }
+        return networkClient;
+    }
 }

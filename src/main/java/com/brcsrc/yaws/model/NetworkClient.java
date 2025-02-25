@@ -7,6 +7,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.CascadeType;
+
 
 @Entity
 @Table(name = "network_clients")
@@ -20,7 +22,10 @@ public class NetworkClient {
     @JoinColumn(name = "network_name", referencedColumnName = "networkName")
     private Network network;
 
-    @ManyToOne
+    // using CascadeType.REMOVE allows JPA to remove the client when the relation is deleted from
+    // the network_clients table, which is desired since a client should only exist within a network and
+    // not be detached by itself.
+    @ManyToOne(cascade = CascadeType.REMOVE)
     @JoinColumn(name = "client_name", referencedColumnName = "clientName")
     private Client client;
 

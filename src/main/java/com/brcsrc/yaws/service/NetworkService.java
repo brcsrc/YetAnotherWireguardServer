@@ -1,5 +1,13 @@
 package com.brcsrc.yaws.service;
 
+import com.brcsrc.yaws.exceptions.InternalServerException;
+import com.brcsrc.yaws.model.Constants;
+import com.brcsrc.yaws.model.Network;
+import com.brcsrc.yaws.model.NetworkStatus;
+import com.brcsrc.yaws.persistence.NetworkRepository;
+import com.brcsrc.yaws.shell.ExecutionResult;
+import com.brcsrc.yaws.shell.Executor;
+import com.brcsrc.yaws.utility.IPUtils;
 import java.io.File;
 import java.util.List;
 import java.util.Optional;
@@ -14,13 +22,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.brcsrc.yaws.exceptions.InternalServerException;
-import com.brcsrc.yaws.model.Network;
-import com.brcsrc.yaws.model.NetworkStatus;
-import com.brcsrc.yaws.persistence.NetworkRepository;
-import com.brcsrc.yaws.shell.ExecutionResult;
-import com.brcsrc.yaws.shell.Executor;
-import com.brcsrc.yaws.utility.IPUtils;
 
 @Service
 public class NetworkService {
@@ -48,7 +49,7 @@ public class NetworkService {
     }
 
     public Network createNetwork(Network network) {
-        if (network.getNetworkName().length() > 64 || !network.getNetworkName().matches("^[a-zA-Z0-9]+$")) {
+        if (network.getNetworkName().length() > 64 || !network.getNetworkName().matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP)) {
             String errMsg = "networkName must be alphanumeric without spaces and no more than 64 characters";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
@@ -189,9 +190,6 @@ public class NetworkService {
         boolean errorsOnRemoval = false;
         try {
             logger.info("asyncRemoveNetworkFromSystem called on thread: " + Thread.currentThread().getName());
-
-            //TODO delete all client configs from clients and network_clients tables
-
             logger.info(String.format("bringing down the wireguard interface '%s'", network.getNetworkName()));
 
             final String checkWgIFaceExistsCmd = String.format("wg show %s", network.getNetworkName());
@@ -288,6 +286,8 @@ public class NetworkService {
     }
 
     public Network deleteNetwork(String networkName) {
+        // TODO input validation is missing
+        // TODO check requested network does not have clients
         Optional<Network> existingNetwork = this.repository.findByNetworkName(networkName);
         if (existingNetwork.isEmpty()) {
             String errMsg = String.format("network '%s' does not exist", networkName);
@@ -300,7 +300,7 @@ public class NetworkService {
         try {
             Network deletedNetwork = deletedNetworkFuture.get();
             // if ExeceptionExecution is not thrown then the async job was successful
-            this.repository.delete(network);
+            this.repository.delete(network); // TODO maybe we dont need here also
             network.setNetworkStatus(NetworkStatus.DELETED);
             return network;
         } catch (InterruptedException | ExecutionException e) {

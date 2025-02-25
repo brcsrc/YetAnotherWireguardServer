@@ -18,11 +18,12 @@ public class Network {
 
     @Id
     @NotNull
+    @Pattern(regexp = Constants.CHAR_64_ALPHANUMERIC_REGEXP)
     @Schema(description = "unique, alphanumeric name for the network")
     private String networkName;
 
     @NotNull
-    @Pattern(regexp = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(3[0-2]|[1-2][0-9]|[0-9]))$")
+    @Pattern(regexp = Constants.IPV4_CIDR_REGEXP)
     @Schema(description = "CIDR block for the network")
     private String networkCidr;
 

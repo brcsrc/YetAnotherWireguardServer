@@ -2,15 +2,21 @@ package com.brcsrc.yaws.service;
 
 import java.util.List;
 import java.util.Optional;
+import java.io.File;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.server.ResponseStatusException;
+import jakarta.transaction.Transactional;
 
 import com.brcsrc.yaws.exceptions.InternalServerException;
+import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.Client;
 import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkClient;
@@ -85,6 +91,7 @@ public class NetworkClientService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
         // check network already exists
+        // TODO input validate client name and tag
         Network existingNetwork = checkNetworkExists(request.getNetworkName());
         // check network can be placed in network based off requested cidr
         if (!IPUtils.isNetworkMemberInNetworkRange(existingNetwork.getNetworkCidr(), request.getClientCidr())) {
@@ -187,8 +194,147 @@ public class NetworkClientService {
         NetworkClient networkClient = new NetworkClient();
         networkClient.setClient(savedClient);
         networkClient.setNetwork(existingNetwork);
+        NetworkClient savedNetworkClient = this.netClientRepository.save(networkClient);
+        logger.info("CreateNetworkClient operation successful");
         return this.netClientRepository.save(networkClient);
     }
+
+    @Async
+    CompletableFuture<NetworkClient> asyncRemoveClientFromSystem(NetworkClient networkClient) {
+        logger.info("asyncRemoveClientFromSystem called on thread: " + Thread.currentThread().getName());
+        boolean errorsOnRemoval = false;
+
+        try {
+            // remove peer from network
+            logger.info(String.format(
+                    "removing client '%s' from network '%s'",
+                    networkClient.getClient().getClientName(),
+                    networkClient.getNetwork().getNetworkName()));
+            String networkConfigFormatClientCidr = String.format("%s/32", networkClient.getClient().getClientCidr().split("/")[0]);
+            final String removeClientFromNetworkCmd = String.join(" ",
+                    "./remove-peer-from-network",
+                    "--config-name", networkClient.getNetwork().getNetworkName(),
+                    "--client-cidr", networkConfigFormatClientCidr,
+                    "--client-public-key-name", networkClient.getClient().getClientPublicKeyName()
+            );
+            ExecutionResult removePeerFromNetworkExecRes = Executor.runCommand(removeClientFromNetworkCmd);
+            if (removePeerFromNetworkExecRes.getExitCode() != 0) {
+                logger.error(String.format(
+                        "command: '%s' exited %s with reason: %s",
+                        removeClientFromNetworkCmd,
+                        removePeerFromNetworkExecRes.getExitCode(),
+                        removePeerFromNetworkExecRes.getStdout()));
+                throw new InternalServerException("failed to remove client from network config");
+            }
+
+            // check if client config exists
+            logger.info(String.format("removing wireguard config for client %s", networkClient.getClient().getClientName()));
+            final String absPathConfig = String.format("/etc/wireguard/%s.conf", networkClient.getClient().getClientName());
+            File config = new File(absPathConfig);
+            if (config.exists()) {
+                // remove client config
+                if (!config.delete()) {
+                    errorsOnRemoval = true;
+                    logger.error(String.format("failed to delete %s", absPathConfig));
+                }
+            } else {
+                logger.info(String.format("/etc/wireguard/%s.conf does not exist", networkClient.getClient().getClientName()));
+            }
+
+            // remove key pairs
+            logger.info(String.format(
+                    "removing key pair '%s' '%s'",
+                    networkClient.getClient().getClientPrivateKeyName(),
+                    networkClient.getClient().getClientPrivateKeyName()
+            ));
+            // check if client key pairs exist
+            final String absPathPrviKey = String.format("/etc/wireguard/%s", networkClient.getClient().getClientPrivateKeyName());
+            File privateKey = new File(absPathPrviKey);
+            if (privateKey.exists()) {
+                if (!privateKey.delete()) {
+                    errorsOnRemoval = true;
+                    logger.error(String.format("failed to delete %s", absPathPrviKey));
+                }
+            } else {
+                logger.info(String.format("/etc/wireguard/%s does not exist", networkClient.getClient().getClientPrivateKeyName()));
+            }
+            final String absPathPublicKey = String.format("/etc/wireguard/%s", networkClient.getClient().getClientPublicKeyName());
+            File publicKey = new File(absPathPublicKey);
+            if (publicKey.exists()) {
+                if (!publicKey.delete()) {
+                    errorsOnRemoval = true;
+                    logger.error(String.format("failed to delete %s", absPathPublicKey));
+                }
+            } else {
+                logger.info(String.format("/etc/wireguard/%s does not exist", networkClient.getClient().getClientPublicKeyName()));
+            }
+        } catch (Exception e) {
+            logger.error("error in cleaning up client");
+            Thread.currentThread().interrupt();
+        }
+        if (!errorsOnRemoval) {
+            logger.info(String.format(
+                    "asyncRemoveClientFromSystem completed successfully for client %s",
+                    networkClient.getClient().getClientName())
+            );
+        }
+        return CompletableFuture.completedFuture(networkClient);
+    }
+
+    // used @Transactional annotation here because there is at least 2 db actions when
+    // deleteNetworkClientByNetwork_NetworkNameAndClient_ClientName is called as CascadeType.REMOVE
+    // is used on the NetworkClient.Client to remove the record from the  client table as well
+    @Transactional
+    public NetworkClient deleteNetworkClient(String networkName, String clientName) {
+        // input validation
+        if (!networkName.matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP) || !clientName.matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP)) {
+            String errMsg = "network name or client name is invalid";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+        logger.info(String.format(
+                "deleting network client '%s' for network '%s'",
+                clientName,
+                networkName
+        ));
+        // check if network client exists
+        NetworkClient existingNetworkClient = this.netClientRepository.findNetworkClientByNetwork_NetworkNameAndClient_ClientName(
+                networkName,
+                clientName
+        );
+        if (existingNetworkClient == null) {
+            String errMsg = String.format(
+                    "network client '%s' for network '%s' does not exist",
+                    clientName,
+                    networkName
+                );
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        // reuse async delete network client but wait for completion
+        CompletableFuture<NetworkClient> deletedNetworkClientFuture = asyncRemoveClientFromSystem(existingNetworkClient);
+        try {
+            NetworkClient deletedNetworkClientResult = deletedNetworkClientFuture.get();
+            int deletedNetworkClientCount = this.netClientRepository.deleteNetworkClientByNetwork_NetworkNameAndClient_ClientName(
+                    deletedNetworkClientResult.getNetwork().getNetworkName(),
+                    deletedNetworkClientResult.getClient().getClientName()
+            );
+            if (deletedNetworkClientCount != 1) {
+                logger.error(String.format("unexpected count of affected rows from deletion: %s", deletedNetworkClientCount));
+                throw new InternalServerException("failed to remove client from database");
+            }
+            return existingNetworkClient;
+        } catch (InterruptedException | ExecutionException exception) {
+            logger.error(String.format(
+                    "error in asyncRemoveClientFromSystem for client '%s' in network '%s': %s",
+                    clientName,
+                    networkName,
+                    exception
+            ));
+            throw new InternalServerException("error in deleting network");
+        }
+    };
 
     // List Network Clients and return list of Clients objects from a single Network
     public List<Client> listNetworkClients(ListNetworkClientsRequest request) {

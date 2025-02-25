@@ -8,7 +8,6 @@ import com.brcsrc.yaws.persistence.NetworkClientRepository;
 import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.service.NetworkClientService;
 import com.brcsrc.yaws.service.NetworkService;
-import com.brcsrc.yaws.utility.TestHelpers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,12 +16,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestClient;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -37,8 +34,7 @@ public class NetworkClientControllerTests {
     @LocalServerPort
     private int port;
 
-    @Autowired
-    private TestRestTemplate restTemplate;
+    private final RestClient restClient = RestClient.create();
 
     @Autowired
     private NetworkService networkService;
@@ -100,7 +96,7 @@ public class NetworkClientControllerTests {
             networkClientService.deleteNetworkClient(testNetworkName, testClientName);
         }
         Optional<Network> networkFromDb = networkRepository.findByNetworkName(testNetworkName);
-        if (networkFromDb.isEmpty()) {
+        if (networkFromDb.isPresent()) {
             logger.info("cleaning up existing network");
             networkService.deleteNetwork(testNetworkName);
         }
@@ -118,14 +114,11 @@ public class NetworkClientControllerTests {
         createNetworkClientRequest.setNetworkEndpoint(testNetworkEndpoint);
         createNetworkClientRequest.setClientTag(testClientTag);
 
-        HttpEntity<String> createNetworkClientRequestHttpEntity = TestHelpers.createTestEntity(createNetworkClientRequest);
-
-        ResponseEntity<NetworkClient> createNetworkClientResponse = restTemplate.exchange(
-                baseUrl,
-                HttpMethod.POST,
-                createNetworkClientRequestHttpEntity,
-                NetworkClient.class
-        );
+        ResponseEntity<NetworkClient> createNetworkClientResponse = restClient.post()
+                .uri(baseUrl)
+                .body(createNetworkClientRequest)
+                .retrieve()
+                .toEntity(NetworkClient.class);
 
         // assert the response status is 200
         assertEquals(HttpStatus.OK, createNetworkClientResponse.getStatusCode());

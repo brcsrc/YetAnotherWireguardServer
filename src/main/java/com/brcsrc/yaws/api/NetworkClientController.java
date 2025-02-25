@@ -1,47 +1,64 @@
 package com.brcsrc.yaws.api;
 
-import com.brcsrc.yaws.model.Client;
+import java.util.List;
+
 import com.brcsrc.yaws.model.Constants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.brcsrc.yaws.model.Client;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
 import com.brcsrc.yaws.model.NetworkClient;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
 import com.brcsrc.yaws.service.NetworkClientService;
-import io.swagger.v3.oas.annotations.Operation;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import io.swagger.v3.oas.annotations.Operation;
 
 @RestController
+@RequestMapping(Constants.BASE_URL + "/clients")
 public class NetworkClientController {
 
     private final NetworkClientService networkClientService;
     private static final Logger logger = LoggerFactory.getLogger(NetworkClientController.class);
 
     @Autowired
-    public NetworkClientController(NetworkClientService networkClientService) { this.networkClientService = networkClientService;}
+    public NetworkClientController(NetworkClientService networkClientService) {
+        this.networkClientService = networkClientService;
+    }
 
     @Operation(summary = "Create Network Client", description = "create a client for a specific network")
-    @PostMapping(Constants.BASE_URL + "/clients")
+    @PostMapping
     public NetworkClient createNetworkClient(@RequestBody CreateNetworkClientRequest createNetworkClientRequest) {
         logger.info("received CreateNetworkClient request");
         return this.networkClientService.addClientToNetwork(createNetworkClientRequest);
     }
 
     @Operation(summary = "List Network Clients", description = "list clients for a specific network")
-    @GetMapping(Constants.BASE_URL + "/clients")
+    @GetMapping
     public List<Client> listNetworkClients(@RequestBody ListNetworkClientsRequest listNetworkClientsRequest) {
         logger.info("received ListNetworkClients request");
         return this.networkClientService.listNetworkClients(listNetworkClientsRequest);
     }
 
     @Operation(summary = "Delete Network Client", description = "delete a specific client for a network")
-    @DeleteMapping("/api/v1/clients/{networkName}/{clientName}")
+    @DeleteMapping("/{networkName}/{clientName}")
     public NetworkClient deleteNetworkClient(@PathVariable String networkName, @PathVariable String clientName) {
         logger.info("received DeleteNetwork request");
         return this.networkClientService.deleteNetworkClient(networkName, clientName);
     }
 
+    @Operation(summary = "Describe Network Clients", description = "describe a specific client for a specific network")
+    @GetMapping("/{networkName}/{clientName}")
+    public NetworkClient describeNetworkClient(@PathVariable String networkName, @PathVariable String clientName) {
+        logger.info("received DescribeNetworkClient request");
+        return this.networkClientService.describeNetworkClient(networkName, clientName);
+    }
 }

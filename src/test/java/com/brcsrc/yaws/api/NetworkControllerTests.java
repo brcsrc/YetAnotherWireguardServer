@@ -21,6 +21,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Optional;
@@ -62,7 +65,7 @@ public class NetworkControllerTests {
     }
 
     @Test
-    public void testCreateNetworkCreatesNetwork() throws Exception {
+    public void testCreateNetworkCreatesNetwork() {
         Network network = new Network();
         network.setNetworkName(testNetworkName);
         network.setNetworkCidr(testNetworkCidr);
@@ -97,6 +100,233 @@ public class NetworkControllerTests {
     }
 
     @Test
+    public void testCreateNetworkRejectsInvalidNetworkNames() {
+        var badNames = List.of(
+                "name with spaces",
+                "name-with-%@$-chars",
+                "name-with-too-many-characters-123456789101112131415161718192021"
+        );
+
+        for (String s : badNames) {
+            Network network = new Network();
+            network.setNetworkName(s);
+            network.setNetworkCidr(testNetworkCidr);
+            network.setNetworkListenPort(testNetworkListenPort);
+            network.setNetworkTag(testNetworkTag);
+
+            ResponseEntity<String> response = restClient.post()
+                    .uri(baseUrl)
+                    .body(network)
+                    .exchange((request, response2) -> {
+                        String responseBody = response2.bodyTo(String.class);
+                        return ResponseEntity.status(response2.getStatusCode()).body(responseBody);
+                    });
+
+            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+            String responseBody = response.getBody();
+            assert responseBody != null;
+
+            assertTrue(responseBody.contains("networkName must be alphanumeric without spaces and no more than 64 characters"));
+            Optional<Network> networkFromDb = networkRepository.findByNetworkName(s);
+            assert networkFromDb.isEmpty();
+        }
+    }
+
+    @Test
+    public void testCreateNetworkRejectsInvalidNetworkCidr() {
+        Network network = new Network();
+        network.setNetworkName(testNetworkName);
+        network.setNetworkCidr("300.100.0.1/24");
+        network.setNetworkListenPort(testNetworkListenPort);
+        network.setNetworkTag(testNetworkTag);
+
+        ResponseEntity<String> response = restClient.post()
+                .uri(baseUrl)
+                .body(network)
+                .exchange((request, response2) -> {
+                    String responseBody = response2.bodyTo(String.class);
+                    return ResponseEntity.status(response2.getStatusCode()).body(responseBody);
+                });
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+
+        String responseBody = response.getBody();
+        assert responseBody != null;
+        assertTrue(responseBody.contains("networkCidr is invalid"));
+
+        Optional<Network> networkFromDb = networkRepository.findByNetworkName("Network1");
+        assert networkFromDb.isEmpty();
+    }
+
+    @Test
+    public void testCreateNetworkRejectsInvalidNetworkInterfaceAddress() {
+        var badNetworkInterfaceAddresses = List.of(
+                "10.100.0.255/24",
+                "10.0.0.0/24"
+        );
+
+        for (String badAddress : badNetworkInterfaceAddresses) {
+            Network network = new Network();
+            network.setNetworkName(testNetworkName);
+            network.setNetworkCidr(badAddress);
+            network.setNetworkListenPort(testNetworkListenPort);
+            network.setNetworkTag(testNetworkTag);
+
+            ResponseEntity<String> response = restClient.post()
+                    .uri(baseUrl)
+                    .body(network)
+                    .exchange((request, response2) -> {
+                        String responseBody = response2.bodyTo(String.class);
+                        return ResponseEntity.status(response2.getStatusCode()).body(responseBody);
+                    });
+
+            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+            String responseBody = response.getBody();
+            assert responseBody != null;
+            assertTrue(responseBody.contains("network interface address must be between .1 and .254"));
+
+            Optional<Network> networkFromDb = networkRepository.findByNetworkName("Network1");
+            assert networkFromDb.isEmpty();
+        }
+    }
+
+    @Test
+    public void testCreateNetworkRejectsAddressInUse() throws Exception {
+        Network network = new Network();
+        network.setNetworkName(testNetworkName);
+        network.setNetworkCidr(testNetworkCidr);
+        network.setNetworkListenPort(testNetworkListenPort);
+        network.setNetworkTag(testNetworkTag);
+
+        ResponseEntity<Network> createNetworkResponse = restClient.post()
+                .uri(baseUrl)
+                .body(network)
+                .retrieve()
+                .toEntity(Network.class);
+
+        assertEquals(HttpStatus.OK, createNetworkResponse.getStatusCode());
+
+        Optional<Network> networkFromDb = networkRepository.findByNetworkName(testNetworkName);
+        assert networkFromDb.isPresent();
+
+        Network networkWithAddressAlreadyInUse = new Network();
+        networkWithAddressAlreadyInUse.setNetworkName("NotTestNetworkName");
+        networkWithAddressAlreadyInUse.setNetworkCidr(testNetworkCidr);
+        networkWithAddressAlreadyInUse.setNetworkListenPort(51821);
+        networkWithAddressAlreadyInUse.setNetworkTag("not test network tag");
+
+        ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
+                .uri(baseUrl)
+                .body(networkWithAddressAlreadyInUse)
+                .exchange((request, response) -> {
+                    HttpStatusCode statusCode = response.getStatusCode();
+                    String responseBody = response.bodyTo(String.class);
+                    return ResponseEntity.status(statusCode).body(responseBody);
+                });
+
+        assertEquals(HttpStatus.BAD_REQUEST, failedCreateNetworkResponse.getStatusCode());
+
+        String errorMsg = new ObjectMapper()
+                .readTree(failedCreateNetworkResponse.getBody())
+                .get("message")
+                .asText();
+
+        assertTrue(errorMsg.contains("network already exists by requested networkName or networkCidr or networkListenPort"));
+
+        networkFromDb = networkRepository.findByNetworkName(networkWithAddressAlreadyInUse.getNetworkName());
+        assert networkFromDb.isEmpty();
+    }
+
+    @Test
+    public void testCreateNetworkRejectsListenPortAlreadyInUse() throws Exception {
+        Network network = new Network();
+        network.setNetworkName(testNetworkName);
+        network.setNetworkCidr(testNetworkCidr);
+        network.setNetworkListenPort(testNetworkListenPort);
+        network.setNetworkTag(testNetworkTag);
+
+        ResponseEntity<Network> createNetworkResponse = restClient.post()
+                .uri(baseUrl)
+                .body(network)
+                .retrieve()
+                .toEntity(Network.class);
+
+        assertEquals(HttpStatus.OK, createNetworkResponse.getStatusCode());
+        Optional<Network> networkFromDb = networkRepository.findByNetworkName(testNetworkName);
+        assert networkFromDb.isPresent();
+
+        Network networkWithListenPortAlreadyInUse = new Network();
+        networkWithListenPortAlreadyInUse.setNetworkName("NotTestNetworkName");
+        networkWithListenPortAlreadyInUse.setNetworkCidr("192.168.0.1/24");
+        networkWithListenPortAlreadyInUse.setNetworkListenPort(testNetworkListenPort); // Same listen port
+        networkWithListenPortAlreadyInUse.setNetworkTag("not test network tag");
+
+        ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
+                .uri(baseUrl)
+                .body(networkWithListenPortAlreadyInUse)
+                .exchange((request, response) -> {
+                    HttpStatusCode statusCode = response.getStatusCode();
+                    String responseBody = response.bodyTo(String.class);
+                    return ResponseEntity.status(statusCode).body(responseBody);
+                });
+
+        assertEquals(HttpStatus.BAD_REQUEST, failedCreateNetworkResponse.getStatusCode());
+
+        String errorMsg = new ObjectMapper()
+                .readTree(failedCreateNetworkResponse.getBody())
+                .get("message")
+                .asText();
+
+        assertTrue(errorMsg.contains("network already exists by requested networkName or networkCidr or networkListenPort"));
+
+        networkFromDb = networkRepository.findByNetworkName(networkWithListenPortAlreadyInUse.getNetworkName());
+        assert networkFromDb.isEmpty();
+    }
+
+    @Test
+    public void testCreateNetworkRejectsNetworkNameAlreadyInUse() throws Exception {
+        Network network = new Network();
+        network.setNetworkName(testNetworkName);
+        network.setNetworkCidr(testNetworkCidr);
+        network.setNetworkListenPort(testNetworkListenPort);
+        network.setNetworkTag(testNetworkTag);
+
+        ResponseEntity<Network> createNetworkResponse = restClient.post()
+                .uri(baseUrl)
+                .body(network)
+                .retrieve()
+                .toEntity(Network.class);
+
+        assertEquals(HttpStatus.OK, createNetworkResponse.getStatusCode());
+        Optional<Network> networkFromDb = networkRepository.findByNetworkName(testNetworkName);
+        assert networkFromDb.isPresent();
+
+        Network networkWithNameAlreadyInUse = new Network();
+        networkWithNameAlreadyInUse.setNetworkName(testNetworkName);
+        networkWithNameAlreadyInUse.setNetworkCidr("192.168.0.1/24");
+        networkWithNameAlreadyInUse.setNetworkListenPort(51820);
+        networkWithNameAlreadyInUse.setNetworkTag("not test network tag");
+
+        ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
+                .uri(baseUrl)
+                .body(networkWithNameAlreadyInUse)
+                .exchange((request, response) -> {
+                    HttpStatusCode statusCode = response.getStatusCode();
+                    String responseBody = response.bodyTo(String.class);
+                    return ResponseEntity.status(statusCode).body(responseBody);
+                });
+
+        assertEquals(HttpStatus.BAD_REQUEST, failedCreateNetworkResponse.getStatusCode());
+
+        String errorMsg = new ObjectMapper()
+                .readTree(failedCreateNetworkResponse.getBody())
+                .get("message")
+                .asText();
+
+        assertTrue(errorMsg.contains("network already exists by requested networkName or networkCidr or networkListenPort"));
+    }
+
+    @Test
     public void testListNetworkListsNetworks() throws Exception {
         Network network = new Network();
         network.setNetworkName("Network2");
@@ -124,7 +354,7 @@ public class NetworkControllerTests {
     }
 
     @Test
-    public void testDescribeNetworkDescribesNetwork() throws Exception {
+    public void testDescribeNetworkDescribesNetwork() {
         Network network = new Network();
         network.setNetworkName(testNetworkName);
         network.setNetworkCidr(testNetworkCidr);
@@ -150,7 +380,7 @@ public class NetworkControllerTests {
     }
 
     @Test
-    public void testDeleteNetworkDeletesNetwork() throws Exception {
+    public void testDeleteNetworkDeletesNetwork() {
         Network network = new Network();
         network.setNetworkName(testNetworkName);
         network.setNetworkCidr(testNetworkCidr);
@@ -177,7 +407,7 @@ public class NetworkControllerTests {
     }
 
     @Test
-    public void testUpdateNetworkUpdatesNetwork() throws Exception {
+    public void testUpdateNetworkUpdatesNetwork() {
         Network network = new Network();
         network.setNetworkName(testNetworkName);
         network.setNetworkCidr(testNetworkCidr);

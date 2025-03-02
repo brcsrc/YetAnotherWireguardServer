@@ -8,6 +8,7 @@ import com.brcsrc.yaws.persistence.NetworkClientRepository;
 import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.service.NetworkClientService;
 import com.brcsrc.yaws.service.NetworkService;
+import com.brcsrc.yaws.utility.FilepathUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -142,11 +143,11 @@ public class NetworkClientControllerTests {
         assertEquals(savedNetworkClient.getClient().getClientPublicKeyName(), expectedClientPublicKeyFileName);
 
         // assert the client keys and config exist
-        // TODO this will likely break when migrating to network specific directories for file storage
-        String clientPublicKeyAbsPath = String.format("/etc/wireguard/%s", expectedClientPublicKeyFileName);
-        String clientPrivateKeyAbsPath = String.format("/etc/wireguard/%s", expectedClientPrivateKeyFileName);
-        String clientConfigAbsPath = String.format("/etc/wireguard/%s.conf", testClientName);
+        String clientPublicKeyAbsPath = FilepathUtils.getClientKeyPath(testNetworkName, expectedClientPublicKeyFileName);
+        String clientPrivateKeyAbsPath = FilepathUtils.getClientKeyPath(testNetworkName, expectedClientPrivateKeyFileName);
+        String clientConfigAbsPath = FilepathUtils.getClientConfigPath(testNetworkName, testClientName);
         var filePaths = List.of(
+                clientConfigAbsPath,
                 clientPrivateKeyAbsPath,
                 clientPublicKeyAbsPath
         );

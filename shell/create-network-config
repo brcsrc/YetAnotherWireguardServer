@@ -7,8 +7,8 @@ function create_config() {
   local network_listen_port="$3"
   local network_private_key_name="$4"
 
-  stat "/etc/wireguard/${network_private_key_name}"
-  local private_key=$(cat "/etc/wireguard/${network_private_key_name}")
+  stat "$network_private_key_name"
+  local private_key=$(cat "$network_private_key_name")
 
   config=$(cat << EOF
 [Interface]
@@ -17,7 +17,7 @@ ListenPort = $network_listen_port
 PrivateKey = $private_key
 EOF
 )
-  echo "$config" > "/etc/wireguard/${config_name}.conf"
+  echo "$config" > "$config_name"
 }
 
 function main() {

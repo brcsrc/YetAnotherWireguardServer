@@ -7,13 +7,20 @@ import com.brcsrc.yaws.model.NetworkStatus;
 import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.shell.ExecutionResult;
 import com.brcsrc.yaws.shell.Executor;
+import com.brcsrc.yaws.utility.FilepathUtils;
 import com.brcsrc.yaws.utility.IPUtils;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import org.apache.tomcat.util.http.fileupload.impl.IOFileUploadException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -97,12 +104,37 @@ public class NetworkService {
         // save the network now with CREATED status
         Network savedNetwork = this.repository.save(network);
 
+        // determine absolute paths for different files
+        final String NETWORK_DIR_PATH = FilepathUtils.getNetworkDirectoryPath(network.getNetworkName());
+        final String NETWORK_KEYS_PATH = FilepathUtils.getNetworkKeysDirectoryPath(network.getNetworkName());
+        final String NETWORK_CLIENTS_PATH = FilepathUtils.getNetworkClientsDirectoryPath(network.getNetworkName());
+        final String NETWORK_CONFIG_PATH = FilepathUtils.getNetworkConfigPath(network.getNetworkName());
+        final String NETWORK_PRIV_KEY_PATH = FilepathUtils.getNetworkKeyPath(network.getNetworkName(), network.getNetworkPrivateKeyName());
+        final String NETWORK_PUB_KEY_PATH = FilepathUtils.getNetworkKeyPath(network.getNetworkName(), network.getNetworkPublicKeyName());
+
+        // create the network specific directories to hold these files
+        var directoriesToMake = List.of(
+              NETWORK_DIR_PATH,
+              NETWORK_KEYS_PATH,
+              NETWORK_CLIENTS_PATH
+        );
+        for (String directory : directoriesToMake) {
+            try {
+                Path path = Paths.get(directory);
+                Files.createDirectories(path);
+            } catch (InvalidPathException | IOException e) {
+                String errMsg = String.format("error in creating directory for network: %s", e.fillInStackTrace());
+                logger.error(errMsg);
+                throw new InternalServerException("failed to create network");
+            }
+        }
+
         // create the wireguard key pair
-        logger.info(String.format("creating key pair: '%s', '%s'", network.getNetworkPrivateKeyName(), network.getNetworkPublicKeyName()));
+        logger.info(String.format("creating key pair: '%s', '%s'", NETWORK_PRIV_KEY_PATH, NETWORK_PUB_KEY_PATH));
         final String createKeyPairCommand = String.join(" ",
                 "./create-key-pair ",
-                "--private-key-name", network.getNetworkPrivateKeyName(),
-                "--public-key-name", network.getNetworkPublicKeyName()
+                "--private-key-name", NETWORK_PRIV_KEY_PATH,
+                "--public-key-name", NETWORK_PUB_KEY_PATH
         );
         ExecutionResult createKeyPairExecResult = Executor.runCommand(createKeyPairCommand);
         if (createKeyPairExecResult.getExitCode() != 0) {
@@ -125,16 +157,16 @@ public class NetworkService {
                 network.getNetworkListenPort()));
         final String createNetworkConfigCommand = String.join(" ",
                 "./create-network-config",
-                "--config-name", network.getNetworkName(),
+                "--config-name", NETWORK_CONFIG_PATH,
                 "--network-cidr", network.getNetworkCidr(),
                 "--network-listen-port", String.valueOf(network.getNetworkListenPort()),
-                "--network-private-key-name", network.getNetworkPrivateKeyName()
+                "--network-private-key-name", NETWORK_PRIV_KEY_PATH
         );
         ExecutionResult createNetConfigExecResult = Executor.runCommand(createNetworkConfigCommand);
         if (createNetConfigExecResult.getExitCode() != 0) {
             logger.error(String.format(
                     "command: '%s' exited %s with reason: %s",
-                    createNetConfigExecResult,
+                    createNetworkConfigCommand,
                     createNetConfigExecResult.getExitCode(),
                     createNetConfigExecResult.getStdout()));
             network.setNetworkStatus(NetworkStatus.INACTIVE);
@@ -229,45 +261,30 @@ public class NetworkService {
             }
 
             // remove the files. not needed for wireguard but keeps disk space down
-            logger.info(String.format("removing wireguard config for network %s", network.getNetworkName()));
-            final String absPathConfig = String.format("/etc/wireguard/%s.conf", network.getNetworkName());
-            File config = new File(absPathConfig);
-            if (config.exists()) {
-                if (!config.delete()) {
+            final String NETWORK_DIR_PATH = FilepathUtils.getNetworkDirectoryPath(network.getNetworkName());
+            logger.info(String.format("deleting network directory '%s'", NETWORK_DIR_PATH));
+            Path networkDirPath = Paths.get(NETWORK_DIR_PATH);
+            if (Files.exists(networkDirPath)) {
+                try {
+                    FilepathUtils.deleteDirectory(networkDirPath);
+                } catch (IOException e) {
                     errorsOnRemoval = true;
-                    logger.error(String.format("failed to delete %s", absPathConfig));
+                    logger.error(String.format("error deleting directory '%s': %s", NETWORK_DIR_PATH, e.fillInStackTrace()));
                 }
             } else {
-                logger.info(String.format("/etc/wireguard/%s.conf does not exist", network.getNetworkName()));
+                logger.info(String.format("directory '%s' does not exist", NETWORK_DIR_PATH));
             }
-
-            logger.info(String.format(
-                    "removing key pair '%s' '%s'",
-                    network.getNetworkPrivateKeyName(),
-                    network.getNetworkPublicKeyName()
-            ));
-            final String absPathPrviKey = String.format("/etc/wireguard/%s", network.getNetworkPrivateKeyName());
-            File privateKey = new File(absPathPrviKey);
-            if (privateKey.exists()) {
-                if (!privateKey.delete()) {
+            final String NETWORK_CONFIG_PATH = FilepathUtils.getNetworkConfigPath(network.getNetworkName());
+            logger.info(String.format("deleting network config '%s'", NETWORK_CONFIG_PATH));
+            File networkConfigFile = new File(NETWORK_CONFIG_PATH);
+            if (networkConfigFile.exists()) {
+                if (!networkConfigFile.delete()) {
                     errorsOnRemoval = true;
-                    logger.error(String.format("failed to delete %s", absPathPrviKey));
+                    logger.error(String.format("error deleting file '%s'", NETWORK_CONFIG_PATH));
                 }
             } else {
-                logger.info(String.format("/etc/wireguard/%s does not exist", network.getNetworkPrivateKeyName()));
+                logger.info(String.format("'%s' does not exist", NETWORK_CONFIG_PATH));
             }
-
-            final String absPathPublicKey = String.format("/etc/wireguard/%s", network.getNetworkPublicKeyName());
-            File publicKey = new File(absPathPublicKey);
-            if (publicKey.exists()) {
-                if (!publicKey.delete()) {
-                    errorsOnRemoval = true;
-                    logger.error(String.format("failed to delete %s", absPathPublicKey));
-                }
-            } else {
-                logger.info(String.format("/etc/wireguard/%s does not exist", network.getNetworkPublicKeyName()));
-            }
-
 
         } catch (Exception e) {
             logger.error("error in cleaning up network, removing thread");

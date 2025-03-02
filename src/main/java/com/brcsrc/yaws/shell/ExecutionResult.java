@@ -2,9 +2,11 @@ package com.brcsrc.yaws.shell;
 
 public class ExecutionResult {
     String stdout;
+    String stderr;
     int exitCode;
-    public ExecutionResult(String stdout, int exitCode) {
+    public ExecutionResult(String stdout, String stderr, int exitCode) {
         this.stdout = stdout;
+        this.stderr = stderr;
         this.exitCode = exitCode;
     }
 
@@ -14,6 +16,14 @@ public class ExecutionResult {
 
     public void setStdout(String stdout) {
         this.stdout = stdout;
+    }
+
+    public String getStderr() {
+        return stderr;
+    }
+
+    public void setStderr(String stderr) {
+        this.stderr = stderr;
     }
 
     public int getExitCode() {
@@ -28,6 +38,7 @@ public class ExecutionResult {
     public String toString() {
         return "ExecutionResult{" +
                 "stdout='" + stdout + '\'' +
+                ", stderr='" + stderr + '\'' +
                 ", exitCode=" + exitCode +
                 '}';
     }

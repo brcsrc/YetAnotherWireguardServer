@@ -16,15 +16,15 @@ function remove_peer_from_network() {
   local client_cidr="$2"
   local client_public_key_name="$3"
 
-  stat "/etc/wireguard/${client_public_key_name}"
-  local client_public_key=$(cat "/etc/wireguard/${client_public_key_name}")
+  stat "$client_public_key_name"
+  local client_public_key=$(cat "$client_public_key_name")
 
   local escaped_ip=$(escape_ip_for_sed $client_cidr)
   local escaped_key=$(escape_key_for_sed $client_public_key)
 
-  sed -i "/AllowedIPs = $escaped_ip/d" "/etc/wireguard/${config_name}.conf"
-  sed -i "/PublicKey = $escaped_key/d" "/etc/wireguard/${config_name}.conf"
-  sed -i "/\[Peer\] \# $escaped_ip/d" "/etc/wireguard/${config_name}.conf"
+  sed -i "/AllowedIPs = $escaped_ip/d" "$config_name"
+  sed -i "/PublicKey = $escaped_key/d" "$config_name"
+  sed -i "/\[Peer\] \# $escaped_ip/d" "$config_name"
 }
 
 function main() {
@@ -32,6 +32,7 @@ function main() {
   while true; do
     case "$1" in
       --config-name              ) CONFIG_NAME=$2; shift 2 ;;
+      --interface-name          ) INTERFACE_NAME=$2; shift 2;;
       --client-cidr             ) CLIENT_CIDR=$2; shift 2 ;;
       --client-public-key-name  ) PUBLIC_KEY_NAME=$2; shift 2 ;;
       -- ) shift; break ;;
@@ -41,8 +42,8 @@ function main() {
   set -u
 
   remove_peer_from_network "$CONFIG_NAME" "$CLIENT_CIDR" "$PUBLIC_KEY_NAME"
-  wg syncconf "$CONFIG_NAME" <(wg-quick strip "$CONFIG_NAME")
-  wg-quick down "$CONFIG_NAME"
-  wg-quick up "$CONFIG_NAME"
+  wg syncconf "$INTERFACE_NAME" <(wg-quick strip "$CONFIG_NAME")
+  wg-quick down "$INTERFACE_NAME"
+  wg-quick up "$INTERFACE_NAME"
 }
 main "$@"

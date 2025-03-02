@@ -11,11 +11,11 @@ function create_client_config() {
   local network_listen_port="$7"
   local allowed_ips="$8"
 
-  stat "/etc/wireguard/${client_private_key_name}"
-  local client_private_key=$(cat "/etc/wireguard/${client_private_key_name}")
+  stat "$client_private_key_name"
+  local client_private_key=$(cat "$client_private_key_name")
 
-  stat "/etc/wireguard/${network_public_key_name}"
-  local server_public_key=$(cat "/etc/wireguard/${network_public_key_name}")
+  stat "$network_public_key_name"
+  local server_public_key=$(cat "$network_public_key_name")
 
 
   local config="$(cat << EOF
@@ -29,7 +29,7 @@ Endpoint = $network_endpoint:$network_listen_port
 AllowedIPs = $allowed_ips
 EOF
 )"
-echo "$config" > "/etc/wireguard/${config_name}.conf"
+echo "$config" > "$config_name"
 }
 
 function main() {

@@ -4,8 +4,10 @@ import java.util.List;
 import java.util.Optional;
 import java.io.File;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
+import com.brcsrc.yaws.utility.FilepathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -131,12 +133,19 @@ public class NetworkClientService {
         client.setClientPrivateKeyName(client.getClientName() + "-private-key");
         client.setClientPublicKeyName(client.getClientName() + "-public-key");
 
-        // create clients key pair
-        logger.info(String.format("creating key pair: '%s', '%s'", client.getClientPrivateKeyName(), client.getClientPublicKeyName()));
+        // get intended file paths
+        final String CLIENT_PRIV_KEY_PATH = FilepathUtils.getClientKeyPath(existingNetwork.getNetworkName(), client.getClientPrivateKeyName());
+        final String CLIENT_PUB_KEY_PATH = FilepathUtils.getClientKeyPath(existingNetwork.getNetworkName(), client.getClientPublicKeyName());
+        final String CLIENT_CONFIG_PATH = FilepathUtils.getClientConfigPath(existingNetwork.getNetworkName(), client.getClientName());
+        final String NETWORK_PUB_KEY_PATH = FilepathUtils.getNetworkKeyPath(existingNetwork.getNetworkName(), existingNetwork.getNetworkPublicKeyName());
+        final String NETWORK_CONFIG_PATH = FilepathUtils.getNetworkConfigPath(existingNetwork.getNetworkName());
+
+        // build client key pair
+        logger.info(String.format("creating key pair: '%s', '%s'", CLIENT_PRIV_KEY_PATH, CLIENT_PUB_KEY_PATH));
         final String createKeyPairCommand = String.join(" ",
                 "./create-key-pair",
-                "--private-key-name", client.getClientPrivateKeyName(),
-                "--public-key-name", client.getClientPublicKeyName()
+                "--private-key-name", CLIENT_PRIV_KEY_PATH,
+                "--public-key-name", CLIENT_PUB_KEY_PATH
         );
         ExecutionResult createKeyPairExecResult = Executor.runCommand(createKeyPairCommand);
         if (createKeyPairExecResult.getExitCode() != 0) {
@@ -144,18 +153,19 @@ public class NetworkClientService {
                     "command: '%s' exited %s with reason: %s",
                     createKeyPairCommand,
                     createKeyPairExecResult.getExitCode(),
-                    createKeyPairExecResult.getStdout()));
+                    createKeyPairExecResult.getStderr()));
             throw new InternalServerException("failed to create key pair");
         }
 
         // generate the client config
+        logger.info(String.format("creating client configuration '%s'", CLIENT_CONFIG_PATH));
         final String createClientConfigCommand = String.join(" ",
                 "./create-client-config",
-                "--config-name", client.getClientName(),
-                "--client-private-key-name", client.getClientPrivateKeyName(),
+                "--config-name", CLIENT_CONFIG_PATH,
+                "--client-private-key-name", CLIENT_PRIV_KEY_PATH,
                 "--client-cidr", client.getClientCidr(),
                 "--client-dns", client.getClientDns(),
-                "--network-public-key-name", existingNetwork.getNetworkPublicKeyName(),
+                "--network-public-key-name", NETWORK_PUB_KEY_PATH,
                 "--network-endpoint", client.getNetworkEndpoint(),
                 "--network-listen-port", String.valueOf(client.getNetworkListenPort()),
                 "--allowed-ips", client.getAllowedIps()
@@ -166,19 +176,20 @@ public class NetworkClientService {
                     "command: '%s' exited %s with reason: %s",
                     createClientConfigCommand,
                     createClientConfigExecResult.getExitCode(),
-                    createClientConfigExecResult.getStdout()));
+                    createClientConfigExecResult.getStderr()));
             throw new InternalServerException("failed to create client configuration in system");
         }
 
         // add client to network in specified network config
         logger.info(String.format("adding peer '%s' to network config '%s'", client.getClientName(), existingNetwork.getNetworkName()));
         // the subnet that is added to network config needs to explicitly end in 32
-        String networkConfigFormatClientCidr = String.format("%s/32", client.getClientCidr().split("/")[0]);
+        final String networkConfigFormatClientCidr = String.format("%s/32", client.getClientCidr().split("/")[0]);
         final String addPeerToNetworkCommand = String.join(" ",
                 "./add-peer-to-network",
-                "--config-name", existingNetwork.getNetworkName(),
+                "--config-name", NETWORK_CONFIG_PATH,
+                "--interface-name", existingNetwork.getNetworkName(),
                 "--client-cidr", networkConfigFormatClientCidr,
-                "--client-public-key-name", client.getClientPublicKeyName()
+                "--client-public-key-name", CLIENT_PUB_KEY_PATH
         );
         ExecutionResult addPeerToNetExecResult = Executor.runCommand(addPeerToNetworkCommand);
         if (addPeerToNetExecResult.getExitCode() != 0) {
@@ -186,7 +197,7 @@ public class NetworkClientService {
                     "command: '%s' exited %s with reason: %s",
                     addPeerToNetworkCommand,
                     addPeerToNetExecResult.getExitCode(),
-                    addPeerToNetExecResult.getStdout()));
+                    addPeerToNetExecResult.getStderr()));
             throw new InternalServerException("failed to add client to network config");
         }
 
@@ -204,6 +215,21 @@ public class NetworkClientService {
         logger.info("asyncRemoveClientFromSystem called on thread: " + Thread.currentThread().getName());
         boolean errorsOnRemoval = false;
 
+        // get intended file paths
+        final String CLIENT_PRIV_KEY_PATH = FilepathUtils.getClientKeyPath(
+                networkClient.getNetwork().getNetworkName(),
+                networkClient.getClient().getClientPrivateKeyName()
+        );
+        final String CLIENT_PUB_KEY_PATH = FilepathUtils.getClientKeyPath(
+                networkClient.getNetwork().getNetworkName(),
+                networkClient.getClient().getClientPublicKeyName()
+        );
+        final String CLIENT_CONFIG_PATH = FilepathUtils.getClientConfigPath(
+                networkClient.getNetwork().getNetworkName(),
+                networkClient.getClient().getClientName()
+        );
+        final String NETWORK_CONFIG_PATH = FilepathUtils.getNetworkConfigPath(networkClient.getNetwork().getNetworkName());
+
         try {
             // remove peer from network
             logger.info(String.format(
@@ -213,71 +239,50 @@ public class NetworkClientService {
             String networkConfigFormatClientCidr = String.format("%s/32", networkClient.getClient().getClientCidr().split("/")[0]);
             final String removeClientFromNetworkCmd = String.join(" ",
                     "./remove-peer-from-network",
-                    "--config-name", networkClient.getNetwork().getNetworkName(),
+                    "--config-name", NETWORK_CONFIG_PATH,
+                    "--interface-name", networkClient.getNetwork().getNetworkName(),
                     "--client-cidr", networkConfigFormatClientCidr,
-                    "--client-public-key-name", networkClient.getClient().getClientPublicKeyName()
+                    "--client-public-key-name", CLIENT_PUB_KEY_PATH
             );
             ExecutionResult removePeerFromNetworkExecRes = Executor.runCommand(removeClientFromNetworkCmd);
             if (removePeerFromNetworkExecRes.getExitCode() != 0) {
+                errorsOnRemoval = true;
                 logger.error(String.format(
                         "command: '%s' exited %s with reason: %s",
                         removeClientFromNetworkCmd,
                         removePeerFromNetworkExecRes.getExitCode(),
-                        removePeerFromNetworkExecRes.getStdout()));
-                throw new InternalServerException("failed to remove client from network config");
+                        removePeerFromNetworkExecRes.getStderr()));
             }
 
             // check if client config exists
-            logger.info(String.format("removing wireguard config for client %s", networkClient.getClient().getClientName()));
-            final String absPathConfig = String.format("/etc/wireguard/%s.conf", networkClient.getClient().getClientName());
-            File config = new File(absPathConfig);
-            if (config.exists()) {
-                // remove client config
-                if (!config.delete()) {
-                    errorsOnRemoval = true;
-                    logger.error(String.format("failed to delete %s", absPathConfig));
+            logger.info(String.format("removing wireguard files for client '%s'", networkClient.getClient().getClientName()));
+            var clientConfigFilePaths = List.of(
+                    CLIENT_CONFIG_PATH,
+                    CLIENT_PRIV_KEY_PATH,
+                    CLIENT_PUB_KEY_PATH
+            );
+            for (String filepath : clientConfigFilePaths) {
+                logger.info(String.format("deleting file '%s'", filepath));
+                File file = new File(filepath);
+                if (file.exists()) {
+                    if (!file.delete()) {
+                        errorsOnRemoval = true;
+                        logger.error(String.format("failed to delete file '%s'", filepath));
+                    }
+                } else {
+                    logger.info(String.format("file '%s' does not exist", filepath));
                 }
-            } else {
-                logger.info(String.format("/etc/wireguard/%s.conf does not exist", networkClient.getClient().getClientName()));
-            }
-
-            // remove key pairs
-            logger.info(String.format(
-                    "removing key pair '%s' '%s'",
-                    networkClient.getClient().getClientPrivateKeyName(),
-                    networkClient.getClient().getClientPrivateKeyName()
-            ));
-            // check if client key pairs exist
-            final String absPathPrviKey = String.format("/etc/wireguard/%s", networkClient.getClient().getClientPrivateKeyName());
-            File privateKey = new File(absPathPrviKey);
-            if (privateKey.exists()) {
-                if (!privateKey.delete()) {
-                    errorsOnRemoval = true;
-                    logger.error(String.format("failed to delete %s", absPathPrviKey));
-                }
-            } else {
-                logger.info(String.format("/etc/wireguard/%s does not exist", networkClient.getClient().getClientPrivateKeyName()));
-            }
-            final String absPathPublicKey = String.format("/etc/wireguard/%s", networkClient.getClient().getClientPublicKeyName());
-            File publicKey = new File(absPathPublicKey);
-            if (publicKey.exists()) {
-                if (!publicKey.delete()) {
-                    errorsOnRemoval = true;
-                    logger.error(String.format("failed to delete %s", absPathPublicKey));
-                }
-            } else {
-                logger.info(String.format("/etc/wireguard/%s does not exist", networkClient.getClient().getClientPublicKeyName()));
             }
         } catch (Exception e) {
-            logger.error("error in cleaning up client");
             Thread.currentThread().interrupt();
         }
-        if (!errorsOnRemoval) {
-            logger.info(String.format(
-                    "asyncRemoveClientFromSystem completed successfully for client %s",
-                    networkClient.getClient().getClientName())
-            );
+        if (errorsOnRemoval) {
+            throw new CompletionException(new InternalServerException("error in cleaning up client"));
         }
+        logger.info(String.format(
+                "asyncRemoveClientFromSystem completed successfully for client %s",
+                networkClient.getClient().getClientName())
+        );
         return CompletableFuture.completedFuture(networkClient);
     }
 
@@ -313,9 +318,8 @@ public class NetworkClientService {
         }
 
         // reuse async delete network client but wait for completion
-        CompletableFuture<NetworkClient> deletedNetworkClientFuture = asyncRemoveClientFromSystem(existingNetworkClient);
         try {
-            NetworkClient deletedNetworkClientResult = deletedNetworkClientFuture.get();
+            NetworkClient deletedNetworkClientResult = asyncRemoveClientFromSystem(existingNetworkClient).get();
             int deletedNetworkClientCount = this.netClientRepository.deleteNetworkClientByNetwork_NetworkNameAndClient_ClientName(
                     deletedNetworkClientResult.getNetwork().getNetworkName(),
                     deletedNetworkClientResult.getClient().getClientName()
@@ -324,7 +328,6 @@ public class NetworkClientService {
                 logger.error(String.format("unexpected count of affected rows from deletion: %s", deletedNetworkClientCount));
                 throw new InternalServerException("failed to remove client from database");
             }
-            return existingNetworkClient;
         } catch (InterruptedException | ExecutionException exception) {
             logger.error(String.format(
                     "error in asyncRemoveClientFromSystem for client '%s' in network '%s': %s",
@@ -334,6 +337,7 @@ public class NetworkClientService {
             ));
             throw new InternalServerException("error in deleting network");
         }
+        return existingNetworkClient;
     };
 
     // List Network Clients and return list of Clients objects from a single Network

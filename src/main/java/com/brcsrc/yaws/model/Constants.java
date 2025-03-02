@@ -3,6 +3,8 @@ package com.brcsrc.yaws.model;
 public class Constants {
     // base controller url route
     public static final String BASE_URL = "/api/v1";
+    // base wireguard dir
+    public static final String BASE_WIREGUARD_DIR = "/etc/wireguard";
     // input validation regular expressions
     // network and client names
     public static final String CHAR_64_ALPHANUMERIC_REGEXP = "^[a-zA-Z0-9]+$";

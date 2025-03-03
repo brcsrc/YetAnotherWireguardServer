@@ -1,8 +1,9 @@
 package com.brcsrc.yaws.persistence;
 
-
+import java.util.List;
 import java.util.Optional;
 
+import com.brcsrc.yaws.model.NetworkStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,4 +23,5 @@ public interface NetworkRepository extends JpaRepository<Network, String> {
                                                          @Param("networkCidr") String networkCidr,
                                                          @Param("networkListenPort") int networkListenPort);
 
+    List<Network> findAllByNetworkStatus(NetworkStatus networkStatus);
 }

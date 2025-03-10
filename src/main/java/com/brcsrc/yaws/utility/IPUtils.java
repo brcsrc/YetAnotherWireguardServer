@@ -24,9 +24,9 @@ public class IPUtils {
             return false;
         }
 
-        String endpontPort = parts[1];
+        String endpointPort = parts[1];
         try {
-            int port = Integer.parseInt(endpontPort);
+            int port = Integer.parseInt(endpointPort);
             if (port <= 0 || port > 65535) {
                 return false;
             }

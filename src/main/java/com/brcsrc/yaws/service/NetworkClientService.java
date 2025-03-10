@@ -115,6 +115,17 @@ public class NetworkClientService {
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
+        // check that the endpoint port is same as network listen port
+        int requestedPort = Integer.parseInt(request.getNetworkEndpoint().split(":")[1]);
+        if (requestedPort != existingNetwork.getNetworkListenPort()) {
+            String errMsg = String.format(
+                    "requested endpoint port '%s' does not match network listen port '%s'",
+                    requestedPort,
+                    existingNetwork.getNetworkListenPort()
+            );
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
 
         // client relevant fields
         Client client = new Client();

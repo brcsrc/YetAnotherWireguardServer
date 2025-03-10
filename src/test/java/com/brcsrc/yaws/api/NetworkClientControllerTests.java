@@ -25,6 +25,7 @@ import org.springframework.web.client.RestClient;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -159,4 +160,181 @@ public class NetworkClientControllerTests {
         // TODO add network peers to NetworkConfig class
     }
 
+    @Test
+    public void testAddClientToNetworkThrowsExceptionForInvalidCidr() {
+        CreateNetworkClientRequest createNetworkClientRequest = new CreateNetworkClientRequest();
+        createNetworkClientRequest.setNetworkName(testNetworkName);
+        createNetworkClientRequest.setClientName(testClientName);
+        createNetworkClientRequest.setClientDns(testClientDns);
+        createNetworkClientRequest.setAllowedIps(testAllowedIps);
+        createNetworkClientRequest.setNetworkEndpoint(testNetworkEndpoint);
+        createNetworkClientRequest.setClientTag(testClientTag);
+
+        Map<String, String> badCidrsAndAddresses = Map.of(
+                "1000.100.0.2/24", "client cidr is not a valid address or cidr block",
+                "10.200.0.2/24", "client cidr is outside of corresponding network cidr block"
+        );
+        badCidrsAndAddresses.forEach((cidr, exceptionMsg) -> {
+            createNetworkClientRequest.setClientCidr(cidr);
+            ResponseEntity<String> responseEntity = restClient.post()
+                    .uri(baseUrl)
+                    .body(createNetworkClientRequest)
+                    .exchange((request, response) -> {
+                        String responseBody = response.bodyTo(String.class);
+                        return ResponseEntity.status(response.getStatusCode()).body(responseBody);
+                    });
+
+            assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
+            assertTrue(responseEntity.getBody().contains(exceptionMsg));
+        });
+    }
+
+    @Test
+    public void testAddClientToNetworkThrowsExceptionForInvalidDns() {
+        CreateNetworkClientRequest createNetworkClientRequest = new CreateNetworkClientRequest();
+        createNetworkClientRequest.setNetworkName(testNetworkName);
+        createNetworkClientRequest.setClientName(testClientName);
+        createNetworkClientRequest.setClientCidr(testClientCidr);
+        createNetworkClientRequest.setAllowedIps(testAllowedIps);
+        createNetworkClientRequest.setNetworkEndpoint(testNetworkEndpoint);
+        createNetworkClientRequest.setClientTag(testClientTag);
+
+        List<String> invalidDnsAddresses = List.of("300.300.300.300", "invalid_dns", "1234", "");
+
+        for (String dns : invalidDnsAddresses) {
+            createNetworkClientRequest.setClientDns(dns);
+            ResponseEntity<String> responseEntity = restClient.post()
+                    .uri(baseUrl)
+                    .body(createNetworkClientRequest)
+                    .exchange((request, response) -> {
+                        String responseBody = response.bodyTo(String.class);
+                        return ResponseEntity.status(response.getStatusCode()).body(responseBody);
+                    });
+
+            assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
+            assertTrue(responseEntity.getBody().contains("client dns is not a valid ip address"));
+        }
+    }
+
+    @Test
+    public void testAddClientToNetworkThrowsExceptionForInvalidAllowedIps() {
+        CreateNetworkClientRequest createNetworkClientRequest = new CreateNetworkClientRequest();
+        createNetworkClientRequest.setNetworkName(testNetworkName);
+        createNetworkClientRequest.setClientName(testClientName);
+        createNetworkClientRequest.setClientCidr(testClientCidr);
+        createNetworkClientRequest.setClientDns(testClientDns);
+        createNetworkClientRequest.setNetworkEndpoint(testNetworkEndpoint);
+        createNetworkClientRequest.setClientTag(testClientTag);
+
+        List<String> invalidAllowedIps = List.of("500.500.500.500/24", "invalid_ip", "1234");
+
+        for (String allowedIp : invalidAllowedIps) {
+            createNetworkClientRequest.setAllowedIps(allowedIp);
+            ResponseEntity<String> responseEntity = restClient.post()
+                    .uri(baseUrl)
+                    .body(createNetworkClientRequest)
+                    .exchange((request, response) -> {
+                        String responseBody = response.bodyTo(String.class);
+                        return ResponseEntity.status(response.getStatusCode()).body(responseBody);
+                    });
+
+            assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
+            assertTrue(responseEntity.getBody().contains("allowed ips is not a valid address or cidr block"));
+        }
+    }
+
+    @Test
+    public void testAddClientToNetworkThrowsExceptionForInvalidNetworkEndpoint() {
+        CreateNetworkClientRequest createNetworkClientRequest = new CreateNetworkClientRequest();
+        createNetworkClientRequest.setNetworkName(testNetworkName);
+        createNetworkClientRequest.setClientName(testClientName);
+        createNetworkClientRequest.setClientCidr(testClientCidr);
+        createNetworkClientRequest.setClientDns(testClientDns);
+        createNetworkClientRequest.setAllowedIps(testAllowedIps);
+        createNetworkClientRequest.setClientTag(testClientTag);
+
+        List<String> invalidEndpoints = List.of("invalid:endpoint", "192.168.1.1:abcd", "1234.567.89.10:51820");
+
+        for (String endpoint : invalidEndpoints) {
+            createNetworkClientRequest.setNetworkEndpoint(endpoint);
+            ResponseEntity<String> responseEntity = restClient.post()
+                    .uri(baseUrl)
+                    .body(createNetworkClientRequest)
+                    .exchange((request, response) -> {
+                        String responseBody = response.bodyTo(String.class);
+                        return ResponseEntity.status(response.getStatusCode()).body(responseBody);
+                    });
+
+            assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
+            assertTrue(responseEntity.getBody().contains("network endpoint is not valid"));
+        }
+    }
+
+    @Test
+    public void testAddClientToNetworkThrowsExceptionForMismatchedNetworkEndpointPort() {
+        CreateNetworkClientRequest createNetworkClientRequest = new CreateNetworkClientRequest();
+        createNetworkClientRequest.setNetworkName(testNetworkName);
+        createNetworkClientRequest.setClientName(testClientName);
+        createNetworkClientRequest.setClientCidr(testClientCidr);
+        createNetworkClientRequest.setClientDns(testClientDns);
+        createNetworkClientRequest.setAllowedIps(testAllowedIps);
+        createNetworkClientRequest.setClientTag(testClientTag);
+
+        String mismatchedEndpoint = "127.0.0.1:9999";
+        createNetworkClientRequest.setNetworkEndpoint(mismatchedEndpoint);
+
+        ResponseEntity<String> responseEntity = restClient.post()
+                .uri(baseUrl)
+                .body(createNetworkClientRequest)
+                .exchange((request, response) -> {
+                    String responseBody = response.bodyTo(String.class);
+                    return ResponseEntity.status(response.getStatusCode()).body(responseBody);
+                });
+
+        assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
+        assertTrue(responseEntity.getBody().contains("requested endpoint port"));
+    }
+
+    @Test
+    public void testAddClientToNetworkThrowsExceptionWhenAddressAlreadyInUse() {
+        CreateNetworkClientRequest createNetworkClientRequest = new CreateNetworkClientRequest();
+        createNetworkClientRequest.setNetworkName(testNetworkName);
+        createNetworkClientRequest.setClientName(testClientName);
+        createNetworkClientRequest.setClientCidr(testClientCidr);
+        createNetworkClientRequest.setClientDns(testClientDns);
+        createNetworkClientRequest.setAllowedIps(testAllowedIps);
+        createNetworkClientRequest.setNetworkEndpoint(testNetworkEndpoint);
+        createNetworkClientRequest.setClientTag(testClientTag);
+
+        restClient.post()
+                .uri(baseUrl)
+                .body(createNetworkClientRequest)
+                .retrieve()
+                .toEntity(NetworkClient.class);
+
+        CreateNetworkClientRequest duplicateRequest = new CreateNetworkClientRequest();
+        duplicateRequest.setNetworkName(testNetworkName);
+        duplicateRequest.setClientName("Client2");
+        duplicateRequest.setClientCidr(testClientCidr);
+        duplicateRequest.setClientDns(testClientDns);
+        duplicateRequest.setAllowedIps(testAllowedIps);
+        duplicateRequest.setNetworkEndpoint(testNetworkEndpoint);
+        duplicateRequest.setClientTag("test client 2 tag");
+
+        ResponseEntity<String> responseEntity = restClient.post()
+                .uri(baseUrl)
+                .body(duplicateRequest)
+                .exchange((request, response) -> {
+                    String responseBody = response.bodyTo(String.class);
+                    return ResponseEntity.status(response.getStatusCode()).body(responseBody);
+                });
+
+        assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
+        String expectedErrMsg = String.format(
+                "network %s already has a client with address %s",
+                testNetworkName,
+                testClientCidr
+        );
+        assertTrue(responseEntity.getBody().contains(expectedErrMsg));
+    }
 }

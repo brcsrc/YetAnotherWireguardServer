@@ -15,16 +15,25 @@ java {
 	sourceCompatibility = '21'
 }
 
-task checkJarExists {
-	doLast {
-		def jarFile = file('build/libs/yaws-0.0.1-SNAPSHOT.jar')
-		if (!jarFile.exists()) {
-			configurations.runtimeClasspath.resolve()
-		}
-	}
-}
+dependencies {
+	// http and api documentation
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.session:spring-session-core'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
 
-test.dependsOn checkJarExists
+	// security
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// persistence
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'javax.persistence:javax.persistence-api:2.2'
+	implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
+	implementation 'org.hibernate.orm:hibernate-community-dialects:6.3.1.Final'
+
+	// testing
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+}
 
 // create local dir 'lib' and run ./gradlew copyDependenciesToLocalRepo
 task copyDependenciesToLocalRepo(type: Copy) {
@@ -48,33 +57,32 @@ repositories {
 	maven { url 'https://repo.spring.io/snapshot' }
 }
 
-dependencies {
-	// http and api documentation
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework.session:spring-session-core'
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
-
-	// security
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-
-	// persistence
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'javax.persistence:javax.persistence-api:2.2'
-	implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
-	implementation 'org.hibernate.orm:hibernate-community-dialects:6.3.1.Final'
-
-	// testing
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.springframework.security:spring-security-test'
-}
-
-
+// make test runs log output only on test failures
 tasks.named('test') {
 	useJUnitPlatform()
-	// make test run verbose
 	testLogging {
-		events("passed", "skipped", "failed", "standard_out", "standard_error")
-		exceptionFormat = "full"  // This ensures that the full stack trace is shown
-		showStandardStreams = true  // Optional: Shows standard output (useful for logging)
+		events("passed", "failed") 		// test result types passed to events() will be logged. other options: "skipped", "standard_out", "standard_error"
+		exceptionFormat = "full"  		// This ensures that the full stack trace is shown
+		showStandardStreams = false  	// Optional: Shows standard output (useful for logging)
+
+		afterTest { descriptor, result ->
+			if (result.getResultType() == org.gradle.api.tasks.testing.TestResult.ResultType.FAILURE) {
+				testLogging.showStandardStreams = true
+				println("❌ Test failed: ${descriptor.name}")
+			} else {
+				testLogging.showStandardStreams = false
+			}
+		}
 	}
 }
+
+task checkJarExists {
+	doLast {
+		def jarFile = file('build/libs/yaws-0.0.1-SNAPSHOT.jar')
+		if (!jarFile.exists()) {
+			configurations.runtimeClasspath.resolve()
+		}
+	}
+}
+test.dependsOn checkJarExists
+

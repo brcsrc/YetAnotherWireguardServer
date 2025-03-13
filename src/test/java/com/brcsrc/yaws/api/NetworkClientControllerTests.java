@@ -1,5 +1,29 @@
 package com.brcsrc.yaws.api;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.junit.jupiter.api.AfterEach;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestClient;
+
 import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkClient;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
@@ -10,25 +34,6 @@ import com.brcsrc.yaws.service.NetworkClientService;
 import com.brcsrc.yaws.service.NetworkService;
 import com.brcsrc.yaws.utility.FilepathUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestClient;
-
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class NetworkClientControllerTests {
@@ -65,7 +70,6 @@ public class NetworkClientControllerTests {
     private final String testAllowedIps = "0.0.0.0/0";
     private final String testNetworkEndpoint = "127.0.0.1:51820";
     private final String testClientTag = "client 1 tag";
-
 
     public NetworkClientControllerTests() {
     }
@@ -336,5 +340,42 @@ public class NetworkClientControllerTests {
                 testClientCidr
         );
         assertTrue(responseEntity.getBody().contains(expectedErrMsg));
+    }
+
+    @Test
+    public void testGetNetworkClientConfigFile() throws Exception {
+        // Create a network client
+        CreateNetworkClientRequest request = new CreateNetworkClientRequest();
+        request.setNetworkName(testNetworkName);
+        request.setClientName(testClientName);
+        request.setClientCidr(testClientCidr);
+        request.setClientDns(testClientDns);
+        request.setAllowedIps(testAllowedIps);
+        request.setNetworkEndpoint(testNetworkEndpoint);
+        request.setClientTag(testClientTag);
+
+        ResponseEntity<NetworkClient> createNetworkClientResponse = restClient.post()
+                .uri(baseUrl)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .toEntity(NetworkClient.class);
+
+        // Assert the response status is 200
+        assertEquals(HttpStatus.OK, createNetworkClientResponse.getStatusCode());
+
+        // Verify the client configuration file exists
+        String clientConfigAbsPath = FilepathUtils.getClientConfigPath(testNetworkName, testClientName);
+        assertTrue(Files.exists(Paths.get(clientConfigAbsPath)), "Client configuration file should exist");
+
+        // Get the config file
+        String configUrl = String.format("%s/%s/%s/config", baseUrl, testNetworkName, testClientName);
+        ResponseEntity<Resource> response = restClient.get()
+                .uri(configUrl)
+                .retrieve()
+                .toEntity(Resource.class);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
     }
 }

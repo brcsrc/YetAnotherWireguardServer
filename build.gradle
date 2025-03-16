@@ -57,6 +57,16 @@ repositories {
 	maven { url 'https://repo.spring.io/snapshot' }
 }
 
+repositories {
+	flatDir {
+		dirs 'lib'
+	}
+	mavenCentral()
+	maven { url 'https://repo.spring.io/milestone' }
+	maven { url 'https://repo.spring.io/snapshot' }
+}
+
+// make test runs log output only on test failures
 tasks.named('test') {
 	useJUnitPlatform()
 	testLogging {

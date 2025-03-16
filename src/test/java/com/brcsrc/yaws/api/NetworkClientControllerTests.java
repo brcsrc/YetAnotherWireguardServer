@@ -1,8 +1,10 @@
 package com.brcsrc.yaws.api;
 
+import com.brcsrc.yaws.model.Client;
 import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkClient;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
+import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
 import com.brcsrc.yaws.persistence.ClientRepository;
 import com.brcsrc.yaws.persistence.NetworkClientRepository;
 import com.brcsrc.yaws.persistence.NetworkRepository;
@@ -10,6 +12,8 @@ import com.brcsrc.yaws.service.NetworkClientService;
 import com.brcsrc.yaws.service.NetworkService;
 import com.brcsrc.yaws.utility.FilepathUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,12 +22,21 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClient;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -89,13 +102,10 @@ public class NetworkClientControllerTests {
 
     @AfterEach
     public void teardown() {
-        NetworkClient networkClient = netClientRepository.findNetworkClientByNetwork_NetworkNameAndClient_ClientName(
-                testNetworkName,
-                testClientName
-        );
-        if (networkClient != null) {
-            logger.info("cleaning up existing network client");
-            networkClientService.deleteNetworkClient(testNetworkName, testClientName);
+        List<NetworkClient> networkClients = this.netClientRepository.findAllByNetwork_NetworkName(testNetworkName);
+        for (NetworkClient nc : networkClients) {
+            logger.info(String.format("cleaning up existing network client '%s'", nc.getClient().getClientName()));
+            networkClientService.deleteNetworkClient(testNetworkName, nc.getClient().getClientName());
         }
         Optional<Network> networkFromDb = networkRepository.findByNetworkName(testNetworkName);
         if (networkFromDb.isPresent()) {
@@ -106,7 +116,7 @@ public class NetworkClientControllerTests {
     }
 
     @Test
-    public void testCreateNetworkClientCreatesClient() throws JsonProcessingException {
+    public void testCreateNetworkClientCreatesClient() {
         CreateNetworkClientRequest createNetworkClientRequest = new CreateNetworkClientRequest();
         createNetworkClientRequest.setNetworkName(testNetworkName);
         createNetworkClientRequest.setClientName(testClientName);
@@ -336,5 +346,60 @@ public class NetworkClientControllerTests {
                 testClientCidr
         );
         assertTrue(responseEntity.getBody().contains(expectedErrMsg));
+    }
+
+    @Test
+    public void testListNetworkClientsListsNetworkClients() throws IOException, InterruptedException, URISyntaxException {
+        String networkOctects = String.join(".", Arrays.copyOfRange(testNetworkCidr.split("\\."), 0, 3));
+        Map<String, String> clientNamesCidrsMap = Map.of(
+                "client1", String.format("%s.2/24", networkOctects),
+                "client2", String.format("%s.3/24", networkOctects),
+                "client3", String.format("%s.4/24", networkOctects),
+                "client4", String.format("%s.5/24", networkOctects),
+                "client5", String.format("%s.6/24", networkOctects)
+        );
+
+        clientNamesCidrsMap.forEach((clientName, clientCidr) -> {
+            CreateNetworkClientRequest createNetworkClientRequest = new CreateNetworkClientRequest();
+            createNetworkClientRequest.setNetworkName(testNetworkName);
+            createNetworkClientRequest.setClientName(clientName);
+            createNetworkClientRequest.setClientCidr(clientCidr);
+            createNetworkClientRequest.setClientDns(testClientDns);
+            createNetworkClientRequest.setAllowedIps(testAllowedIps);
+            createNetworkClientRequest.setNetworkEndpoint(testNetworkEndpoint);
+
+            restClient.post()
+                    .uri(baseUrl)
+                    .body(createNetworkClientRequest)
+                    .retrieve()
+                    .toEntity(NetworkClient.class);
+        });
+
+        ListNetworkClientsRequest listNetworkClientsRequest = new ListNetworkClientsRequest();
+        listNetworkClientsRequest.setNetworkName(testNetworkName);
+
+        // ListNetworkClient is a GET with a request body for page options which is not RFC 7231
+        // compliant and we cant use RestClient https://www.rfc-editor.org/rfc/rfc7231#section-4.3.1
+        HttpRequest request = HttpRequest
+                .newBuilder()
+                .uri(new URI(baseUrl))
+                .header("Content-Type", "application/json")
+                .method(HttpMethod.GET.name(), HttpRequest.BodyPublishers.ofString(new ObjectMapper().writeValueAsString(listNetworkClientsRequest)))
+                .build();
+
+        HttpResponse<String> response = HttpClient
+                .newHttpClient()
+                .send(request, HttpResponse.BodyHandlers.ofString());
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<Client> clients = objectMapper.readValue(
+                response.body(),
+                new TypeReference<List<Client>>(){}
+        );
+
+        assertEquals(clientNamesCidrsMap.size(), clients.size());
+        for (Client client : clients) {
+            assertEquals(clientNamesCidrsMap.get(client.getClientName()), client.getClientCidr());
+        }
     }
 }

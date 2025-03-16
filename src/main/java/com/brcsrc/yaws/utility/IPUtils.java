@@ -38,6 +38,8 @@ public class IPUtils {
     }
 
     public static boolean isNetworkMemberInNetworkRange(String networkCidr, String networkMemberCidr) {
+        // TODO this assumes all clients want inter domain routing with a subnet like /24
+        // TODO if they want to not talk to other peers then passing only an address does not work
         // check cidrs match pattern
         if (!isValidIpv4Cidr(networkCidr)) {
             throw new IllegalArgumentException(String.format("%s is not a valid CIDR", networkCidr));

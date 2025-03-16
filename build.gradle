@@ -57,21 +57,26 @@ repositories {
 	maven { url 'https://repo.spring.io/snapshot' }
 }
 
-// make test runs log output only on test failures
 tasks.named('test') {
 	useJUnitPlatform()
 	testLogging {
-		events("passed", "failed") 		// test result types passed to events() will be logged. other options: "skipped", "standard_out", "standard_error"
-		exceptionFormat = "full"  		// This ensures that the full stack trace is shown
-		showStandardStreams = false  	// Optional: Shows standard output (useful for logging)
-
-		afterTest { descriptor, result ->
-			if (result.getResultType() == org.gradle.api.tasks.testing.TestResult.ResultType.FAILURE) {
-				testLogging.showStandardStreams = true
+		events "passed", "failed"  					// Only log "passed" and "failed" events
+		exceptionFormat = "full"  					// Show full stack trace for failures
+	}
+	beforeTest {
+		testLogging.showStandardStreams = true  	// show standard output from logger
+	}
+	afterTest { descriptor, result ->
+		switch (result.resultType) {
+			case (TestResult.ResultType.FAILURE):
 				println("❌ Test failed: ${descriptor.name}")
-			} else {
-				testLogging.showStandardStreams = false
-			}
+				break;
+			case (TestResult.ResultType.SUCCESS):
+				println("✅ Test passed: ${descriptor.name}")
+				break;
+			case (TestResult.ResultType.SKIPPED):
+				println("⏩ Test skipped: ${descriptor.name}")
+				break;
 		}
 	}
 }

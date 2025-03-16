@@ -54,10 +54,10 @@ public class NetworkControllerTests {
 
     @AfterEach
     public void teardown() {
-        Optional<Network> networkFromDb = networkRepository.findByNetworkName(testNetworkName);
-        if (networkFromDb.isPresent()) {
-            logger.info("cleaning up existing test network");
-            networkService.deleteNetwork(testNetworkName);
+        logger.info("cleaning up existing test networks");
+        List<Network> networks = this.networkRepository.findAll();
+        for (Network network : networks) {
+            this.networkService.deleteNetwork(network.getNetworkName());
         }
     }
 

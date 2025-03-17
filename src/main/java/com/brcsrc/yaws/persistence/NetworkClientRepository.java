@@ -55,4 +55,6 @@ public interface NetworkClientRepository extends JpaRepository<NetworkClient, Lo
     NetworkClient findByNetworkClientByNetworkNameAndClientName(
             @Param("networkName") String networkName,
             @Param("clientName") String clientName);
+
+    List<NetworkClient> findAllByNetwork_NetworkName(String networkName);
 }

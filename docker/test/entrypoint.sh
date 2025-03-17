@@ -22,5 +22,5 @@ iptables-restore < /etc/iptables/rules.v4
 echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
 sysctl -w net.ipv4.ip_forward=1
 
-# this should build jar and run tests
-./gradlew build --no-daemon
+echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [yaws-tests] test container started and ready for tests"
+tail -f /dev/null

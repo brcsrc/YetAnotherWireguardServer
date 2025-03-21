@@ -6,7 +6,7 @@ YetAnotherWireguardServer is a containerized Wireguard server designed to run an
 
 ##### *Links*
 
-- [Development](docs/DEVELOPMENT.md)
-- [Spring Docs](docs/HELP.md)
-- [Entity Relationship Diagram](docs/yaws-erd.drawio)
-- [Insomnia Request Model](docs/Insomnia_2025-03-20.json)
+- [Development](doc/DEVELOPMENT.md)
+- [Spring Docs](doc/HELP.md)
+- [Entity Relationship Diagram](doc/yaws-erd.drawio)
+- [Insomnia Request Model](doc/Insomnia_2025-03-20.json)

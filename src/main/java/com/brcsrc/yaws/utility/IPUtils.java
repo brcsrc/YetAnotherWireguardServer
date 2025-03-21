@@ -14,7 +14,7 @@ public class IPUtils {
         return address.matches(Constants.IPV4_ADDRESS_REGEXP);
     }
 
-    public static boolean isValidEndpoint(String endpoint) {
+    public static boolean isValidClientConfigEndpoint(String endpoint) {
         String[] parts = endpoint.split(":");
         if (parts.length != 2) {
             return false;
@@ -35,6 +35,12 @@ public class IPUtils {
         }
 
         return true;
+    }
+
+    public static boolean isValidEndpoint(String endpoint) {
+        // TODO this is currently used to check an incoming CreateNetworkClientRequest endpoint field
+        // TODO this needs to validate that the input is either a valid IPV4 or a valid FQDN
+        return isValidIpv4Address(endpoint);
     }
 
     public static boolean isNetworkMemberInNetworkRange(String networkCidr, String networkMemberCidr) {

@@ -29,10 +29,13 @@ dependencies {
 	implementation 'javax.persistence:javax.persistence-api:2.2'
 	implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
 	implementation 'org.hibernate.orm:hibernate-community-dialects:6.3.1.Final'
+    implementation 'org.testng:testng:7.1.0'
 
-	// testing
+    // testing
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
+	testImplementation 'org.junit.jupiter:junit-jupiter:5.9.3'
+
 }
 
 // create local dir 'lib' and run ./gradlew copyDependenciesToLocalRepo

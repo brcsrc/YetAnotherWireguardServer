@@ -69,28 +69,10 @@ public class NetworkClientController {
         return this.networkClientService.describeNetworkClient(networkName, clientName);
     }
 
-    @Operation(summary = "Get Network Client Configuration File", description = "get a  networkclient configuration .conf file for a client on a given network to be downloadable")
+    @Operation(summary = "Get Network Client Configuration File", description = "get a networkclient configuration .conf file for a client on a given network to be downloadable")
     @GetMapping("/{networkName}/{clientName}/config")
     public ResponseEntity<Resource> getNetworkClientConfigFile(@PathVariable String networkName, @PathVariable String clientName) {
         logger.info("received GetNetworkClientConfigFile request");
-        try {
-            String configFilePath = FilepathUtils.getClientConfigPath(networkName, clientName);
-
-            File configFile = new File(configFilePath);
-
-            if (!configFile.exists()) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Configuration file not found!");
-            }
-
-            Resource resource = new FileSystemResource(configFile);
-
-            return ResponseEntity.ok()
-                    .contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
-                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment;  filename=\"" + configFile.getName() + "\"")
-                    .body(resource);
-        } catch (Exception e) {
-            logger.error("Error while getting network client config file", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error while getting network client config file");
-        }
+        return this.networkClientService.getNetworkClientConfigFile(networkName, clientName);
     }
 }

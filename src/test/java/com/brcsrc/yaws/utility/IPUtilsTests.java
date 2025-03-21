@@ -49,27 +49,6 @@ public class IPUtilsTests {
     }
 
     @Test
-    public void testIsValidEndpointReturnsTrueOnValidEndpoint() {
-        String validEndpoint = "123.12.1.40:51820";
-        boolean isValid = IPUtils.isValidEndpoint(validEndpoint);
-        assertTrue(isValid);
-    }
-
-    @Test
-    public void testIsValidEndpointReturnsFalseOnInvalidEndpoint() {
-        String[] badEndpoints = new String[]{
-            "100.300.33.4:51820",   // bad ip
-            "10.0.0.1:66000",       // port too high
-            "10.0.0.1:0",           // port too low
-            "123.45.79.1-51820",    // bad notation
-        };
-        for (String e : badEndpoints) {
-            boolean isValid = IPUtils.isValidEndpoint(e);
-            assertFalse(isValid);
-        }
-    }
-
-    @Test
     public void testNetworkMemberIsInNetworkRange() {
         String networkCidr = "10.0.0.1/24";
         String networkMemberCidr = "10.0.0.2/24";

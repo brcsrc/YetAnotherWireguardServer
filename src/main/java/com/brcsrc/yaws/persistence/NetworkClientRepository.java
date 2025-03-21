@@ -26,10 +26,14 @@ public interface NetworkClientRepository extends JpaRepository<NetworkClient, Lo
      */
     @Query("SELECT COUNT(nc) > 0 FROM NetworkClient nc "
             + "WHERE nc.network.networkName = :networkName "
-            + "AND nc.client.clientCidr = :clientCidr")
-    boolean existsByNetworkNameAndClientCidr(
+            + "AND (nc.client.clientCidr = :clientCidr OR nc.client.clientName = :clientName)")
+    boolean existsByNetworkNameAndClientCidrOrClientName(
             @Param("networkName") String networkName,
-            @Param("clientCidr") String clientCidr);
+            @Param("clientCidr") String clientCidr,
+            @Param("clientName") String clientName);
+
+
+
 
     // TODO use this in place of existsByNetworkNameAndClientCidr
     NetworkClient findNetworkClientByNetwork_NetworkNameAndClient_ClientCidr(String networkName, String clientCidr);
@@ -49,6 +53,7 @@ public interface NetworkClientRepository extends JpaRepository<NetworkClient, Lo
     NetworkClient findNetworkClientByNetwork_NetworkNameAndClient_ClientName(String networkName, String clientName);
 
     int deleteNetworkClientByNetwork_NetworkNameAndClient_ClientName(String networkName, String clientName);
+
     @Query("SELECT nc FROM NetworkClient nc "
             + "WHERE nc.network.networkName = :networkName "
             + "AND nc.client.clientName = :clientName")

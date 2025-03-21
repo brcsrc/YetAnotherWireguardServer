@@ -11,9 +11,13 @@ import com.brcsrc.yaws.utility.FilepathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.server.ResponseStatusException;
 import jakarta.transaction.Transactional;
 
@@ -72,12 +76,14 @@ public class NetworkClientService {
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
+
         // check if the dns address is valid
         if (!IPUtils.isValidIpv4Address(request.getClientDns())) {
             String errMsg = "client dns is not a valid ip address";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
+
         // check if allowed ips block is valid cidr or ip address
         boolean isValidAllowedIpsCidr = IPUtils.isValidIpv4Cidr(request.getAllowedIps());
         boolean isValidAllowsIpsAddress = IPUtils.isValidIpv4Address(request.getAllowedIps());
@@ -86,42 +92,46 @@ public class NetworkClientService {
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
+
         // check the network endpoint is valid
         if (!IPUtils.isValidEndpoint(request.getNetworkEndpoint())) {
             String errMsg = "network endpoint is not valid";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
-        // check network already exists
-        // TODO input validate client name and tag
+
+        // check network name and client name are valid
+        if (request.getNetworkName().length() > 64 || !request.getNetworkName().matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP)) {
+            String errMsg = "networkName is not valid";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+        if (request.getClientName().length() > 64 || !request.getClientName().matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP)) {
+            String errMsg = "clientName is not valid";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        // check requested network already exists
         Network existingNetwork = checkNetworkExists(request.getNetworkName());
+
         // check network can be placed in network based off requested cidr
         if (!IPUtils.isNetworkMemberInNetworkRange(existingNetwork.getNetworkCidr(), request.getClientCidr())) {
             String errMsg = "client cidr is outside of corresponding network cidr block";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
-        // check network does not have a client with that address
-        boolean addressAlreadyInUse = this.netClientRepository.existsByNetworkNameAndClientCidr(
+
+        // check network does not have a client with that address or name
+        boolean addressOrNameAlreadyInUse = this.netClientRepository.existsByNetworkNameAndClientCidrOrClientName(
                 request.getNetworkName(),
-                request.getClientCidr()
+                request.getClientCidr(),
+                request.getClientName()
         );
-        if (addressAlreadyInUse) {
+        if (addressOrNameAlreadyInUse) {
             String errMsg = String.format(
-                    "network %s already has a client with address %s",
-                    request.getNetworkName(),
-                    request.getClientCidr()
-            );
-            logger.error(errMsg);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
-        }
-        // check that the endpoint port is same as network listen port
-        int requestedPort = Integer.parseInt(request.getNetworkEndpoint().split(":")[1]);
-        if (requestedPort != existingNetwork.getNetworkListenPort()) {
-            String errMsg = String.format(
-                    "requested endpoint port '%s' does not match network listen port '%s'",
-                    requestedPort,
-                    existingNetwork.getNetworkListenPort()
+                    "network %s already has a client with requested name or address",
+                    request.getNetworkName()
             );
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
@@ -212,13 +222,14 @@ public class NetworkClientService {
             throw new InternalServerException("failed to add client to network config");
         }
 
+        // save entities to database
         Client savedClient = this.clientRepository.save(client);
         NetworkClient networkClient = new NetworkClient();
         networkClient.setClient(savedClient);
         networkClient.setNetwork(existingNetwork);
         NetworkClient savedNetworkClient = this.netClientRepository.save(networkClient);
         logger.info("CreateNetworkClient operation successful");
-        return this.netClientRepository.save(networkClient);
+        return savedNetworkClient;
     }
 
     @Async
@@ -367,5 +378,55 @@ public class NetworkClientService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errMsg);
         }
         return networkClient;
+    }
+
+    public ResponseEntity<Resource> getNetworkClientConfigFile(@PathVariable String networkName, @PathVariable String clientName) {
+        // validate inputs before putting them in jpa queries
+        if (networkName.length() > 64 || !networkName.matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP)) {
+            String errMsg = "networkName is not valid";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+        if (clientName.length() > 64 || !clientName.matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP)) {
+            String errMsg = "clientName is not valid";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        // this should return 400 if the network or the client does not exist
+        NetworkClient existingNetworkClient = this.netClientRepository.findNetworkClientByNetwork_NetworkNameAndClient_ClientName(
+                networkName,
+                clientName
+        );
+        if (existingNetworkClient == null) {
+            String errMsg = "network or client does not exist";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        // check and get reference to the requested configuration file.
+        // should be yaws responsibility to create and maintain the file. if not found return 500
+        String configFilePath = FilepathUtils.getClientConfigPath(networkName, clientName);
+        String configFileNotExistsErrMsg = "requested configuration file does not exist";
+        File configFile;
+        Resource configFileResource;
+        try {
+            configFile = new File(configFilePath);
+            if (!configFile.exists()) {
+                logger.error(configFileNotExistsErrMsg);
+                throw new InternalServerException(configFileNotExistsErrMsg);
+            }
+            configFileResource = new FileSystemResource(configFile);
+            logger.info(String.format("found config file '%s'", configFilePath));
+        } catch (NullPointerException e) {
+            logger.error(configFileNotExistsErrMsg);
+            throw new InternalServerException(configFileNotExistsErrMsg);
+        }
+
+        // all error states should be handled before this block. if no errors return the file
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment;  filename=\"" + configFile.getName() + "\"")
+                .body(configFileResource);
     }
 }

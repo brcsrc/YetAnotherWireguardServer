@@ -186,7 +186,7 @@ public class NetworkService {
                     "command: '%s' exited %s with reason: %s",
                     configureIptablesCommand,
                     configureIptablesExecResult.getExitCode(),
-                    configureIptablesExecResult.getStdout()));
+                    configureIptablesExecResult.getStderr()));
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.repository.save(network);
             CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);

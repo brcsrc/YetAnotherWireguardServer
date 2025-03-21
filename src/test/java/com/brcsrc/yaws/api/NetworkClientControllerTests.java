@@ -5,12 +5,14 @@ import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkClient;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
+import com.brcsrc.yaws.model.wireguard.ClientConfig;
 import com.brcsrc.yaws.persistence.ClientRepository;
 import com.brcsrc.yaws.persistence.NetworkClientRepository;
 import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.service.NetworkClientService;
 import com.brcsrc.yaws.service.NetworkService;
 import com.brcsrc.yaws.utility.FilepathUtils;
+import com.brcsrc.yaws.utility.WireguardConfigReaderUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
@@ -79,7 +81,7 @@ public class NetworkClientControllerTests {
     private final String testClientCidr = "10.100.0.2/24";
     private final String testClientDns = "1.1.1.1";
     private final String testAllowedIps = "0.0.0.0/0";
-    private final String testNetworkEndpoint = "127.0.0.1:51820";
+    private final String testNetworkEndpoint = "127.0.0.1";
     private final String testClientTag = "client 1 tag";
 
     public NetworkClientControllerTests() {
@@ -170,6 +172,14 @@ public class NetworkClientControllerTests {
 
         // assert the network config has a new entry
         // TODO add network peers to NetworkConfig class
+
+        // assert the client config exists
+        ClientConfig clientConfig = WireguardConfigReaderUtils.readClientConfig(testNetworkName, testClientName);
+        assertEquals(testClientCidr, clientConfig.getNetworkInterface().getAddress());
+        assertEquals(testClientDns, clientConfig.getDns());
+        assertEquals(testAllowedIps, clientConfig.getPeerConfig().getAllowedIps());
+        assertEquals(String.format("%s:%s", testNetworkEndpoint, testNetworkListenPort), clientConfig.getPeerConfig().getEndpoint());
+
     }
 
     @Test
@@ -265,7 +275,7 @@ public class NetworkClientControllerTests {
         createNetworkClientRequest.setAllowedIps(testAllowedIps);
         createNetworkClientRequest.setClientTag(testClientTag);
 
-        List<String> invalidEndpoints = List.of("invalid:endpoint", "192.168.1.1:abcd", "1234.567.89.10:51820");
+        List<String> invalidEndpoints = List.of("invalid:endpoint", "256.168.1.1", "1234.567.89.10");
 
         for (String endpoint : invalidEndpoints) {
             createNetworkClientRequest.setNetworkEndpoint(endpoint);
@@ -280,31 +290,6 @@ public class NetworkClientControllerTests {
             assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
             assertTrue(responseEntity.getBody().contains("network endpoint is not valid"));
         }
-    }
-
-    @Test
-    public void testAddClientToNetworkThrowsExceptionForMismatchedNetworkEndpointPort() {
-        CreateNetworkClientRequest createNetworkClientRequest = new CreateNetworkClientRequest();
-        createNetworkClientRequest.setNetworkName(testNetworkName);
-        createNetworkClientRequest.setClientName(testClientName);
-        createNetworkClientRequest.setClientCidr(testClientCidr);
-        createNetworkClientRequest.setClientDns(testClientDns);
-        createNetworkClientRequest.setAllowedIps(testAllowedIps);
-        createNetworkClientRequest.setClientTag(testClientTag);
-
-        String mismatchedEndpoint = "127.0.0.1:9999";
-        createNetworkClientRequest.setNetworkEndpoint(mismatchedEndpoint);
-
-        ResponseEntity<String> responseEntity = restClient.post()
-                .uri(baseUrl)
-                .body(createNetworkClientRequest)
-                .exchange((request, response) -> {
-                    String responseBody = response.bodyTo(String.class);
-                    return ResponseEntity.status(response.getStatusCode()).body(responseBody);
-                });
-
-        assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
-        assertTrue(responseEntity.getBody().contains("requested endpoint port"));
     }
 
     @Test
@@ -343,12 +328,54 @@ public class NetworkClientControllerTests {
 
         assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
         String expectedErrMsg = String.format(
-                "network %s already has a client with address %s",
-                testNetworkName,
-                testClientCidr
+                "network %s already has a client with requested name or address",
+                testNetworkName
         );
         assertTrue(responseEntity.getBody().contains(expectedErrMsg));
     }
+
+    @Test
+    public void testAddClientToNetworkThrowsExceptionWhenNameAlreadyInUse() {
+        CreateNetworkClientRequest createNetworkClientRequest = new CreateNetworkClientRequest();
+        createNetworkClientRequest.setNetworkName(testNetworkName);
+        createNetworkClientRequest.setClientName(testClientName);
+        createNetworkClientRequest.setClientCidr(testClientCidr);
+        createNetworkClientRequest.setClientDns(testClientDns);
+        createNetworkClientRequest.setAllowedIps(testAllowedIps);
+        createNetworkClientRequest.setNetworkEndpoint(testNetworkEndpoint);
+        createNetworkClientRequest.setClientTag(testClientTag);
+
+        restClient.post()
+                .uri(baseUrl)
+                .body(createNetworkClientRequest)
+                .retrieve()
+                .toEntity(NetworkClient.class);
+
+        CreateNetworkClientRequest duplicateRequest = new CreateNetworkClientRequest();
+        duplicateRequest.setNetworkName(testNetworkName);
+        duplicateRequest.setClientName(testClientName);
+        duplicateRequest.setClientCidr("10.100.0.3/24");
+        duplicateRequest.setClientDns(testClientDns);
+        duplicateRequest.setAllowedIps(testAllowedIps);
+        duplicateRequest.setNetworkEndpoint(testNetworkEndpoint);
+        duplicateRequest.setClientTag("test client 2 tag");
+
+        ResponseEntity<String> responseEntity = restClient.post()
+                .uri(baseUrl)
+                .body(duplicateRequest)
+                .exchange((request, response) -> {
+                    String responseBody = response.bodyTo(String.class);
+                    return ResponseEntity.status(response.getStatusCode()).body(responseBody);
+                });
+
+        assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
+        String expectedErrMsg = String.format(
+                "network %s already has a client with requested name or address",
+                testNetworkName
+        );
+        assertTrue(responseEntity.getBody().contains(expectedErrMsg));
+    }
+
 
     @Test
     public void testListNetworkClientsListsNetworkClients() throws IOException, InterruptedException, URISyntaxException {
@@ -440,5 +467,6 @@ public class NetworkClientControllerTests {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
+
     }
 }

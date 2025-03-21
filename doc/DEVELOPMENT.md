@@ -69,15 +69,34 @@ http://localhost:8080/swagger-ui/index.html
 http://localhost:8080/v3/api-docs
 
 ##### build and run backend tests
+
+run all tests. if a test container exists it will be reused, if it does not one will be created prior to tests
 ```shell
-\
-docker build -f docker/test/test.Dockerfile -t yaws-tests . && \
-docker run --rm \
- --privileged \
- --cap-add=NET_ADMIN \
- --name yaws-tests \
- yaws-tests:latest 
+./scripts/test-runner.sh run-tests
 ```
+
+run all tests with a new container regardless if one exists or not
+
+```shell
+./scripts/test-runner.sh run-tests --full-rebuild
+```
+
+run all tests of a specific test suite
+
+```shell
+./scripts/test-runner.sh run-tests --test-name "package com.brcsrc.yaws.api.NetworkControllerTests"
+```
+
+run a specific test in a test suite
+```shell
+./scripts/test-runner.sh run-tests --test-name "package com.brcsrc.yaws.api.NetworkControllerTests.testCreateNetworkClientCreatesClient"
+```
+
+run any test matching the pattern
+```shell
+./scripts/test-runner.sh run-tests --test-name "*testAddClientToNetworkThrowsException*"
+```
+
 
 ## Notes
 

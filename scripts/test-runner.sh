@@ -38,11 +38,25 @@ function run_tests() {
 
   if [[ -n "$test_name" ]]; then
     echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [${TEST_CONTAINER_NAME}] running tests with ${test_name}"
-    docker exec "$TEST_CONTAINER_NAME" /opt/gradlew test --tests "$test_name"
+    docker exec "$TEST_CONTAINER_NAME" /opt/gradlew test --tests "$test_name" --stacktrace
   else
     echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [${TEST_CONTAINER_NAME}] running all tests"
-    docker exec "$TEST_CONTAINER_NAME" /opt/gradlew test
+    docker exec "$TEST_CONTAINER_NAME" /opt/gradlew test --stacktrace
   fi
+
+  echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [${TEST_CONTAINER_NAME}] retrieving test reports"
+
+  set +e
+  docker exec "$TEST_CONTAINER_NAME" stat /opt/build/reports/jacoco/test/html/index.html > /dev/null 2>&1
+  if [ $? == 0 ]; then
+    local test_report_loc="/opt/build/reports/jacoco/test/html"
+    mkdir -p coverage-report
+    docker cp "${TEST_CONTAINER_NAME}:${test_report_loc}" coverage-report/.
+    echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [${TEST_CONTAINER_NAME}] view test coverage at $(pwd)/coverage-report/index.html"
+  else
+    echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [${TEST_CONTAINER_NAME}] tests reports could not be found"
+  fi
+  set -e
 }
 
 function main() {

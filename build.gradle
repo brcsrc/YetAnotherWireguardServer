@@ -4,6 +4,10 @@ plugins {
 	id 'org.springframework.boot' version '3.2.6-SNAPSHOT'
 	id 'io.spring.dependency-management' version '1.1.4'
 	id 'de.undercouch.download' version '4.1.1'
+	id 'jacoco'
+}
+jacoco {
+	toolVersion = '0.8.9'
 }
 
 apply plugin: 'io.spring.dependency-management'
@@ -35,7 +39,6 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testImplementation 'org.junit.jupiter:junit-jupiter:5.9.3'
-
 }
 
 // create local dir 'lib' and run ./gradlew copyDependenciesToLocalRepo
@@ -46,8 +49,8 @@ task copyDependenciesToLocalRepo(type: Copy) {
 
 // caches gradle to speed up docker container build
 task downloadGradleBin(type: Download) {
-	src 'https://services.gradle.org/distributions/gradle-8.7-bin.zip'  // URL of the Gradle distribution
-	dest new File(project.rootDir, 'gradle/wrapper/gradle-8.7-bin.zip')
+	src 'https://services.gradle.org/distributions/gradle-8.9-bin.zip'  // URL of the Gradle distribution
+	dest new File(project.rootDir, 'gradle/wrapper/gradle-8.9-bin.zip')
 	overwrite false
 }
 
@@ -72,6 +75,8 @@ repositories {
 // make test runs log output only on test failures
 tasks.named('test') {
 	useJUnitPlatform()
+	finalizedBy jacocoTestReport
+
 	testLogging {
 		events "passed", "failed"  					// Only log "passed" and "failed" events
 		exceptionFormat = "full"  					// Show full stack trace for failures

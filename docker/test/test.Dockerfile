@@ -1,4 +1,4 @@
-FROM gradle:8.7.0-jdk21-alpine
+FROM gradle:8.9.0-jdk21-alpine
 WORKDIR /opt
 COPY build.gradle settings.gradle ./
 COPY gradle gradle

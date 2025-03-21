@@ -1,87 +1,12 @@
 # YetAnotherWireguardServer
+![license badge](https://img.shields.io/badge/License-MIT-blue)
+> 🚧 Under Construction 🚧
 
-## Development
+YetAnotherWireguardServer is a containerized Wireguard server designed to run anywhere you can run Docker.
 
-### generate gradle wrapper
-```shell
-gradle wrapper
-```
+##### *Links*
 
-### cache gradle jars and zip locally (sppeds up image build)
-```shell
-./gradlew downloadGradleBin
-```
-
-##### cache java dependencies locally (speeds up image build)
-```shell
-./gradlew copyDependenciesToLocalRepo
-```
-
-
-##### Build just the spring application without tests
-```shell
-./gradlew build -x test
-```
-
-##### Clean dependencies and rebuild
-```shell
-./gradlew clean && ./gradlew build -x test
-```
-
-##### Build for development
-```shell
-\
-docker build -f docker/prod/Dockerfile -t yaws . && \
-docker run \
- --privileged \
- --cap-add=NET_ADMIN \
- -p 0.0.0.0:51820:51820/udp \
- -p 0.0.0.0:8080:8080/tcp \
- --name yaws \
- -d \
- yaws:latest && \
-docker exec -it yaws bash
-```
-
-##### Build for development and pass the sqlite db through to project filesystem
-> you have to already have the DB available. you can run the above command and then copy it with `docker cp yaws:/opt/yaws.db .`
-```shell
-\
-docker build -f docker/prod/Dockerfile -t yaws . && \
-docker run \
- --privileged \
- --cap-add=NET_ADMIN \
- -p 0.0.0.0:51820:51820/udp \
- -p 0.0.0.0:8080:8080/tcp \
- -v $(pwd)/yaws.db:/opt/yaws.db \
- --name yaws \
- -d \
- yaws:latest && \
-docker exec -it yaws bash
-```
-
-##### View Swagger UI
-http://localhost:8080/swagger-ui/index.html
-
-##### View OpenAPI schema
-http://localhost:8080/v3/api-docs
-
-##### build and run backend tests
-```shell
-\
-docker build -f docker/test/test.Dockerfile -t yaws-tests . && \
-docker run --rm \
- --privileged \
- --cap-add=NET_ADMIN \
- --name yaws-tests \
- yaws-tests:latest 
-```
-
-## Notes
-
-https://www.cyberciti.biz/faq/how-to-set-up-wireguard-vpn-server-on-alpine-linux/
-https://docs.aws.amazon.com/corretto/latest/corretto-21-ug/generic-linux-install.html#alpine-linux-install-instruct
-https://manpages.debian.org/unstable/wireguard-tools/wg.8.en.html
-https://www.baeldung.com/spring-boot-sqlite
-https://stackoverflow.com/questions/62522444/access-sqlite-db-file-with-jpa
-https://github.com/Semo/spring-jpa-sqlite-sample/blob/master/src/main/java/dev/mutiny/semo/config/SQLiteDataTypesConfig.java
+- [Development](docs/DEVELOPMENT.md)
+- [Spring Docs](docs/HELP.md)
+- [Entity Relationship Diagram](docs/yaws-erd.drawio)
+- [Insomnia Request Model](docs/Insomnia_2025-03-20.json)

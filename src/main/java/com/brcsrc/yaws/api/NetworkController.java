@@ -60,10 +60,10 @@ public class NetworkController {
         return this.networkService.deleteNetwork(networkName);
     }
 
-    @Operation(summary = "Update Network Tag", description = "Update the tag of a network")
-    @PatchMapping("/{networkName}/tag")
-    public Network updateNetworkTag(@PathVariable String networkName, @RequestBody UpdateNetworkRequest updateNetworkRequest) {
-        logger.info("received UpdateNetworkTag request, updating network {} with new tag: {}", networkName, updateNetworkRequest.getNewTag());
-        return this.networkService.updateNetworkTag(networkName, updateNetworkRequest.getNewTag());
+    @Operation(summary = "Update Network", description = "update the tag or status of a network")
+    @PatchMapping("/{networkName}")
+    public Network updateNetwork(@PathVariable String networkName, @RequestBody UpdateNetworkRequest updateNetworkRequest) {
+        logger.info("received UpdateNetworkTag request, updating network {} with new tag: {}", networkName, updateNetworkRequest);
+        return this.networkService.updateNetwork(networkName, updateNetworkRequest);
     }
 }

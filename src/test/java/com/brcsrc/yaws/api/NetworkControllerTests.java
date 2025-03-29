@@ -12,6 +12,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.slf4j.Logger;
@@ -20,7 +22,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,7 +44,7 @@ public class NetworkControllerTests {
     private String baseUrl;
     private final String testNetworkName = "Network1";
     private final String testNetworkCidr = "10.100.0.1/24";
-    private final String testNetworkTag = "network 1 tag";
+    private final String testNetworkTag = "network_1_tag";
     private final int testNetworkListenPort = 51820;
 
     private final RestClient restClient = RestClient.create();
@@ -256,7 +260,7 @@ public class NetworkControllerTests {
         networkWithListenPortAlreadyInUse.setNetworkName("NotTestNetworkName");
         networkWithListenPortAlreadyInUse.setNetworkCidr("192.168.0.1/24");
         networkWithListenPortAlreadyInUse.setNetworkListenPort(testNetworkListenPort); // Same listen port
-        networkWithListenPortAlreadyInUse.setNetworkTag("not test network tag");
+        networkWithListenPortAlreadyInUse.setNetworkTag("not_test_network_tag");
 
         ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
                 .uri(baseUrl)
@@ -302,7 +306,7 @@ public class NetworkControllerTests {
         networkWithNameAlreadyInUse.setNetworkName(testNetworkName);
         networkWithNameAlreadyInUse.setNetworkCidr("192.168.0.1/24");
         networkWithNameAlreadyInUse.setNetworkListenPort(51820);
-        networkWithNameAlreadyInUse.setNetworkTag("not test network tag");
+        networkWithNameAlreadyInUse.setNetworkTag("not_test_network_tag");
 
         ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
                 .uri(baseUrl)
@@ -341,7 +345,8 @@ public class NetworkControllerTests {
         ObjectMapper objectMapper = new ObjectMapper();
         List<Network> networks = objectMapper.readValue(
                 listNetworkResponse.getBody(),
-                new com.fasterxml.jackson.core.type.TypeReference<List<Network>>() {}
+                new com.fasterxml.jackson.core.type.TypeReference<List<Network>>() {
+        }
         );
         assertEquals(1, networks.size());
         assertEquals("Network2", networks.get(0).getNetworkName());
@@ -404,7 +409,8 @@ public class NetworkControllerTests {
     }
 
     @Test
-    public void testUpdateNetworkUpdatesNetwork() {
+    public void testUpdateNetworkTagOnly() {
+        // Step 1: Create a test network
         Network network = new Network();
         network.setNetworkName(testNetworkName);
         network.setNetworkCidr(testNetworkCidr);
@@ -412,22 +418,118 @@ public class NetworkControllerTests {
         network.setNetworkTag(testNetworkTag);
         networkService.createNetwork(network);
 
-        String newTag = "this is an updated tag";
+        // Step 2: Update the networkTag with valid input
+        String newTag = "updated-tag";
+        UpdateNetworkRequest updateRequest = new UpdateNetworkRequest();
+        updateRequest.setNetworkTag(newTag);
 
-        UpdateNetworkRequest updateNetworkRequest = new UpdateNetworkRequest();
-        updateNetworkRequest.setNewTag(newTag);
-
-        String updateNetworkUrl = String.format("%s/%s/tag", baseUrl, testNetworkName);
+        String updateNetworkUrl = String.format("%s/%s", baseUrl, testNetworkName);
 
         ResponseEntity<Network> response = restClient.patch()
                 .uri(updateNetworkUrl)
-                .body(updateNetworkRequest)
+                .body(updateRequest)
                 .retrieve()
                 .toEntity(Network.class);
 
-        Optional<Network> updatedNetwork = networkRepository.findByNetworkName(testNetworkName);
-        assertTrue(updatedNetwork.isPresent());
-        assertEquals(newTag, updatedNetwork.get().getNetworkTag());
+        // Step 3: Verify the response
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        Network updatedNetwork = response.getBody();
+        assert updatedNetwork != null;
+        assertEquals(newTag, updatedNetwork.getNetworkTag());
+        assertEquals(NetworkStatus.ACTIVE, updatedNetwork.getNetworkStatus()); // Status should remain unchanged
+
+        // Step 4: Test trimming of spaces
+        String tagWithSpaces = "   trimmed-tag   ";
+        updateRequest.setNetworkTag(tagWithSpaces);
+
+        response = restClient.patch()
+                .uri(updateNetworkUrl)
+                .body(updateRequest)
+                .retrieve()
+                .toEntity(Network.class);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        updatedNetwork = response.getBody();
+        assert updatedNetwork != null;
+        assertEquals("trimmed-tag", updatedNetwork.getNetworkTag()); // Spaces should be trimmed
+
+        // Step 5: Test invalid characters
+        String invalidTag = "invalid@tag!";
+        updateRequest.setNetworkTag(invalidTag);
+
+        HttpClientErrorException.BadRequest exception = assertThrows(HttpClientErrorException.BadRequest.class, () -> {
+            restClient.patch()
+                    .uri(updateNetworkUrl)
+                    .body(updateRequest)
+                    .retrieve()
+                    .toEntity(Network.class);
+        });
+
+        // Check if the response body contains the expected error message
+        String responseBody = exception.getResponseBodyAsString();
+        assertNotNull(responseBody, "Response body should not be null");
+        assertTrue(responseBody.contains("Invalid networkTag")); // Ensure the error message matches
+    }
+
+    @Test
+    public void testUpdateNetworkStatusOnly() {
+        // Step 1: Create a test network
+        Network network = new Network();
+        network.setNetworkName(testNetworkName);
+        network.setNetworkCidr(testNetworkCidr);
+        network.setNetworkListenPort(testNetworkListenPort);
+        network.setNetworkTag(testNetworkTag);
+        networkService.createNetwork(network);
+
+        // Step 2: Update the networkStatus
+        UpdateNetworkRequest updateRequest = new UpdateNetworkRequest();
+        updateRequest.setNetworkStatus(NetworkStatus.INACTIVE);
+
+        String updateNetworkUrl = String.format("%s/%s", baseUrl, testNetworkName);
+
+        ResponseEntity<Network> response = restClient.patch()
+                .uri(updateNetworkUrl)
+                .body(updateRequest)
+                .retrieve()
+                .toEntity(Network.class);
+
+        // Step 3: Verify the response
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        Network updatedNetwork = response.getBody();
+        assert updatedNetwork != null;
+        assertEquals(NetworkStatus.INACTIVE, updatedNetwork.getNetworkStatus());
+        assertEquals(testNetworkTag, updatedNetwork.getNetworkTag()); // Tag should remain unchanged
+    }
+
+    @Test
+    public void testUpdateNetworkTagAndStatus() {
+        // Step 1: Create a test network
+        Network network = new Network();
+        network.setNetworkName(testNetworkName);
+        network.setNetworkCidr(testNetworkCidr);
+        network.setNetworkListenPort(testNetworkListenPort);
+        network.setNetworkTag(testNetworkTag);
+        networkService.createNetwork(network);
+
+        // Step 2: Update both networkTag and networkStatus
+        String newTag = "updated_tag";
+        UpdateNetworkRequest updateRequest = new UpdateNetworkRequest();
+        updateRequest.setNetworkTag(newTag);
+        updateRequest.setNetworkStatus(NetworkStatus.INACTIVE);
+
+        String updateNetworkUrl = String.format("%s/%s", baseUrl, testNetworkName);
+
+        ResponseEntity<Network> response = restClient.patch()
+                .uri(updateNetworkUrl)
+                .body(updateRequest)
+                .retrieve()
+                .toEntity(Network.class);
+
+        // Step 3: Verify the response
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        Network updatedNetwork = response.getBody();
+        assert updatedNetwork != null;
+        assertEquals(newTag, updatedNetwork.getNetworkTag());
+        assertEquals(NetworkStatus.INACTIVE, updatedNetwork.getNetworkStatus());
     }
 }
-

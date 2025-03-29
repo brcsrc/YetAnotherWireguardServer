@@ -1,32 +1,34 @@
 package com.brcsrc.yaws.service;
 
-import com.brcsrc.yaws.exceptions.InternalServerException;
-import com.brcsrc.yaws.model.Constants;
-import com.brcsrc.yaws.model.Network;
-import com.brcsrc.yaws.model.NetworkStatus;
-import com.brcsrc.yaws.persistence.NetworkRepository;
-import com.brcsrc.yaws.shell.ExecutionResult;
-import com.brcsrc.yaws.shell.Executor;
-import com.brcsrc.yaws.utility.FilepathUtils;
-import com.brcsrc.yaws.utility.IPUtils;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.brcsrc.yaws.exceptions.InternalServerException;
+import com.brcsrc.yaws.model.Constants;
+import com.brcsrc.yaws.model.Network;
+import com.brcsrc.yaws.model.NetworkStatus;
+import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
+import com.brcsrc.yaws.persistence.NetworkRepository;
+import com.brcsrc.yaws.shell.ExecutionResult;
+import com.brcsrc.yaws.shell.Executor;
+import com.brcsrc.yaws.utility.FilepathUtils;
+import com.brcsrc.yaws.utility.IPUtils;
 
 @Service
 public class NetworkService {
@@ -34,7 +36,6 @@ public class NetworkService {
     private final NetworkRepository repository;
     private static final Logger logger = LoggerFactory.getLogger(NetworkService.class);
 
-    @Autowired
     public NetworkService(NetworkRepository repository) {
         this.repository = repository;
     }
@@ -112,9 +113,9 @@ public class NetworkService {
 
         // create the network specific directories to hold these files
         var directoriesToMake = List.of(
-              NETWORK_DIR_PATH,
-              NETWORK_KEYS_PATH,
-              NETWORK_CLIENTS_PATH
+                NETWORK_DIR_PATH,
+                NETWORK_KEYS_PATH,
+                NETWORK_CLIENTS_PATH
         );
         for (String directory : directoriesToMake) {
             try {
@@ -324,18 +325,159 @@ public class NetworkService {
         }
     }
 
-    // updateNetwork function
-    // Function to update the tag of a network, given the network name and the new tag, and return the updated network
-    public Network updateNetworkTag(String networkName, String newTag) {
+    public Network updateNetwork(String networkName, UpdateNetworkRequest updateNetworkRequest) {
+        logger.info("Starting updateNetwork for networkName: {}", networkName);
+        logger.debug("UpdateNetworkRequest received: {}", updateNetworkRequest);
+
+        // Validate the UpdateNetworkRequest
+        validateUpdateRequest(updateNetworkRequest);
+
+        // Retrieve the existing network from DB or throw an exception if it doesn't exist
+        // TODO: Maybe include system level check through wg show <networkName> ?
         Optional<Network> existingNetwork = this.repository.findByNetworkName(networkName);
         if (existingNetwork.isEmpty()) {
-            String errMsg = String.format("network '%s' does not exist", networkName);
+            String errMsg = String.format("Network '%s' does not exist", networkName);
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
+
         Network network = existingNetwork.get();
-        network.setNetworkTag(newTag);
-        return this.repository.save(network);
+        logger.debug("Existing network retrieved: {}", network);
+
+        // Update the networkTag if provided
+        if (updateNetworkRequest.getNetworkTag() != null) {
+            updateNetworkTag(network, updateNetworkRequest.getNetworkTag());
+        }
+
+        // Update the networkStatus if provided
+        if (updateNetworkRequest.getNetworkStatus() != null) {
+            updateNetworkStatus(network, updateNetworkRequest.getNetworkStatus());
+        }
+
+        // Save the updated network using a helper method
+        return saveUpdatedNetwork(networkName, network);
+    }
+
+    // Helper method to validate the UpdateNetworkRequest
+    private void validateUpdateRequest(UpdateNetworkRequest updateNetworkRequest) {
+        if (updateNetworkRequest == null) {
+            String errMsg = "UpdateNetworkRequest cannot be null";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        if (updateNetworkRequest.getNetworkTag() == null && updateNetworkRequest.getNetworkStatus() == null) {
+            String errMsg = "At least one field (networkTag or networkStatus) must be provided for update";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+    }
+
+    // Helper method to update the networkTag
+    private void updateNetworkTag(Network network, String networkTag) {
+        logger.debug("Updating networkTag for network '{}': {}", network.getNetworkName(), networkTag);
+
+        // Trim leading and trailing spaces
+        networkTag = networkTag.trim();
+
+        // Define MAX_TAG_LENGTH scoped to this method
+        final int MAX_TAG_LENGTH = 64;
+
+        // Regular expression to allow only alphanumeric characters, dashes, and underscores
+        final String VALID_TAG_REGEX = "^[a-zA-Z0-9_-]+$";
+
+        if (networkTag.isEmpty() || networkTag.length() > MAX_TAG_LENGTH || !networkTag.matches(VALID_TAG_REGEX)) {
+            String errMsg = String.format(
+                    "Invalid networkTag: must be non-empty, no more than %d characters, and contain only alphanumeric characters, dashes, or underscores",
+                    MAX_TAG_LENGTH
+            );
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        network.setNetworkTag(networkTag);
+    }
+
+    // Helper method to update the networkStatus
+    private void updateNetworkStatus(Network network, NetworkStatus newStatus) {
+        logger.debug("Updating networkStatus for network '{}': {}", network.getNetworkName(), newStatus);
+
+        if (!EnumSet.of(NetworkStatus.ACTIVE, NetworkStatus.INACTIVE).contains(newStatus)) {
+            String errMsg = String.format("Invalid networkStatus: '%s' is not a valid status", newStatus);
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        // Handle status change
+        if (newStatus == NetworkStatus.INACTIVE) {
+            deactivateNetwork(network); // NEW: Call helper method to deactivate the network
+        } else if (newStatus == NetworkStatus.ACTIVE) {
+            activateNetwork(network); // NEW: Call helper method to activate the network
+        }
+
+        network.setNetworkStatus(newStatus);
+    }
+
+    // Helper method to save the updated network
+    private Network saveUpdatedNetwork(String networkName, Network network) {
+        try {
+            Network updatedNetwork = repository.save(network);
+            logger.info("Successfully updated network '{}': {}", networkName, updatedNetwork);
+            return updatedNetwork;
+        } catch (Exception e) {
+            String errMsg = String.format("Failed to save updated network '%s': %s", networkName, e.getMessage());
+            logger.error(errMsg, e);
+            throw new InternalServerException("Failed to update network");
+        }
+    }
+
+    // Helper method to deactivate a network
+    private void deactivateNetwork(Network network) {
+        // Check if Network is already INACTIVE
+        if (network.getNetworkStatus() == NetworkStatus.INACTIVE) {
+            logger.info("Network '{}' is already inactive. Skipping wg-quick down.", network.getNetworkName());
+            String errMsg = String.format("Network %s is already in networkStatus of INACTIVE.", network.getNetworkName());
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        logger.info("Deactivating network '{}'", network.getNetworkName());
+
+        // Run wg-quick down <NetworkName>
+        final String wgDownCommand = String.format("wg-quick down %s", network.getNetworkName());
+        ExecutionResult wgDownResult = Executor.runCommand(wgDownCommand);
+        if (wgDownResult.getExitCode() != 0) {
+            String errMsg = String.format("Failed to bring down WireGuard interface for network '%s': %s",
+                    network.getNetworkName(), wgDownResult.getStdout());
+            logger.error(errMsg);
+            throw new InternalServerException(errMsg);
+        }
+
+        logger.info("Successfully deactivated network '{}'", network.getNetworkName());
+    }
+
+    // Helper method to activate a network
+    private void activateNetwork(Network network) {
+        // Check if Network is already ACTIVE
+        if (network.getNetworkStatus() == NetworkStatus.ACTIVE) {
+            logger.info("Network '{}' is already active. Skipping wg-quick up.", network.getNetworkName());
+            String errMsg = String.format("Network %s is already in networkStatus of ACTIVE.", network.getNetworkName());
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        logger.info("Activating network '{}'", network.getNetworkName());
+
+        // Run wg-quick up <NetworkName>
+        final String wgUpCommand = String.format("wg-quick up %s", network.getNetworkName());
+        ExecutionResult wgUpResult = Executor.runCommand(wgUpCommand);
+        if (wgUpResult.getExitCode() != 0) {
+            String errMsg = String.format("Failed to bring up WireGuard interface for network '%s': %s",
+                    network.getNetworkName(), wgUpResult.getStdout());
+            logger.error(errMsg);
+            throw new InternalServerException(errMsg);
+        }
+
+        logger.info("Successfully activated network '{}'", network.getNetworkName());
     }
 }
-

@@ -24,23 +24,18 @@ public class WebSecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeRequests()
                 .requestMatchers(
-                        "/login",
-                        "/register",
-                        "/api/v1/networks/**",
-                        "/api/v1/clients/**",
-                        "/swagger-ui/**",       // Swagger UI static resources
-                        "/swagger-ui.html",     // Swagger UI main page
-                        "/v3/api-docs/**",      // OpenAPI docs
-                        "/api-docs/**",        // Alternative path
-                        "/error"            // without this, any client exception thrown is thrown as a 403 instead
-                ).permitAll()  // these are allowed for now
-                .anyRequest().authenticated()  // protects other routes
+                        "/", // Allow access to the root path
+                        "/index.html", // Allow access to the main frontend file
+                        "/static/**", // Allow access to static resources
+                        "/assets/**", // Allow access to assets (CSS, JS, images)
+                        "/api/v1/networks/**", // Allow access to API endpoints
+                        "/swagger-ui/**", // Allow access to Swagger UI
+                        "/v3/api-docs/**" // Allow access to OpenAPI docs
+                ).permitAll() // Permit access to these paths
+                .anyRequest().authenticated() // Protect all other routes
                 .and()
-                .formLogin().disable() // disable the default login page
-                .csrf().disable();  // TODO reenable later
+                .formLogin().disable() // Disable the default login page
+                .csrf().disable();     // Disable CSRF for now (can be re-enabled later)
         return http.build();
     }
 }
-
-
-

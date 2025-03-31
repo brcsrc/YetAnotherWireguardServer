@@ -1,0 +1,398 @@
+type: collection.insomnia.rest/5.0
+name: Scratch Pad
+meta:
+  id: wrk_scratchpad
+  created: 1729659940294
+  modified: 1729659940294
+collection:
+  - name: yaws
+    meta:
+      id: fld_ffd60b8bb65e4e83a5bf8d8575064565
+      created: 1739137474838
+      modified: 1743386458100
+      sortKey: -1739137474838
+    children:
+      - name: Network
+        meta:
+          id: fld_8fa02ca01d224660be96c051dbd13424
+          created: 1739137824143
+          modified: 1739137872777
+          sortKey: -1739137824143
+        children:
+          - url: http://localhost:8080/api/v1/networks
+            name: ListNetworks
+            meta:
+              id: req_da7e86fe72ac440fa08c9258be8a9d6a
+              created: 1739137603414
+              modified: 1743005449059
+              isPrivate: false
+              sortKey: -1739137830936
+            method: GET
+            headers:
+              - name: User-Agent
+                value: insomnia/10.3.0
+                id: pair_92276632be8545ce8f449bbd8872e116
+              - id: pair_5740a185ddd848d79cb688e6cd1223a3
+                name: Cookie
+                value: JSESSIONID=142E3247448F47D0B53D97100A4C3700
+                disabled: false
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/v1/networks/Network1
+            name: DescribeNetwork
+            meta:
+              id: req_bdf97167810042e3bd2378f57e25b524
+              created: 1739137663734
+              modified: 1742523858307
+              isPrivate: false
+              sortKey: -1739137830836
+            method: GET
+            headers:
+              - name: User-Agent
+                value: insomnia/10.3.0
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/v1/networks
+            name: CreateNetwork
+            meta:
+              id: req_ceb16b8b666d45749c074a5064e8ed58
+              created: 1739137711094
+              modified: 1742525362908
+              isPrivate: false
+              sortKey: -1739137830736
+            method: POST
+            body:
+              mimeType: application/json
+              text: |-
+                {
+                  "networkName": "Network1",
+                  "networkCidr": "10.100.0.1/24",
+                  "networkListenPort": "51820",
+                  "networkTag": "net1"
+                }
+            headers:
+              - name: Content-Type
+                value: application/json
+              - name: User-Agent
+                value: insomnia/10.3.0
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/v1/networks/Network1
+            name: DeleteNetwork
+            meta:
+              id: req_684eb49429a240a6a5de2916d4a0c0b1
+              created: 1739137762162
+              modified: 1741880043480
+              isPrivate: false
+              sortKey: -1739137830636
+            method: DELETE
+            headers:
+              - name: User-Agent
+                value: insomnia/10.3.0
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/v1/networks/Network1%27%20OR%20%271%27%3D%271
+            name: DeleteNetwork SQL Inject
+            meta:
+              id: req_153c1241077640389ab863d5c9bb65b3
+              created: 1740114188025
+              modified: 1740114193412
+              isPrivate: false
+              sortKey: -1739137674108
+            method: DELETE
+            headers:
+              - name: User-Agent
+                value: insomnia/10.3.0
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/v1/networks/Network1
+            name: UpdateNetwork
+            meta:
+              id: req_05f263cc8dc34ede9d8cc01bc696f96c
+              created: 1742523821294
+              modified: 1743386502229
+              isPrivate: false
+              sortKey: -1742523821294
+            method: PATCH
+            body:
+              mimeType: application/json
+              text: |-
+                {
+                	"networkStatus": "ACTIVE"
+                }
+            headers:
+              - name: Content-Type
+                value: application/json
+              - name: User-Agent
+                value: insomnia/10.3.1
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+      - name: NetworkClients
+        meta:
+          id: fld_482b6c99f8d3409ea76d7a6d4640d6f5
+          created: 1739137892785
+          modified: 1739137892785
+          sortKey: -1739137892785
+        children:
+          - url: http://localhost:8080/api/v1/clients
+            name: CreateNetworkClient
+            meta:
+              id: req_b72c8965061d4039ab6ea0e872390448
+              created: 1739137900382
+              modified: 1743004396171
+              isPrivate: false
+              sortKey: -1739137900382
+            method: POST
+            body:
+              mimeType: application/json
+              text: |-
+                {
+                  "clientName": "Client1",
+                  "clientCidr": "10.100.0.2/24",
+                  "clientDns": "1.1.1.1",
+                  "allowedIps": "0.0.0.0/0",
+                  "networkName": "Network1",
+                  "networkEndpoint": "127.0.0.1"
+                }
+            headers:
+              - name: Content-Type
+                value: application/json
+              - name: User-Agent
+                value: insomnia/10.3.0
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/v1/clients
+            name: ListNetworkClients
+            meta:
+              id: req_9511793877e744e9bb0b005700638cf6
+              created: 1739762826477
+              modified: 1740156475208
+              isPrivate: false
+              sortKey: -1739762826477
+            method: GET
+            body:
+              mimeType: application/json
+              text: |-
+                {
+                	"networkName": "Network1"
+                }
+            headers:
+              - name: Content-Type
+                value: application/json
+              - name: User-Agent
+                value: insomnia/10.3.1
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/v1/clients/Network1/Client1
+            name: DeleteNetworkClient
+            meta:
+              id: req_fbf57263004e44889ba3ca6c3c925198
+              created: 1740156539184
+              modified: 1740640677491
+              isPrivate: false
+              sortKey: -1739450363429.5
+            method: DELETE
+            body:
+              mimeType: application/json
+            headers:
+              - name: Content-Type
+                value: application/json
+              - name: User-Agent
+                value: insomnia/10.3.1
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/v1/clients/Network1/Client1/config
+            name: GetNetworkConfigFile
+            meta:
+              id: req_d6aff3305a204559bb0a3df56f1e2d34
+              created: 1742184721755
+              modified: 1742187113767
+              isPrivate: false
+              sortKey: -1742184721755
+            method: GET
+            headers:
+              - name: User-Agent
+                value: insomnia/10.3.1
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/v1/clients/Network1/Client1
+            name: DescribeNetworkClient
+            meta:
+              id: req_b3d8acdfc45c498289359b6ace7a79f7
+              created: 1742523566105
+              modified: 1742523722613
+              isPrivate: false
+              sortKey: -1742523566105
+            method: GET
+            headers:
+              - name: User-Agent
+                value: insomnia/10.3.1
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+      - name: User
+        meta:
+          id: fld_f142d88a034141b1ad22dfbeebae9243
+          created: 1742919374420
+          modified: 1742919374420
+          sortKey: -1742919374420
+        children:
+          - url: http://localhost:8080/api/v1/user/register
+            name: CreateAdminUser
+            meta:
+              id: req_c64eec1808ef47d588ef13c6e8e59a22
+              created: 1742919376710
+              modified: 1743005207690
+              isPrivate: false
+              sortKey: -1742919376710
+            method: POST
+            body:
+              mimeType: application/json
+              text: |-
+                {
+                	"userName": "yaws-admin",
+                	"password": "changeme"
+                }
+            headers:
+              - name: Content-Type
+                value: application/json
+              - name: User-Agent
+                value: insomnia/11.0.0
+            authentication:
+              type: none
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/v1/user/authenticate
+            name: AuthenticateUser
+            meta:
+              id: req_b9a3a61559ab47f2b7ab6d307b767843
+              created: 1742973637060
+              modified: 1743005199304
+              isPrivate: false
+              sortKey: -1742973637060
+            method: POST
+            body:
+              mimeType: application/json
+              text: |-
+                {
+                	"userName": "yaws-admin",
+                	"password": "changeme"
+                }
+            headers:
+              - name: Content-Type
+                value: application/json
+              - name: User-Agent
+                value: insomnia/11.0.0
+            authentication:
+              type: none
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+    authentication:
+      type: bearer
+      token: eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJ5YXdzLmxvY2FsIiwic3ViIjoieWF3cy1hZG1pbiIsImlhdCI6MTc0MzM4NjQ0MSwiZXhwIjoxNzQzMzk3MjQxfQ.wVL3s79YyC21BGSok1rc8JzqLQJ-jzW8shAXhMnjJ0Tx72wwkcAgzEeiHhoZ7PSnJ8h_6hLDPSeKVnv5gxC2oA
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_99d30891da4bdcebc63947a8fc17f076de878684
+    created: 1729659960404
+    modified: 1743382101511
+  cookies:
+    - key: foo
+      value: bar
+      domain: domain.com
+      path: /
+      creation: 2025-03-26T05:40:57.215Z
+      id: 94d4ab97-82db-449e-80c5-cbb5aefedef4
+    - key: JSESSIONID
+      value: 49C97E352ABEF13730179E9FE082C5FE
+      domain: localhost
+      path: /
+      httpOnly: true
+      hostOnly: true
+      creation: 2025-03-26T05:40:57.216Z
+      lastAccessed: 2025-03-31T00:48:21.510Z
+      id: 6678c045-bd03-4953-8bd1-4bc3601cc0f2
+environments:
+  name: Base Environment
+  meta:
+    id: env_99d30891da4bdcebc63947a8fc17f076de878684
+    created: 1729659960316
+    modified: 1729659960316
+    isPrivate: false

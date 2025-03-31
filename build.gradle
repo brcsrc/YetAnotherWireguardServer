@@ -27,6 +27,9 @@ dependencies {
 
 	// security
 	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+	implementation 'io.jsonwebtoken:jjwt-impl:0.12.6'
+	implementation 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 
 	// persistence
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -52,15 +55,6 @@ task downloadGradleBin(type: Download) {
 	src 'https://services.gradle.org/distributions/gradle-8.9-bin.zip'  // URL of the Gradle distribution
 	dest new File(project.rootDir, 'gradle/wrapper/gradle-8.9-bin.zip')
 	overwrite false
-}
-
-repositories {
-	flatDir {
-		dirs 'lib'
-	}
-	mavenCentral()
-	maven { url 'https://repo.spring.io/milestone' }
-	maven { url 'https://repo.spring.io/snapshot' }
 }
 
 repositories {

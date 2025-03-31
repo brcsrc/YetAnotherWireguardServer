@@ -11,4 +11,6 @@ public class Constants {
     // ip related fields
     public static final String IPV4_CIDR_REGEXP = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(3[0-2]|[1-2][0-9]|[0-9]))$";
     public static final String IPV4_ADDRESS_REGEXP = "^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$";
+    // admin user row id is always 1L because we can only have one
+    public static final Long ADMIN_USER_ID = 1L;
 }

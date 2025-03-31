@@ -45,7 +45,7 @@ public class StartupTasks {
             }
         }
         if (errorsOnActivate) {
-            throw new InternalServerException("restarkActiveNetworks ran into an error");
+            throw new InternalServerException("restartActiveNetworks ran into an error");
         }
     }
 }

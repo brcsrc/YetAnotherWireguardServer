@@ -35,6 +35,7 @@ docker build -f docker/prod/Dockerfile -t yaws . && \
 docker run \
  --privileged \
  --cap-add=NET_ADMIN \
+ -e DEV="true" \
  -p 0.0.0.0:51820:51820/udp \
  -p 0.0.0.0:8080:8080/tcp \
  --name yaws \
@@ -97,9 +98,43 @@ run any test matching the pattern
 ./scripts/test-runner.sh run-tests --test-name "*testAddClientToNetworkThrowsException*"
 ```
 
+## YAWS Database manipulation
+### read table with column names as well as values 
+the default behavior does not respond with result sets with column names, only column values
+```shell
+bash-5.1# sqlite3
+SQLite version 3.35.5 2021-04-19 18:32:05
+Enter ".help" for usage hints.
+Connected to a transient in-memory database.
+Use ".open FILENAME" to reopen on a persistent database.
+sqlite> .open yaws.db
+sqlite> .headers on
+sqlite> .mode column
+sqlite> SELECT * FROM users;
+id  password  user_name
+--  --------  ---------
+1   changeme  admin    
+sqlite> 
+
+```
+
 
 ## Notes
 
+##### wireguard on alpine
 https://www.cyberciti.biz/faq/how-to-set-up-wireguard-vpn-server-on-alpine-linux/
 https://docs.aws.amazon.com/corretto/latest/corretto-21-ug/generic-linux-install.html#alpine-linux-install-instruct
 https://manpages.debian.org/unstable/wireguard-tools/wg.8.en.html
+
+##### authentication
+https://www.youtube.com/watch?v=9J-b6OlPy24
+https://www.youtube.com/watch?v=HYBRBkYtpeo
+
+##### fetching public ip
+```shell
+# via opendns, requires `bind-utils` on alpine
+dig +short myip.opendns.com @resolver1.opendns.com
+
+# via ifconfig.me, requires `curl` on alpine
+curl ifconfig.me
+```

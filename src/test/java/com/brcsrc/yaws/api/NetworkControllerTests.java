@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Optional;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)  // required for using @BeforeAll/@AfterAll outside of static context
 public class NetworkControllerTests {
 
     @LocalServerPort
@@ -472,6 +472,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> response = restClient.patch()
                 .uri(updateNetworkUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(updateRequest)
                 .retrieve()
                 .toEntity(Network.class);
@@ -489,6 +490,7 @@ public class NetworkControllerTests {
 
         response = restClient.patch()
                 .uri(updateNetworkUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(updateRequest)
                 .retrieve()
                 .toEntity(Network.class);
@@ -505,6 +507,7 @@ public class NetworkControllerTests {
         HttpClientErrorException.BadRequest exception = assertThrows(HttpClientErrorException.BadRequest.class, () -> {
             restClient.patch()
                     .uri(updateNetworkUrl)
+                    .header("Authorization", String.format("Bearer %s", jwt))
                     .body(updateRequest)
                     .retrieve()
                     .toEntity(Network.class);
@@ -534,6 +537,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> response = restClient.patch()
                 .uri(updateNetworkUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(updateRequest)
                 .retrieve()
                 .toEntity(Network.class);

@@ -2,15 +2,17 @@ package com.brcsrc.yaws.api;
 
 import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkStatus;
+import com.brcsrc.yaws.model.User;
 import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
 import com.brcsrc.yaws.model.wireguard.NetworkConfig;
 import com.brcsrc.yaws.persistence.NetworkRepository;
+import com.brcsrc.yaws.persistence.UserRepository;
 import com.brcsrc.yaws.service.NetworkService;
+import com.brcsrc.yaws.service.UserService;
 import com.brcsrc.yaws.utility.WireguardConfigReaderUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class NetworkControllerTests {
 
     @LocalServerPort
@@ -33,9 +36,12 @@ public class NetworkControllerTests {
 
     @Autowired
     private NetworkService networkService;
-
     @Autowired
     private NetworkRepository networkRepository;
+    @Autowired
+    private UserService userService;
+    @Autowired
+    private UserRepository userRepository;
 
     private String baseUrl;
     private final String testNetworkName = "Network1";
@@ -43,9 +49,25 @@ public class NetworkControllerTests {
     private final String testNetworkTag = "network 1 tag";
     private final int testNetworkListenPort = 51820;
 
+    private final String testUserName = "admin";
+    private final String testPassword = "changeme";
+    private String jwt;
+
     private final RestClient restClient = RestClient.create();
 
     private static final Logger logger = LoggerFactory.getLogger(NetworkControllerTests.class);
+
+    @BeforeAll
+    public void setupAll() {
+        logger.info("creating test admin user");
+        User testAdminUser = new User();
+        testAdminUser.setUserName(testUserName);
+        testAdminUser.setPassword(testPassword);
+        userService.createAdminUser(testAdminUser);
+
+        logger.info("authenticating as test admin user");
+        jwt = userService.authenticateAndIssueToken(testAdminUser);
+    }
 
     @BeforeEach
     public void setup() {
@@ -61,6 +83,16 @@ public class NetworkControllerTests {
         }
     }
 
+    @AfterAll
+    public void teardownAll() {
+        Optional<User> testAdminUserOpt = userRepository.findByUserName(testUserName);
+        if (testAdminUserOpt.isPresent()) {
+            User testAdminUser = testAdminUserOpt.get();
+            logger.info("cleaning up test admin user");
+            userRepository.delete(testAdminUser);
+        }
+    }
+
     @Test
     public void testCreateNetworkCreatesNetwork() {
         Network network = new Network();
@@ -73,6 +105,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> response = restClient.post()
                 .uri(createNetworkUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(network)
                 .retrieve()
                 .toEntity(Network.class);
@@ -113,6 +146,7 @@ public class NetworkControllerTests {
 
             ResponseEntity<String> response = restClient.post()
                     .uri(baseUrl)
+                    .header("Authorization", String.format("Bearer %s", jwt))
                     .body(network)
                     .exchange((request, response2) -> {
                         String responseBody = response2.bodyTo(String.class);
@@ -139,6 +173,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<String> response = restClient.post()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(network)
                 .exchange((request, response2) -> {
                     String responseBody = response2.bodyTo(String.class);
@@ -171,6 +206,7 @@ public class NetworkControllerTests {
 
             ResponseEntity<String> response = restClient.post()
                     .uri(baseUrl)
+                    .header("Authorization", String.format("Bearer %s", jwt))
                     .body(network)
                     .exchange((request, response2) -> {
                         String responseBody = response2.bodyTo(String.class);
@@ -197,6 +233,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> createNetworkResponse = restClient.post()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(network)
                 .retrieve()
                 .toEntity(Network.class);
@@ -214,6 +251,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(networkWithAddressAlreadyInUse)
                 .exchange((request, response) -> {
                     HttpStatusCode statusCode = response.getStatusCode();
@@ -244,6 +282,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> createNetworkResponse = restClient.post()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(network)
                 .retrieve()
                 .toEntity(Network.class);
@@ -260,6 +299,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(networkWithListenPortAlreadyInUse)
                 .exchange((request, response) -> {
                     HttpStatusCode statusCode = response.getStatusCode();
@@ -290,6 +330,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> createNetworkResponse = restClient.post()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(network)
                 .retrieve()
                 .toEntity(Network.class);
@@ -306,6 +347,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(networkWithNameAlreadyInUse)
                 .exchange((request, response) -> {
                     HttpStatusCode statusCode = response.getStatusCode();
@@ -334,6 +376,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<String> listNetworkResponse = restClient.get()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .retrieve()
                 .toEntity(String.class);
 
@@ -363,6 +406,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> describeNetworkResponse = restClient.get()
                 .uri(describeNetworkUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .retrieve()
                 .toEntity(Network.class);
 
@@ -389,6 +433,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> deleteNetworkResponse = restClient.delete()
                 .uri(deleteNetworkUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .retrieve()
                 .toEntity(Network.class);
 
@@ -421,6 +466,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> response = restClient.patch()
                 .uri(updateNetworkUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(updateNetworkRequest)
                 .retrieve()
                 .toEntity(Network.class);

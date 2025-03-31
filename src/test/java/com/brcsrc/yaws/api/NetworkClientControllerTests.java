@@ -3,14 +3,17 @@ package com.brcsrc.yaws.api;
 import com.brcsrc.yaws.model.Client;
 import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkClient;
+import com.brcsrc.yaws.model.User;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
 import com.brcsrc.yaws.model.wireguard.ClientConfig;
 import com.brcsrc.yaws.persistence.ClientRepository;
 import com.brcsrc.yaws.persistence.NetworkClientRepository;
 import com.brcsrc.yaws.persistence.NetworkRepository;
+import com.brcsrc.yaws.persistence.UserRepository;
 import com.brcsrc.yaws.service.NetworkClientService;
 import com.brcsrc.yaws.service.NetworkService;
+import com.brcsrc.yaws.service.UserService;
 import com.brcsrc.yaws.utility.FilepathUtils;
 import com.brcsrc.yaws.utility.WireguardConfigReaderUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -21,13 +24,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +52,7 @@ import java.net.http.HttpResponse;
 import java.util.Arrays;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class NetworkClientControllerTests {
 
     @LocalServerPort
@@ -60,13 +64,16 @@ public class NetworkClientControllerTests {
     private NetworkService networkService;
     @Autowired
     private NetworkClientService networkClientService;
-
     @Autowired
     private NetworkRepository networkRepository;
     @Autowired
     private ClientRepository clientRepository;
     @Autowired
     private NetworkClientRepository netClientRepository;
+    @Autowired
+    private UserService userService;
+    @Autowired
+    private UserRepository userRepository;
 
     private static final Logger logger = LoggerFactory.getLogger(NetworkClientControllerTests.class);
 
@@ -84,7 +91,23 @@ public class NetworkClientControllerTests {
     private final String testNetworkEndpoint = "127.0.0.1";
     private final String testClientTag = "client 1 tag";
 
+    private final String testUserName = "admin";
+    private final String testPassword = "changeme";
+    private String jwt;
+
     public NetworkClientControllerTests() {
+    }
+
+    @BeforeAll
+    public void setupAll() {
+        logger.info("creating test admin user");
+        User testAdminUser = new User();
+        testAdminUser.setUserName(testUserName);
+        testAdminUser.setPassword(testPassword);
+        userService.createAdminUser(testAdminUser);
+
+        logger.info("authenticating as test admin user");
+        jwt = userService.authenticateAndIssueToken(testAdminUser);
     }
 
     @BeforeEach
@@ -119,6 +142,16 @@ public class NetworkClientControllerTests {
 
     }
 
+    @AfterAll
+    public void teardownAll() {
+        Optional<User> testAdminUserOpt = userRepository.findByUserName(testUserName);
+        if (testAdminUserOpt.isPresent()) {
+            User testAdminUser = testAdminUserOpt.get();
+            logger.info("cleaning up test admin user");
+            userRepository.delete(testAdminUser);
+        }
+    }
+
     @Test
     public void testCreateNetworkClientCreatesClient() {
         CreateNetworkClientRequest createNetworkClientRequest = new CreateNetworkClientRequest();
@@ -132,6 +165,7 @@ public class NetworkClientControllerTests {
 
         ResponseEntity<NetworkClient> createNetworkClientResponse = restClient.post()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(createNetworkClientRequest)
                 .retrieve()
                 .toEntity(NetworkClient.class);
@@ -200,6 +234,7 @@ public class NetworkClientControllerTests {
             createNetworkClientRequest.setClientCidr(cidr);
             ResponseEntity<String> responseEntity = restClient.post()
                     .uri(baseUrl)
+                    .header("Authorization", String.format("Bearer %s", jwt))
                     .body(createNetworkClientRequest)
                     .exchange((request, response) -> {
                         String responseBody = response.bodyTo(String.class);
@@ -227,6 +262,7 @@ public class NetworkClientControllerTests {
             createNetworkClientRequest.setClientDns(dns);
             ResponseEntity<String> responseEntity = restClient.post()
                     .uri(baseUrl)
+                    .header("Authorization", String.format("Bearer %s", jwt))
                     .body(createNetworkClientRequest)
                     .exchange((request, response) -> {
                         String responseBody = response.bodyTo(String.class);
@@ -254,6 +290,7 @@ public class NetworkClientControllerTests {
             createNetworkClientRequest.setAllowedIps(allowedIp);
             ResponseEntity<String> responseEntity = restClient.post()
                     .uri(baseUrl)
+                    .header("Authorization", String.format("Bearer %s", jwt))
                     .body(createNetworkClientRequest)
                     .exchange((request, response) -> {
                         String responseBody = response.bodyTo(String.class);
@@ -281,6 +318,7 @@ public class NetworkClientControllerTests {
             createNetworkClientRequest.setNetworkEndpoint(endpoint);
             ResponseEntity<String> responseEntity = restClient.post()
                     .uri(baseUrl)
+                    .header("Authorization", String.format("Bearer %s", jwt))
                     .body(createNetworkClientRequest)
                     .exchange((request, response) -> {
                         String responseBody = response.bodyTo(String.class);
@@ -305,6 +343,7 @@ public class NetworkClientControllerTests {
 
         restClient.post()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(createNetworkClientRequest)
                 .retrieve()
                 .toEntity(NetworkClient.class);
@@ -320,6 +359,7 @@ public class NetworkClientControllerTests {
 
         ResponseEntity<String> responseEntity = restClient.post()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(duplicateRequest)
                 .exchange((request, response) -> {
                     String responseBody = response.bodyTo(String.class);
@@ -347,6 +387,7 @@ public class NetworkClientControllerTests {
 
         restClient.post()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(createNetworkClientRequest)
                 .retrieve()
                 .toEntity(NetworkClient.class);
@@ -362,6 +403,7 @@ public class NetworkClientControllerTests {
 
         ResponseEntity<String> responseEntity = restClient.post()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .body(duplicateRequest)
                 .exchange((request, response) -> {
                     String responseBody = response.bodyTo(String.class);
@@ -399,6 +441,7 @@ public class NetworkClientControllerTests {
 
             restClient.post()
                     .uri(baseUrl)
+                    .header("Authorization", String.format("Bearer %s", jwt))
                     .body(createNetworkClientRequest)
                     .retrieve()
                     .toEntity(NetworkClient.class);
@@ -412,6 +455,7 @@ public class NetworkClientControllerTests {
         HttpRequest request = HttpRequest
                 .newBuilder()
                 .uri(new URI(baseUrl))
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .header("Content-Type", "application/json")
                 .method(HttpMethod.GET.name(), HttpRequest.BodyPublishers.ofString(new ObjectMapper().writeValueAsString(listNetworkClientsRequest)))
                 .build();
@@ -446,6 +490,7 @@ public class NetworkClientControllerTests {
 
         ResponseEntity<NetworkClient> createNetworkClientResponse = restClient.post()
                 .uri(baseUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .retrieve()
@@ -462,6 +507,7 @@ public class NetworkClientControllerTests {
         String configUrl = String.format("%s/%s/%s/config", baseUrl, testNetworkName, testClientName);
         ResponseEntity<Resource> response = restClient.get()
                 .uri(configUrl)
+                .header("Authorization", String.format("Bearer %s", jwt))
                 .retrieve()
                 .toEntity(Resource.class);
 

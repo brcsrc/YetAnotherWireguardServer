@@ -38,10 +38,10 @@ function run_tests() {
 
   if [[ -n "$test_name" ]]; then
     echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [${TEST_CONTAINER_NAME}] running tests with ${test_name}"
-    docker exec "$TEST_CONTAINER_NAME" /opt/gradlew test --tests "$test_name" --stacktrace
+    docker exec "$TEST_CONTAINER_NAME" /opt/gradlew test --tests "$test_name"
   else
     echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [${TEST_CONTAINER_NAME}] running all tests"
-    docker exec "$TEST_CONTAINER_NAME" /opt/gradlew test --stacktrace
+    docker exec "$TEST_CONTAINER_NAME" /opt/gradlew test
   fi
 
   echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [${TEST_CONTAINER_NAME}] retrieving test reports"

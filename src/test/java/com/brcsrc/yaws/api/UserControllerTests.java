@@ -2,7 +2,10 @@ package com.brcsrc.yaws.api;
 
 import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.User;
+import com.brcsrc.yaws.model.responses.AuthenticationResponse;
 import com.brcsrc.yaws.persistence.UserRepository;
+import com.brcsrc.yaws.security.JwtService;
+import com.brcsrc.yaws.service.UserService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +32,10 @@ public class UserControllerTests {
 
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private UserService userService;
+    @Autowired
+    private JwtService jwtService;
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -180,5 +187,122 @@ public class UserControllerTests {
 
         String errMsg = "password must have 2 lowercase letters, 2 uppercase letters, 1 special character and 1 number";
         assertTrue(responseBody.contains(errMsg));
+    }
+
+    @Test
+    public void authenticateAndIssueTokenAuthenticatesAndIssuesTokenOnGoodCredentials() {
+        User user = new User();
+        user.setUserName(testUserName);
+        user.setPassword(testPassword);
+
+        userService.createAdminUser(user);
+
+        String authenticateUrl = baseUrl + "/authenticate";
+
+        ResponseEntity<AuthenticationResponse> response = restClient.post()
+                .uri(authenticateUrl)
+                .body(user)
+                .retrieve()
+                .toEntity(AuthenticationResponse.class);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        // get token
+        AuthenticationResponse responseBody = response.getBody();
+        assert responseBody != null;
+        String jwt = responseBody.getToken();
+
+        // validate it with jwt service
+        assertTrue(jwtService.isTokenValid(jwt));
+    }
+
+    @Test
+    public void authenticateAndIssueTokenThrowsExceptionOnBadCredentials() {
+        User user = new User();
+        user.setUserName(testUserName);
+        user.setPassword(testPassword);
+
+        userService.createAdminUser(user);
+
+        String authenticateUrl = baseUrl + "/authenticate";
+
+        // test incorrect password
+        String complexButIncorrectPassword = "Agh^&d90=Hib@";
+        user.setPassword(complexButIncorrectPassword);
+
+        ResponseEntity<String> authenticateResponseBadPass = restClient.post()
+                .uri(authenticateUrl)
+                .body(user)
+                .exchange((request, response) -> {
+                    String body = response.bodyTo(String.class);
+                    return ResponseEntity.status(response.getStatusCode()).body(body);
+                });
+
+        assertEquals(HttpStatus.FORBIDDEN, authenticateResponseBadPass.getStatusCode());
+        String authenticateResponseBadPassBody = authenticateResponseBadPass.getBody();
+        assert authenticateResponseBadPassBody != null;
+        assertTrue(authenticateResponseBadPassBody.contains("authentication failed"));
+
+        // test incorrect username
+        String incorrectUserName = "somebodyelse";
+        user.setUserName(incorrectUserName);
+        user.setPassword(testPassword);
+
+        ResponseEntity<String> authenticateResponseBadUserName = restClient.post()
+                .uri(authenticateUrl)
+                .body(user)
+                .exchange((request, response) -> {
+                    String body = response.bodyTo(String.class);
+                    return ResponseEntity.status(response.getStatusCode()).body(body);
+                });
+
+        assertEquals(HttpStatus.FORBIDDEN, authenticateResponseBadUserName.getStatusCode());
+        String authenticateResponseBadUserNameBody = authenticateResponseBadPass.getBody();
+        assert authenticateResponseBadUserNameBody != null;
+        assertTrue(authenticateResponseBadUserNameBody.contains("authentication failed"));
+
+        // test when both are bad
+        user.setUserName(incorrectUserName);
+        user.setPassword(complexButIncorrectPassword);
+
+        ResponseEntity<String> authenticateResponseBadUserNameAndPass = restClient.post()
+                .uri(authenticateUrl)
+                .body(user)
+                .exchange((request, response) -> {
+                    String body = response.bodyTo(String.class);
+                    return ResponseEntity.status(response.getStatusCode()).body(body);
+                });
+
+        assertEquals(HttpStatus.FORBIDDEN, authenticateResponseBadUserNameAndPass.getStatusCode());
+        String authenticateResponseBadUserNameAndPassBody = authenticateResponseBadPass.getBody();
+        assert authenticateResponseBadUserNameAndPassBody != null;
+        assertTrue(authenticateResponseBadUserNameAndPassBody.contains("authentication failed"));
+    }
+
+    @Test
+    public void authenticateAndIssueTokenThrowsExceptionOnBadCredentialsWhenNoUserExists() {
+        // we dont want to signal different authentication failures to any potential attacker,
+        // a complete failure to authenticate perfectly should respond the same to a partial failure
+        // to authenticate
+        User user = new User();
+        user.setUserName(testUserName);
+        user.setPassword(testPassword);
+
+        // we do not create the user as part of test setup in this case
+
+        String authenticateUrl = baseUrl + "/authenticate";
+
+        ResponseEntity<String> authenticateResponseBadPass = restClient.post()
+                .uri(authenticateUrl)
+                .body(user)
+                .exchange((request, response) -> {
+                    String body = response.bodyTo(String.class);
+                    return ResponseEntity.status(response.getStatusCode()).body(body);
+                });
+
+        assertEquals(HttpStatus.FORBIDDEN, authenticateResponseBadPass.getStatusCode());
+        String authenticateResponseBadPassBody = authenticateResponseBadPass.getBody();
+        assert authenticateResponseBadPassBody != null;
+        assertTrue(authenticateResponseBadPassBody.contains("authentication failed"));
     }
 }

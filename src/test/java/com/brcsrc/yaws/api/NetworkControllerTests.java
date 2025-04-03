@@ -97,6 +97,30 @@ public class NetworkControllerTests {
     }
 
     @Test
+    public void testNetworkControllerRequiresAuthenticationToken() {
+        Network network = new Network();
+        network.setNetworkName(testNetworkName);
+        network.setNetworkCidr(testNetworkCidr);
+        network.setNetworkListenPort(testNetworkListenPort);
+        network.setNetworkTag(testNetworkTag);
+
+        String createNetworkUrl = baseUrl;
+
+        ResponseEntity<String> createNetworkResponse = restClient.post()
+                .uri(createNetworkUrl)
+                .body(network)
+                .exchange((request, response) -> {
+                    String body = response.bodyTo(String.class);
+                    return ResponseEntity.status(response.getStatusCode()).body(body);
+                });
+
+        assertEquals(HttpStatus.FORBIDDEN, createNetworkResponse.getStatusCode());
+        String createNetworkResponseBody = createNetworkResponse.getBody();
+        assert createNetworkResponseBody != null;
+        assertTrue(createNetworkResponseBody.contains("Access Denied"));
+    }
+
+    @Test
     public void testCreateNetworkCreatesNetwork() {
         Network network = new Network();
         network.setNetworkName(testNetworkName);

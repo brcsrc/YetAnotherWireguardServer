@@ -7,6 +7,8 @@ public class AuthenticationResponse {
     @Schema(description = "base64url-encoded string representation of the token", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c")
     private String token;
 
+    public AuthenticationResponse() {}
+
     public AuthenticationResponse(String token) {
         this.token = token;
     }

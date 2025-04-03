@@ -55,7 +55,7 @@ public class NetworkService {
     }
 
     public Network createNetwork(Network network) {
-        if (network.getNetworkName().length() > 64 || !network.getNetworkName().matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP)) {
+        if (!network.getNetworkName().matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "networkName must be alphanumeric without spaces and no more than 64 characters";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);

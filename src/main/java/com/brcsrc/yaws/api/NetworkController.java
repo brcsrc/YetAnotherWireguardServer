@@ -2,6 +2,7 @@ package com.brcsrc.yaws.api;
 
 import java.util.List;
 
+import com.brcsrc.yaws.model.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +22,7 @@ import com.brcsrc.yaws.service.NetworkService;
 import io.swagger.v3.oas.annotations.Operation;
 
 @RestController
-@RequestMapping("/api/v1/networks")
+@RequestMapping(Constants.BASE_URL + "/networks")
 public class NetworkController {
 
     private final NetworkService networkService;

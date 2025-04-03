@@ -32,7 +32,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         if (userOpt.isEmpty()) {
             String errMsg = "could not find user by username";
             logger.error(errMsg);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errMsg);
+            throw new UsernameNotFoundException(errMsg);
         }
         User user = userOpt.get();
         // users table intended to only have one row for the admin user by id 1L

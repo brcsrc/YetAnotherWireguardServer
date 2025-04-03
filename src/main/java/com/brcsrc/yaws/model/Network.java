@@ -18,8 +18,8 @@ public class Network {
 
     @Id
     @NotNull
-    @Pattern(regexp = Constants.CHAR_64_ALPHANUMERIC_REGEXP)
-    @Schema(description = "unique, alphanumeric name for the network")
+    @Pattern(regexp = Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)
+    @Schema(description = "unique, alphanumeric, 1-64 character name for the network")
     private String networkName;
 
     @NotNull

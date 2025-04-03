@@ -71,6 +71,10 @@ public class NetworkClientControllerTests {
     private UserService userService;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private UserService userService;
+    @Autowired
+    private UserRepository userRepository;
 
     private static final Logger logger = LoggerFactory.getLogger(NetworkClientControllerTests.class);
 

@@ -1,6 +1,8 @@
 package com.brcsrc.yaws.api;
 
+import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.User;
+import com.brcsrc.yaws.model.responses.AuthenticationResponse;
 import com.brcsrc.yaws.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import org.slf4j.Logger;
@@ -12,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/user")
+@RequestMapping(Constants.BASE_URL + "/user")
 public class UserController {
 
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
@@ -33,7 +35,7 @@ public class UserController {
 
     @Operation(summary = "Authenticate user and get token", description = "attempts to authenticate a user and returns an encoded JWT")
     @PostMapping("/authenticate")
-    public String authenticateAndIssueToken(@RequestBody User user) {
+    public AuthenticationResponse authenticateAndIssueToken(@RequestBody User user) {
         logger.info("got AuthenticateAndIssueToken request");
         return this.userService.authenticateAndIssueToken(user);
     }

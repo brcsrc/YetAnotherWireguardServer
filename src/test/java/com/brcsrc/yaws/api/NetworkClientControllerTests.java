@@ -7,7 +7,6 @@ import com.brcsrc.yaws.model.User;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
 import com.brcsrc.yaws.model.wireguard.ClientConfig;
-import com.brcsrc.yaws.persistence.ClientRepository;
 import com.brcsrc.yaws.persistence.NetworkClientRepository;
 import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.persistence.UserRepository;
@@ -67,8 +66,6 @@ public class NetworkClientControllerTests {
     @Autowired
     private NetworkRepository networkRepository;
     @Autowired
-    private ClientRepository clientRepository;
-    @Autowired
     private NetworkClientRepository netClientRepository;
     @Autowired
     private UserService userService;
@@ -92,7 +89,7 @@ public class NetworkClientControllerTests {
     private final String testClientTag = "client 1 tag";
 
     private final String testUserName = "admin";
-    private final String testPassword = "changeme";
+    private final String testPassword = "gH1@#oKl2ff1";
     private String jwt;
 
     public NetworkClientControllerTests() {
@@ -107,7 +104,7 @@ public class NetworkClientControllerTests {
         userService.createAdminUser(testAdminUser);
 
         logger.info("authenticating as test admin user");
-        jwt = userService.authenticateAndIssueToken(testAdminUser);
+        jwt = userService.authenticateAndIssueToken(testAdminUser).getToken();
     }
 
     @BeforeEach

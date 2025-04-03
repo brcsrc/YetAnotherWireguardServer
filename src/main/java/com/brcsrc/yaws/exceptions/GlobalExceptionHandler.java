@@ -47,18 +47,20 @@ public class GlobalExceptionHandler {
 
     // for authentication failures
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<Map<String, Object>> handleBadCredentialsException(BadRequestException ex, HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> handleBadCredentialsException(BadCredentialsException ex, HttpServletRequest request) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.FORBIDDEN.value());
         body.put("error", "authentication failed");
         body.put("path", request.getRequestURI());
 
+        logger.error("got BadCredentialsException: {}", ex.getMessage());
+
         return new ResponseEntity<>(body, HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(SignatureException.class)
-    public ResponseEntity<Map<String, Object>> handleSignatureException(BadRequestException ex, HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> handleSignatureException(SignatureException ex, HttpServletRequest request) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.UNAUTHORIZED.value());
@@ -112,7 +114,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.METHOD_NOT_ALLOWED);
     }
 
-    // the downside of this approach is any method not handled will default to 5xx
+    // the downside of this approach is any exception not handled will default to 5xx
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneralException(Exception ex, HttpServletRequest request) {
         logger.error("Unexpected error: ", ex);

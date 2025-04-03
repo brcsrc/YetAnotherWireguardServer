@@ -1,7 +1,8 @@
 package com.brcsrc.yaws.model;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Pattern;
 import org.hibernate.annotations.Check;
-import org.hibernate.annotations.SQLInsert;
 
 /**
  * this entity is not conventional, the users table is designed to only have a
@@ -15,7 +16,9 @@ import org.hibernate.annotations.SQLInsert;
 public class User {
 
     @Id
+    @JsonIgnore // ignore the id from being included in json representations of User
     private Long id = 1L;
+    @Pattern(regexp = Constants.CHAR_32_ALPHANUMERIC_DASHES_UNDERSC_REGEX)
     private String userName;
     private String password;
 

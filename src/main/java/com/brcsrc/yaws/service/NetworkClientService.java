@@ -101,12 +101,12 @@ public class NetworkClientService {
         }
 
         // check network name and client name are valid
-        if (request.getNetworkName().length() > 64 || !request.getNetworkName().matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP)) {
+        if (!request.getNetworkName().matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "networkName is not valid";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
-        if (request.getClientName().length() > 64 || !request.getClientName().matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP)) {
+        if (!request.getClientName().matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "clientName is not valid";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
@@ -314,7 +314,7 @@ public class NetworkClientService {
     @Transactional
     public NetworkClient deleteNetworkClient(String networkName, String clientName) {
         // input validation
-        if (!networkName.matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP) || !clientName.matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP)) {
+        if (!networkName.matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP) || !clientName.matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "network name or client name is invalid";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
@@ -382,12 +382,12 @@ public class NetworkClientService {
 
     public ResponseEntity<Resource> getNetworkClientConfigFile(@PathVariable String networkName, @PathVariable String clientName) {
         // validate inputs before putting them in jpa queries
-        if (networkName.length() > 64 || !networkName.matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP)) {
+        if (!networkName.matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "networkName is not valid";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
-        if (clientName.length() > 64 || !clientName.matches(Constants.CHAR_64_ALPHANUMERIC_REGEXP)) {
+        if (!clientName.matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "clientName is not valid";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);

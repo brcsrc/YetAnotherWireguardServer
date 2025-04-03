@@ -26,7 +26,6 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -54,7 +53,7 @@ public class NetworkControllerTests {
     private final int testNetworkListenPort = 51820;
 
     private final String testUserName = "admin";
-    private final String testPassword = "changeme";
+    private final String testPassword = "gH1@#oKl2ff1";
     private String jwt;
 
     private final RestClient restClient = RestClient.create();
@@ -70,7 +69,7 @@ public class NetworkControllerTests {
         userService.createAdminUser(testAdminUser);
 
         logger.info("authenticating as test admin user");
-        jwt = userService.authenticateAndIssueToken(testAdminUser);
+        jwt = userService.authenticateAndIssueToken(testAdminUser).getToken();
     }
 
     @BeforeEach
@@ -138,7 +137,7 @@ public class NetworkControllerTests {
         var badNames = List.of(
                 "name with spaces",
                 "name-with-%@$-chars",
-                "name-with-too-many-characters-123456789101112131415161718192021"
+                "name-with-too-many-characters-12345678910111213141516171819202101"
         );
 
         for (String s : badNames) {

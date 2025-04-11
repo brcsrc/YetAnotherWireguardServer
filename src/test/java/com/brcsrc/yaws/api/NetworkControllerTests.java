@@ -69,7 +69,7 @@ public class NetworkControllerTests {
         userService.createAdminUser(testAdminUser);
 
         logger.info("authenticating as test admin user");
-        jwt = userService.authenticateAndIssueToken(testAdminUser).getToken();
+        jwt = userService.authenticateAndIssueToken(testAdminUser);
     }
 
     @BeforeEach
@@ -132,7 +132,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> response = restClient.post()
                 .uri(createNetworkUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(network)
                 .retrieve()
                 .toEntity(Network.class);
@@ -173,7 +173,7 @@ public class NetworkControllerTests {
 
             ResponseEntity<String> response = restClient.post()
                     .uri(baseUrl)
-                    .header("Authorization", String.format("Bearer %s", jwt))
+                    .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(network)
                     .exchange((request, response2) -> {
                         String responseBody = response2.bodyTo(String.class);
@@ -200,7 +200,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<String> response = restClient.post()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(network)
                 .exchange((request, response2) -> {
                     String responseBody = response2.bodyTo(String.class);
@@ -233,7 +233,7 @@ public class NetworkControllerTests {
 
             ResponseEntity<String> response = restClient.post()
                     .uri(baseUrl)
-                    .header("Authorization", String.format("Bearer %s", jwt))
+                    .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(network)
                     .exchange((request, response2) -> {
                         String responseBody = response2.bodyTo(String.class);
@@ -260,7 +260,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> createNetworkResponse = restClient.post()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(network)
                 .retrieve()
                 .toEntity(Network.class);
@@ -278,7 +278,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(networkWithAddressAlreadyInUse)
                 .exchange((request, response) -> {
                     HttpStatusCode statusCode = response.getStatusCode();
@@ -309,7 +309,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> createNetworkResponse = restClient.post()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(network)
                 .retrieve()
                 .toEntity(Network.class);
@@ -326,7 +326,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(networkWithListenPortAlreadyInUse)
                 .exchange((request, response) -> {
                     HttpStatusCode statusCode = response.getStatusCode();
@@ -357,7 +357,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> createNetworkResponse = restClient.post()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(network)
                 .retrieve()
                 .toEntity(Network.class);
@@ -374,7 +374,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(networkWithNameAlreadyInUse)
                 .exchange((request, response) -> {
                     HttpStatusCode statusCode = response.getStatusCode();
@@ -403,7 +403,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<String> listNetworkResponse = restClient.get()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .retrieve()
                 .toEntity(String.class);
 
@@ -434,7 +434,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> describeNetworkResponse = restClient.get()
                 .uri(describeNetworkUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .retrieve()
                 .toEntity(Network.class);
 
@@ -461,7 +461,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> deleteNetworkResponse = restClient.delete()
                 .uri(deleteNetworkUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .retrieve()
                 .toEntity(Network.class);
 
@@ -495,7 +495,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> response = restClient.patch()
                 .uri(updateNetworkUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(updateRequest)
                 .retrieve()
                 .toEntity(Network.class);
@@ -513,7 +513,7 @@ public class NetworkControllerTests {
 
         response = restClient.patch()
                 .uri(updateNetworkUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(updateRequest)
                 .retrieve()
                 .toEntity(Network.class);
@@ -530,7 +530,7 @@ public class NetworkControllerTests {
         HttpClientErrorException.BadRequest exception = assertThrows(HttpClientErrorException.BadRequest.class, () -> {
             restClient.patch()
                     .uri(updateNetworkUrl)
-                    .header("Authorization", String.format("Bearer %s", jwt))
+                    .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(updateRequest)
                     .retrieve()
                     .toEntity(Network.class);
@@ -560,7 +560,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> response = restClient.patch()
                 .uri(updateNetworkUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(updateRequest)
                 .retrieve()
                 .toEntity(Network.class);
@@ -593,7 +593,7 @@ public class NetworkControllerTests {
 
         ResponseEntity<Network> response = restClient.patch()
                 .uri(updateNetworkUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(updateRequest)
                 .retrieve()
                 .toEntity(Network.class);

@@ -2,7 +2,6 @@ package com.brcsrc.yaws.api;
 
 import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.User;
-import com.brcsrc.yaws.model.responses.AuthenticationResponse;
 import com.brcsrc.yaws.persistence.UserRepository;
 import com.brcsrc.yaws.security.JwtService;
 import com.brcsrc.yaws.service.UserService;
@@ -14,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +22,7 @@ import org.springframework.web.client.RestClient;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Optional;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -199,18 +200,24 @@ public class UserControllerTests {
 
         String authenticateUrl = baseUrl + "/authenticate";
 
-        ResponseEntity<AuthenticationResponse> response = restClient.post()
+        ResponseEntity<?> response = restClient.post()
                 .uri(authenticateUrl)
                 .body(user)
                 .retrieve()
-                .toEntity(AuthenticationResponse.class);
+                .toEntity(Object.class);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
         // get token
-        AuthenticationResponse responseBody = response.getBody();
-        assert responseBody != null;
-        String jwt = responseBody.getToken();
+        List<String> cookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
+        assert cookies != null;
+        Optional<String> jwtOpt = cookies.stream()
+                .filter(cookie -> cookie.contains("accessToken="))
+                .map(cookie -> cookie.substring(cookie.indexOf("accessToken=") + "accessToken=".length(), cookie.indexOf(";")))
+                .findFirst();
+
+        assertTrue(jwtOpt.isPresent());
+        String jwt = jwtOpt.get();
 
         // validate it with jwt service
         assertTrue(jwtService.isTokenValid(jwt));

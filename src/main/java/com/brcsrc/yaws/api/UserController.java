@@ -2,12 +2,14 @@ package com.brcsrc.yaws.api;
 
 import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.User;
-import com.brcsrc.yaws.model.responses.AuthenticationResponse;
 import com.brcsrc.yaws.service.UserService;
+import com.brcsrc.yaws.utility.HeaderUtils;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,8 +37,12 @@ public class UserController {
 
     @Operation(summary = "Authenticate user and get token", description = "attempts to authenticate a user and returns an encoded JWT")
     @PostMapping("/authenticate")
-    public AuthenticationResponse authenticateAndIssueToken(@RequestBody User user) {
+    public ResponseEntity<?> authenticateAndIssueToken(@RequestBody User user, HttpServletResponse response) {
         logger.info("got AuthenticateAndIssueToken request");
-        return this.userService.authenticateAndIssueToken(user);
+        final String jwt = this.userService.authenticateAndIssueToken(user);
+        final String cookieValue = HeaderUtils.createResponseHttpOnlyAuthTokenCookieValue(jwt);
+        // Set-Cookie tells the client browser to set cookie for that domain
+        response.setHeader("Set-Cookie", cookieValue);
+        return ResponseEntity.ok().build();
     }
 }

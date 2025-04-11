@@ -104,7 +104,7 @@ public class NetworkClientControllerTests {
         userService.createAdminUser(testAdminUser);
 
         logger.info("authenticating as test admin user");
-        jwt = userService.authenticateAndIssueToken(testAdminUser).getToken();
+        jwt = userService.authenticateAndIssueToken(testAdminUser);
     }
 
     @BeforeEach
@@ -162,7 +162,7 @@ public class NetworkClientControllerTests {
 
         ResponseEntity<NetworkClient> createNetworkClientResponse = restClient.post()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(createNetworkClientRequest)
                 .retrieve()
                 .toEntity(NetworkClient.class);
@@ -231,7 +231,7 @@ public class NetworkClientControllerTests {
             createNetworkClientRequest.setClientCidr(cidr);
             ResponseEntity<String> responseEntity = restClient.post()
                     .uri(baseUrl)
-                    .header("Authorization", String.format("Bearer %s", jwt))
+                    .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(createNetworkClientRequest)
                     .exchange((request, response) -> {
                         String responseBody = response.bodyTo(String.class);
@@ -259,7 +259,7 @@ public class NetworkClientControllerTests {
             createNetworkClientRequest.setClientDns(dns);
             ResponseEntity<String> responseEntity = restClient.post()
                     .uri(baseUrl)
-                    .header("Authorization", String.format("Bearer %s", jwt))
+                    .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(createNetworkClientRequest)
                     .exchange((request, response) -> {
                         String responseBody = response.bodyTo(String.class);
@@ -287,7 +287,7 @@ public class NetworkClientControllerTests {
             createNetworkClientRequest.setAllowedIps(allowedIp);
             ResponseEntity<String> responseEntity = restClient.post()
                     .uri(baseUrl)
-                    .header("Authorization", String.format("Bearer %s", jwt))
+                    .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(createNetworkClientRequest)
                     .exchange((request, response) -> {
                         String responseBody = response.bodyTo(String.class);
@@ -315,7 +315,7 @@ public class NetworkClientControllerTests {
             createNetworkClientRequest.setNetworkEndpoint(endpoint);
             ResponseEntity<String> responseEntity = restClient.post()
                     .uri(baseUrl)
-                    .header("Authorization", String.format("Bearer %s", jwt))
+                    .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(createNetworkClientRequest)
                     .exchange((request, response) -> {
                         String responseBody = response.bodyTo(String.class);
@@ -340,7 +340,7 @@ public class NetworkClientControllerTests {
 
         restClient.post()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(createNetworkClientRequest)
                 .retrieve()
                 .toEntity(NetworkClient.class);
@@ -356,7 +356,7 @@ public class NetworkClientControllerTests {
 
         ResponseEntity<String> responseEntity = restClient.post()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(duplicateRequest)
                 .exchange((request, response) -> {
                     String responseBody = response.bodyTo(String.class);
@@ -384,7 +384,7 @@ public class NetworkClientControllerTests {
 
         restClient.post()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(createNetworkClientRequest)
                 .retrieve()
                 .toEntity(NetworkClient.class);
@@ -400,7 +400,7 @@ public class NetworkClientControllerTests {
 
         ResponseEntity<String> responseEntity = restClient.post()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(duplicateRequest)
                 .exchange((request, response) -> {
                     String responseBody = response.bodyTo(String.class);
@@ -438,7 +438,7 @@ public class NetworkClientControllerTests {
 
             restClient.post()
                     .uri(baseUrl)
-                    .header("Authorization", String.format("Bearer %s", jwt))
+                    .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(createNetworkClientRequest)
                     .retrieve()
                     .toEntity(NetworkClient.class);
@@ -452,7 +452,7 @@ public class NetworkClientControllerTests {
         HttpRequest request = HttpRequest
                 .newBuilder()
                 .uri(new URI(baseUrl))
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .header("Content-Type", "application/json")
                 .method(HttpMethod.GET.name(), HttpRequest.BodyPublishers.ofString(new ObjectMapper().writeValueAsString(listNetworkClientsRequest)))
                 .build();
@@ -487,7 +487,7 @@ public class NetworkClientControllerTests {
 
         ResponseEntity<NetworkClient> createNetworkClientResponse = restClient.post()
                 .uri(baseUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .retrieve()
@@ -504,7 +504,7 @@ public class NetworkClientControllerTests {
         String configUrl = String.format("%s/%s/%s/config", baseUrl, testNetworkName, testClientName);
         ResponseEntity<Resource> response = restClient.get()
                 .uri(configUrl)
-                .header("Authorization", String.format("Bearer %s", jwt))
+                .header("Cookie", String.format("accessToken=%s", jwt))
                 .retrieve()
                 .toEntity(Resource.class);
 

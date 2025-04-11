@@ -1,5 +1,7 @@
 package com.brcsrc.yaws.security;
 
+import com.brcsrc.yaws.utility.HeaderUtils;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -8,11 +10,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 
@@ -36,20 +40,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
         logger.info("routing request through JwtAuthenticationFilter");
-        // grab the authorization header. this header is intended to be set in requests as:
-        //     '-H "Authorization Bearer <encoded JWT>"
+        // grab the authorization token from cookies
         // if it is not set or not formatted correctly, just exit to main filter chain
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            logger.info("request does not include Authorization header");
+        String jwt = HeaderUtils.getRequestHttpOnlyAuthTokenCookieValue(request);
+        logger.info("JWT IS: " + jwt);
+        if (jwt == null) {
+            logger.info("request does not include Authorization token cookie");
             filterChain.doFilter(request, response);
             return;
         }
 
-        // the first 7 chars of the authHeader string should be 'Bearer '
-        // get the jwt value after
-        String jwt = authHeader.substring(7);
-        String userName = this.jwtService.extractUsernameFromJwt(jwt);
+        // extractUsernameFromJwt tries to validate that the jwt was signed with the
+        // secret key and throws SignatureException if invalid. in that case we respond 401
+        String userName;
+        try {
+            userName = this.jwtService.extractUsernameFromJwt(jwt);
+        } catch (SignatureException e) {
+            String errMsg = String.format("jwt is invalid: %s", e.getMessage());
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, errMsg);
+        }
+
         logger.info(String.format("username from jwt: %s", userName));
 
         if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {

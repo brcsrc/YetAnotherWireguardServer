@@ -2,7 +2,6 @@ package com.brcsrc.yaws.service;
 
 import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.User;
-import com.brcsrc.yaws.model.responses.AuthenticationResponse;
 import com.brcsrc.yaws.persistence.UserRepository;
 import com.brcsrc.yaws.security.JwtService;
 import com.brcsrc.yaws.security.UserDetailsServiceImpl;
@@ -47,7 +46,7 @@ public class UserService {
         this.jwtService = jwtService;
     }
 
-    public AuthenticationResponse authenticateAndIssueToken(@RequestBody User user) {
+    public String authenticateAndIssueToken(@RequestBody User user) {
         logger.info("got AuthenticateAndIssueToken request");
         // TODO validate input fields
         // if the user is not found when attempting to authenticate, a BadCredentialsException is
@@ -66,8 +65,11 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, errMsg);
         }
 
-        final String jwt = this.jwtService.generateToken(this.userDetailsService.loadUserByUsername(user.getUserName()));
-        return new AuthenticationResponse(jwt);
+        return this.jwtService.generateToken(
+                this.userDetailsService.loadUserByUsername(
+                        user.getUserName()
+                )
+        );
     }
 
     protected static boolean passwordMeetsComplexityRequirements(String requestedPassword) {

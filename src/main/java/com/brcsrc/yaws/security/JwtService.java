@@ -1,5 +1,6 @@
 package com.brcsrc.yaws.security;
 
+import com.brcsrc.yaws.model.Constants;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -8,7 +9,6 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.sql.Date;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HashMap;
@@ -27,7 +27,6 @@ public class JwtService {
      */
 
     private static final String SECRET = JwtSecretKeyGenerator.generateSecretKey();     // yaws will start with new secret key on each startup
-    private static final Long VALIDITY_PERIOD = Duration.ofMinutes(180).toMillis();     // 3 hours
 
     /**
      * used to generate a new JWT for a UserDetails object. this will be given to the client to
@@ -43,7 +42,7 @@ public class JwtService {
                 .claims(claims)
                 .subject(userDetails.getUsername())
                 .issuedAt(Date.from(Instant.now()))
-                .expiration(Date.from(Instant.now().plusMillis(VALIDITY_PERIOD)))
+                .expiration(Date.from(Instant.now().plusMillis(Constants.AUTH_TOKEN_VALIDITY_PERIOD_MILLIS)))
                 .signWith(secretKey)
                 .compact();
         // can test JWT at https://jwt.io/

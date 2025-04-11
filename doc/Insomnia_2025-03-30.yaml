@@ -9,7 +9,7 @@ collection:
     meta:
       id: fld_ffd60b8bb65e4e83a5bf8d8575064565
       created: 1739137474838
-      modified: 1743386458100
+      modified: 1744352223786
       sortKey: -1739137474838
     children:
       - name: Network
@@ -69,7 +69,7 @@ collection:
             meta:
               id: req_ceb16b8b666d45749c074a5064e8ed58
               created: 1739137711094
-              modified: 1742525362908
+              modified: 1743704406231
               isPrivate: false
               sortKey: -1739137830736
             method: POST
@@ -307,7 +307,7 @@ collection:
             meta:
               id: req_c64eec1808ef47d588ef13c6e8e59a22
               created: 1742919376710
-              modified: 1743005207690
+              modified: 1744352889480
               isPrivate: false
               sortKey: -1742919376710
             method: POST
@@ -316,13 +316,15 @@ collection:
               text: |-
                 {
                 	"userName": "yaws-admin",
-                	"password": "changeme"
+                	"password": "gH1@#oKl2ff1"
                 }
             headers:
-              - name: Content-Type
+              - id: pair_5c2b05aa2a0643ffb799395484c62054
+                name: Content-Type
                 value: application/json
-              - name: User-Agent
-                value: insomnia/11.0.0
+                disabled: false
+              - id: pair_21c15bdb8b5d48cf8a2cb7dfe410e421
+                disabled: false
             authentication:
               type: none
             settings:
@@ -338,7 +340,7 @@ collection:
             meta:
               id: req_b9a3a61559ab47f2b7ab6d307b767843
               created: 1742973637060
-              modified: 1743005199304
+              modified: 1744340132516
               isPrivate: false
               sortKey: -1742973637060
             method: POST
@@ -347,7 +349,7 @@ collection:
               text: |-
                 {
                 	"userName": "yaws-admin",
-                	"password": "changeme"
+                	"password": "gH1@#oKl2ff1"
                 }
             headers:
               - name: Content-Type
@@ -365,31 +367,15 @@ collection:
                 store: true
               rebuildPath: true
     authentication:
-      type: bearer
-      token: eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJ5YXdzLmxvY2FsIiwic3ViIjoieWF3cy1hZG1pbiIsImlhdCI6MTc0MzM4NjQ0MSwiZXhwIjoxNzQzMzk3MjQxfQ.wVL3s79YyC21BGSok1rc8JzqLQJ-jzW8shAXhMnjJ0Tx72wwkcAgzEeiHhoZ7PSnJ8h_6hLDPSeKVnv5gxC2oA
+      type: none
 cookieJar:
   name: Default Jar
   meta:
     id: jar_99d30891da4bdcebc63947a8fc17f076de878684
     created: 1729659960404
-    modified: 1743382101511
+    modified: 1744352909683
   cookies:
-    - key: foo
-      value: bar
-      domain: domain.com
-      path: /
-      creation: 2025-03-26T05:40:57.215Z
-      id: 94d4ab97-82db-449e-80c5-cbb5aefedef4
-    - key: JSESSIONID
-      value: 49C97E352ABEF13730179E9FE082C5FE
-      domain: localhost
-      path: /
-      httpOnly: true
-      hostOnly: true
-      creation: 2025-03-26T05:40:57.216Z
-      lastAccessed: 2025-03-31T00:48:21.510Z
-      id: 6678c045-bd03-4953-8bd1-4bc3601cc0f2
-environments:
+
   name: Base Environment
   meta:
     id: env_99d30891da4bdcebc63947a8fc17f076de878684

@@ -38,3 +38,8 @@ replay_pid*
 
 # test reports
 coverage-report/
+
+# Scratch Files and  VSCode
+.vscode/
+scratch/
+

@@ -32,35 +32,40 @@ public class SecurityConfiguration {
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity.authorizeHttpRequests(registry -> {
 
-            // these are unauthenticated endpoints that must be public
+            // Allow unauthenticated access to frontend resources
             registry.requestMatchers(
-            "/api/v1/user/register",       // user creation api
-                "/api/v1/user/authenticate",        // user authentication api
-                "/error"                            // without this, any client exception thrown is thrown as a 403 instead
+                    "/", // Allow access to the root path
+                    "/index.html", // Allow access to the main frontend file
+                    "/static/**", // Allow access to static resources
+                    "/assets/**", // Allow access to assets (CSS, JS, images)
+                    "/vite.svg" // Allow access to the Vite logo
             ).permitAll();
 
-            // these are extra endpoints for showing swagger and openapi docs
+            // Allow unauthenticated access to public API endpoints
+            registry.requestMatchers(
+                    "/api/v1/user/register", // User creation API
+                    "/api/v1/user/authenticate", // User authentication API
+                    "/error" // Allow error page access
+            ).permitAll();
+
+            // Allow Swagger and OpenAPI docs in development mode
             boolean isDev = Boolean.parseBoolean(System.getenv("DEV"));
             if (isDev) {
                 registry.requestMatchers(
-                        "/swagger-ui/**",  // Swagger UI static resources
-                        "/swagger-ui.html",         // Swagger UI main page
-                        "/v3/api-docs/**",          // OpenAPI docs
-                        "/api-docs/**"              // Alternative path
+                        "/swagger-ui/**", // Swagger UI static resources
+                        "/swagger-ui.html", // Swagger UI main page
+                        "/v3/api-docs/**", // OpenAPI docs
+                        "/api-docs/**" // Alternative path
                 ).permitAll();
             }
 
-            // any other requests to these endpoints would require authentication:
-            //      "/api/v1/networks/**"
-            //      "/api/v1/clients/**"
-            //      "/api/v1/user/update"
-
+            // Require authentication for all other requests
             registry.anyRequest().authenticated();
         })
-        .formLogin().disable()
-        .csrf().disable()
-        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-        .build();
+                .formLogin().disable()
+                .csrf().disable()
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
     }
 
     @Bean
@@ -86,6 +91,3 @@ public class SecurityConfiguration {
         return new ProviderManager(authenticationProvider());
     }
 }
-
-
-

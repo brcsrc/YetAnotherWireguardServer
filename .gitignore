@@ -43,3 +43,13 @@ coverage-report/
 .vscode/
 scratch/
 
+# node modules
+*/node_modules
+
+# node build output
+*/dist
+*.tsbuildinfo
+
+# filesystem stuff
+*.DS_Store
+

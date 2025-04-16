@@ -1,10 +1,13 @@
 ### stage 1 build web client ###
-FROM node:18-alpine as build-frontend
+FROM node:23-alpine as build-frontend
 WORKDIR /app
-COPY yaws-frontend/package.json yaws-frontend/package-lock.json ./
-RUN npm install
-COPY yaws-frontend/ ./
-RUN npm run build
+COPY yaws-ts-api-client /app/yaws-ts-api-client/
+WORKDIR yaws-ts-api-client/ /app/yaws-ts-api-client/
+RUN npm install && npm run build
+WORKDIR /app
+COPY yaws-frontend/ /app/yaws-frontend/
+WORKDIR yaws-frontend
+RUN npm install && npm run build
 
 ### stage 2 build java artifact ###
 FROM gradle:8.9.0-jdk21-alpine as build-spring
@@ -15,10 +18,7 @@ COPY gradlew gradlew
 COPY shell/* .
 COPY src/ src/
 COPY lib/ lib/
-
-# Copy frontend build files into Spring Boot's static directory
-COPY --from=build-frontend /app/dist /opt/src/main/resources/static
-
+COPY --from=build-frontend /app/yaws-frontend/dist /opt/src/main/resources/static
 RUN ./gradlew build -x test --no-daemon;
 
 #### stage 3 build environment ###

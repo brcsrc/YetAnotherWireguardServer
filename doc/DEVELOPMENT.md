@@ -63,12 +63,6 @@ docker run \
 docker exec -it yaws bash
 ```
 
-##### View Swagger UI
-http://localhost:8080/swagger-ui/index.html
-
-##### View OpenAPI schema
-http://localhost:8080/v3/api-docs
-
 ##### build and run backend tests
 
 run all tests. if a test container exists it will be reused, if it does not one will be created prior to tests
@@ -117,6 +111,19 @@ id  password  user_name
 sqlite> 
 
 ```
+
+## API Schema and client generation
+##### View Swagger UI
+http://localhost:8080/swagger-ui/index.html
+
+##### View OpenAPI schema
+http://localhost:8080/v3/api-docs
+
+##### generating client code
+
+[see the API client README](../yaws-frontend/api-client/README.md)
+
+
 
 
 ## Notes

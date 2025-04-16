@@ -8,7 +8,6 @@ public class HeaderUtils {
     /**
      * mutator function to set the HttpOnly authentication token. it will als set the
      * cookie attributes that inform the browser on how to treat the cookie
-     * @param response HttpServletResponse - the response object to modify
      * @param jwt String - the JSON web token to add to the cookie
      * @return response HttpServletResponse
      */

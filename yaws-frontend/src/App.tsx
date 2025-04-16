@@ -3,8 +3,24 @@ import reactLogo from './assets/react.svg';
 import viteLogo from '/vite.svg';
 import './App.css';
 
+import { UserControllerApi, Configuration, User } from "@yaws/yaws-ts-api-client";
+
+
 function App() {
+
+    const handleClick = async () => {
+        const userClient = new UserControllerApi(new Configuration());
+        const newUser: User = await userClient.createAdminUser({
+            user: {
+                userName: "yaws-admin",
+                password: "gH1@#oKl2ff1"
+            }
+        })
+        return newUser
+    }
+
   const [count, setCount] = useState(0);
+
 
   return (
     <div className="App">
@@ -18,7 +34,10 @@ function App() {
       </div>
       <h1>Vite + React</h1>
       <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
+        <button onClick={() => {
+            setCount(count + 1)
+            handleClick()
+        }}>
           count is {count}
         </button>
         <p>

@@ -1,0 +1,19 @@
+{
+  "name": "@yaws/yaws-ts-api-client",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "@openapitools/openapi-generator-cli": "^2.18.4"
+  }
+}

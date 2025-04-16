@@ -43,7 +43,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // grab the authorization token from cookies
         // if it is not set or not formatted correctly, just exit to main filter chain
         String jwt = HeaderUtils.getRequestHttpOnlyAuthTokenCookieValue(request);
-        logger.info("JWT IS: " + jwt);
         if (jwt == null) {
             logger.info("request does not include Authorization token cookie");
             filterChain.doFilter(request, response);

@@ -12,14 +12,34 @@ public class HeaderUtils {
      * @return response HttpServletResponse
      */
     public static String createResponseHttpOnlyAuthTokenCookieValue(String jwt) {
-        String cookieValue = "accessToken=" + jwt + "; " +                  // token value stored in authToken key
-                "HttpOnly; " +                                              // ensure that browser javascript has no access, mitigate some XSS
-                //"Secure; " +                                              // force the browser to only use HTTPS proto TODO set via env var if TLS enabled
-                "SameSite=Strict; " +                                       // prevent the cookie from being used on other sites
-                "Path=/; " +                                                // use on all paths on the site
-                "Max-Age=" + Constants.AUTH_TOKEN_VALIDITY_PERIOD_SECONDS;  // time in seconds before the browser deletes the cookie
+        String cookieValue = "accessToken=" + jwt + "; " +                         // token value stored in authToken key
+                "HttpOnly; " +                                                     // ensure that browser javascript has no access, mitigate some XSS
+                "Path=/; " +                                                       // use on all paths on the site
+                "Max-Age=" + Constants.AUTH_TOKEN_VALIDITY_PERIOD_SECONDS + "; ";  // time in seconds before the browser deletes the cookie
+
+        boolean isDev = Boolean.parseBoolean(System.getenv("DEV"));
+        if (isDev) {
+            cookieValue +=
+            " SameSite=None";                                                      // allow vite dev server
+        } else {
+            cookieValue +=
+            " SameSite=Strict;" +                                                  // prevent the cookie from being used on other sites
+            " Secure; ";                                                           // force the browser to only use HTTPS proto TODO set via env var if TLS enabled
+        }
 
         return cookieValue;
+
+        // TODO try
+//        ResponseCookie cookie = ResponseCookie.from("accessToken", jwtToken)
+//                .httpOnly(true)
+//                .secure(true) // important if SameSite=None
+//                .sameSite("None") // very important
+//                .path("/")
+//                .maxAge(Duration.ofHours(3))
+//                .build();
+//
+//        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
     }
 
     /**

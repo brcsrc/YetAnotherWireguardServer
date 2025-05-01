@@ -3,6 +3,9 @@ package com.brcsrc.yaws.utility;
 import com.brcsrc.yaws.model.Constants;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Cookie;
+import org.springframework.http.ResponseCookie;
+
+import java.time.Duration;
 
 public class HeaderUtils {
     /**
@@ -19,27 +22,27 @@ public class HeaderUtils {
 
         boolean isDev = Boolean.parseBoolean(System.getenv("DEV"));
         if (isDev) {
-            cookieValue +=
-            " SameSite=None";                                                      // allow vite dev server
+            cookieValue += "SameSite=Lax;";                                         // if dev allow cross origin use of the cookie for vite dev server
         } else {
-            cookieValue +=
-            " SameSite=Strict;" +                                                  // prevent the cookie from being used on other sites
-            " Secure; ";                                                           // force the browser to only use HTTPS proto TODO set via env var if TLS enabled
-        }
+            cookieValue += "SameSite=None; Secure;";                                // if not in dev then prevent cross origin and also tell the browser to
+        }                                                                           // not store the cookie unless it was issued under https communication
 
         return cookieValue;
-
-        // TODO try
-//        ResponseCookie cookie = ResponseCookie.from("accessToken", jwtToken)
-//                .httpOnly(true)
-//                .secure(true) // important if SameSite=None
-//                .sameSite("None") // very important
-//                .path("/")
-//                .maxAge(Duration.ofHours(3))
-//                .build();
+//    public static String createResponseHttpOnlyAuthTokenCookieValue(String jwt) {
+//        ResponseCookie.ResponseCookieBuilder cookie =
+//                ResponseCookie.from("accessToken", jwt)
+//                        .httpOnly(true)
+//                        .path("/")
+//                        .maxAge(Duration.ofHours(3));
 //
-//        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-
+//        boolean isDev = Boolean.parseBoolean(System.getenv("DEV"));
+//        if (isDev) {
+//            cookie.sameSite("Lax");
+//        } else {
+//            cookie.sameSite("None").secure(true);
+//        }
+//
+//        return cookie.build().toString();
     }
 
     /**

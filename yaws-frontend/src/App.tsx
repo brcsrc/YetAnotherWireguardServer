@@ -3,7 +3,7 @@ import reactLogo from './assets/react.svg';
 import viteLogo from '/vite.svg';
 import './App.css';
 
-import { UserControllerApi, Configuration, User } from "@yaws/yaws-ts-api-client";
+import {UserControllerApi, Configuration, User, NetworkControllerApi} from "@yaws/yaws-ts-api-client";
 
 
 function App() {
@@ -29,6 +29,14 @@ function App() {
         })
     }
 
+    const handleListNetworksClick = async () => {
+        const networkClietnt = new NetworkControllerApi(new Configuration())
+        const networks = await networkClietnt.listNetworks({
+            credentials: 'include',
+        })
+        console.log(networks)
+    }
+
 
   const [count, setCount] = useState(0);
 
@@ -52,6 +60,9 @@ function App() {
         </button>
         <button onClick={handleAuthenticateClick}>
             Authenticate
+        </button>
+        <button onClick={handleListNetworksClick}>
+            List Networks
         </button>
         <p>
           Edit <code>src/App.tsx</code> and save to test HMR

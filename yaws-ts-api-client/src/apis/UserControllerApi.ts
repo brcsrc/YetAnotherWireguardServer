@@ -39,7 +39,7 @@ export class UserControllerApi extends runtime.BaseAPI {
      * attempts to authenticate a user and returns an encoded JWT
      * Authenticate user and get token
      */
-    async authenticateAndIssueTokenRaw(requestParameters: AuthenticateAndIssueTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<object>> {
+    async authenticateAndIssueTokenRaw(requestParameters: AuthenticateAndIssueTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         if (requestParameters['user'] == null) {
             throw new runtime.RequiredError(
                 'user',
@@ -61,16 +61,15 @@ export class UserControllerApi extends runtime.BaseAPI {
             body: UserToJSON(requestParameters['user']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse<any>(response);
+        return new runtime.VoidApiResponse(response);
     }
 
     /**
      * attempts to authenticate a user and returns an encoded JWT
      * Authenticate user and get token
      */
-    async authenticateAndIssueToken(requestParameters: AuthenticateAndIssueTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<object> {
-        const response = await this.authenticateAndIssueTokenRaw(requestParameters, initOverrides);
-        return await response.value();
+    async authenticateAndIssueToken(requestParameters: AuthenticateAndIssueTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.authenticateAndIssueTokenRaw(requestParameters, initOverrides);
     }
 
     /**

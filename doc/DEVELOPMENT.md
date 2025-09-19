@@ -31,7 +31,7 @@ the jars from gradle dependencies are cached in `lib/` to remove the need to dow
 this will start the container locally for behavior testing
 ```shell
 \
-docker build -f docker/prod/Dockerfile -t yaws . && \
+docker build -f docker/dev/Dockerfile -t yaws . && \
 docker run \
  --privileged \
  --cap-add=NET_ADMIN \

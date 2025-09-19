@@ -13,10 +13,17 @@ RUN npm install && npm run build
 FROM gradle:8.9.0-jdk21-alpine AS build-spring
 WORKDIR /opt
 COPY build.gradle settings.gradle ./
+# this stage assumes we have already ran the gradle steps in the README
+# i.e. ./gradlew downloadGradleBin && ./gradlew copyDependenciesToLocalRepo
+# this is to reduce build time as much as we can
+COPY gradle gradle
+COPY gradlew gradlew
 COPY shell/* .
 COPY src/ src/
+COPY lib/ lib/
 COPY --from=build-frontend /app/yaws-frontend/dist /opt/src/main/resources/static
-RUN gradle wrapper
+# skipping tests here as we want to build only and not modify container. also system
+# level dependencies like wireguard are not in the environment at this point and tests wont pass here
 RUN ./gradlew build -x test --no-daemon;
 
 #### stage 3 build environment ###

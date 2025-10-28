@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import com.brcsrc.yaws.model.NetworkStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,4 +26,6 @@ public interface NetworkRepository extends JpaRepository<Network, String> {
                                                          @Param("networkListenPort") int networkListenPort);
 
     List<Network> findAllByNetworkStatus(NetworkStatus networkStatus);
+
+    Page<Network> findAll(Pageable pageable);
 }

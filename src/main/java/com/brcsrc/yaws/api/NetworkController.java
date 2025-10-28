@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.brcsrc.yaws.model.Network;
+import com.brcsrc.yaws.model.requests.ListNetworksRequest;
+import com.brcsrc.yaws.model.requests.ListNetworksResponse;
 import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
 import com.brcsrc.yaws.service.NetworkService;
 
@@ -33,11 +35,11 @@ public class NetworkController {
         this.networkService = networkService;
     }
 
-    @Operation(summary = "List Networks", description = "list all networks")
-    @GetMapping
-    public List<Network> listNetworks() {
-        logger.info("received ListNetwork request");
-        return this.networkService.getAllNetworks();
+    @Operation(summary = "List Networks", description = "list all networks with pagination")
+    @PostMapping("/list")
+    public ListNetworksResponse listNetworks(@RequestBody ListNetworksRequest request) {
+        logger.info("received ListNetworks request: {}", request);
+        return this.networkService.listNetworks(request);
     }
 
     @Operation(summary = "Describe Network", description = "describe a network")

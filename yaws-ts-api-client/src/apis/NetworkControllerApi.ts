@@ -15,10 +15,16 @@
 
 import * as runtime from '../runtime';
 import type {
+  ListNetworksRequest,
+  ListNetworksResponse,
   Network,
   UpdateNetworkRequest,
 } from '../models/index';
 import {
+    ListNetworksRequestFromJSON,
+    ListNetworksRequestToJSON,
+    ListNetworksResponseFromJSON,
+    ListNetworksResponseToJSON,
     NetworkFromJSON,
     NetworkToJSON,
     UpdateNetworkRequestFromJSON,
@@ -35,6 +41,10 @@ export interface DeleteNetworkRequest {
 
 export interface DescribeNetworkRequest {
     networkName: string;
+}
+
+export interface ListNetworksOperationRequest {
+    listNetworksRequest: ListNetworksRequest;
 }
 
 export interface UpdateNetworkOperationRequest {
@@ -156,30 +166,40 @@ export class NetworkControllerApi extends runtime.BaseAPI {
     }
 
     /**
-     * list all networks
+     * list all networks with pagination
      * List Networks
      */
-    async listNetworksRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Network>>> {
+    async listNetworksRaw(requestParameters: ListNetworksOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListNetworksResponse>> {
+        if (requestParameters['listNetworksRequest'] == null) {
+            throw new runtime.RequiredError(
+                'listNetworksRequest',
+                'Required parameter "listNetworksRequest" was null or undefined when calling listNetworks().'
+            );
+        }
+
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        headerParameters['Content-Type'] = 'application/json';
+
         const response = await this.request({
-            path: `/api/v1/networks`,
-            method: 'GET',
+            path: `/api/v1/networks/list`,
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: ListNetworksRequestToJSON(requestParameters['listNetworksRequest']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(NetworkFromJSON));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListNetworksResponseFromJSON(jsonValue));
     }
 
     /**
-     * list all networks
+     * list all networks with pagination
      * List Networks
      */
-    async listNetworks(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Network>> {
-        const response = await this.listNetworksRaw(initOverrides);
+    async listNetworks(requestParameters: ListNetworksOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListNetworksResponse> {
+        const response = await this.listNetworksRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

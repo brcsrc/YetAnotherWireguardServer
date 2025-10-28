@@ -3,6 +3,8 @@ package com.brcsrc.yaws.api;
 import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkStatus;
 import com.brcsrc.yaws.model.User;
+import com.brcsrc.yaws.model.requests.ListNetworksRequest;
+import com.brcsrc.yaws.model.requests.ListNetworksResponse;
 import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
 import com.brcsrc.yaws.model.wireguard.NetworkConfig;
 import com.brcsrc.yaws.persistence.NetworkRepository;
@@ -393,7 +395,7 @@ public class NetworkControllerTests {
     }
 
     @Test
-    public void testListNetworkListsNetworks() throws Exception {
+    public void testListNetworksListsNetworks() throws Exception {
         Network network = new Network();
         network.setNetworkName("Network2");
         network.setNetworkCidr("10.101.0.1/24");
@@ -401,24 +403,74 @@ public class NetworkControllerTests {
         network.setNetworkTag("net2");
         networkService.createNetwork(network);
 
-        ResponseEntity<String> listNetworkResponse = restClient.get()
-                .uri(baseUrl)
+        // Create request with empty body (both page and maxItems will be null)
+        ListNetworksRequest request = new ListNetworksRequest();
+
+        String listNetworksUrl = baseUrl + "/list";
+
+        ResponseEntity<ListNetworksResponse> listNetworkResponse = restClient.post()
+                .uri(listNetworksUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(request)
                 .retrieve()
-                .toEntity(String.class);
+                .toEntity(ListNetworksResponse.class);
 
         assertEquals(HttpStatus.OK, listNetworkResponse.getStatusCode());
-        ObjectMapper objectMapper = new ObjectMapper();
-        List<Network> networks = objectMapper.readValue(
-                listNetworkResponse.getBody(),
-                new com.fasterxml.jackson.core.type.TypeReference<List<Network>>() {
-        }
-        );
-        assertEquals(1, networks.size());
-        assertEquals("Network2", networks.get(0).getNetworkName());
-        assertEquals("10.101.0.1/24", networks.get(0).getNetworkCidr());
-        assertEquals(51821, networks.get(0).getNetworkListenPort());
-        assertEquals("net2", networks.get(0).getNetworkTag());
+        ListNetworksResponse response = listNetworkResponse.getBody();
+        assert response != null;
+        
+        assertEquals(1, response.getNetworks().size());
+        assertEquals("Network2", response.getNetworks().get(0).getNetworkName());
+        assertEquals("10.101.0.1/24", response.getNetworks().get(0).getNetworkCidr());
+        assertEquals(51821, response.getNetworks().get(0).getNetworkListenPort());
+        assertEquals("net2", response.getNetworks().get(0).getNetworkTag());
+        assertEquals(null, response.getNextPage()); // Should be null since we only have 1 network
+    }
+
+    @Test
+    public void testListNetworksWithPagination() throws Exception {
+        // Create first network
+        Network network1 = new Network();
+        network1.setNetworkName("Network3");
+        network1.setNetworkCidr("10.102.0.1/24");
+        network1.setNetworkListenPort(51822);
+        network1.setNetworkTag("net3");
+        networkService.createNetwork(network1);
+
+        // Create second network
+        Network network2 = new Network();
+        network2.setNetworkName("Network4");
+        network2.setNetworkCidr("10.103.0.1/24");
+        network2.setNetworkListenPort(51823);
+        network2.setNetworkTag("net4");
+        networkService.createNetwork(network2);
+
+        // Test first page with maxItems: 1
+        ListNetworksRequest request = new ListNetworksRequest();
+        request.setPage(0);
+        request.setMaxItems(1);
+
+        String listNetworksUrl = baseUrl + "/list";
+
+        ResponseEntity<ListNetworksResponse> listNetworkResponse = restClient.post()
+                .uri(listNetworksUrl)
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(request)
+                .retrieve()
+                .toEntity(ListNetworksResponse.class);
+
+        assertEquals(HttpStatus.OK, listNetworkResponse.getStatusCode());
+        ListNetworksResponse response = listNetworkResponse.getBody();
+        assert response != null;
+        
+        // Should return 1 network and indicate there's a next page
+        assertEquals(1, response.getNetworks().size());
+        assertEquals(Integer.valueOf(1), response.getNextPage()); // Should indicate next page is 1
+        
+        // Verify the first network is returned
+        Network firstNetwork = response.getNetworks().get(0);
+        assertNotNull(firstNetwork.getNetworkName());
+        assertTrue(firstNetwork.getNetworkName().equals("Network3") || firstNetwork.getNetworkName().equals("Network4"));
     }
 
     @Test

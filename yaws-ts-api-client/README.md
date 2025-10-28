@@ -19,9 +19,7 @@ docker run \
 docker exec -it yaws bash
 ```
 
-Then go to the path `/path/to/your/YetAnotherWireguardServer/
-
-yaws-ts-api-client/` and download the schema
+Then go to the path `/path/to/your/YetAnotherWireguardServer/yaws-ts-api-client/` and download the schema
 ```shell
 curl http://localhost:8080/v3/api-docs -o ./openapi.json
 ```
@@ -33,4 +31,9 @@ npx openapi-generator-cli generate \
   -i ./openapi.json \
   -g typescript-fetch \
   -o ./src
+```
+
+##### Build the client into consumable node module for the frontend application
+```shell
+npm run build
 ```

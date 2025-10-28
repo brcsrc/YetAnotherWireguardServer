@@ -12,6 +12,10 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -23,6 +27,8 @@ import com.brcsrc.yaws.exceptions.InternalServerException;
 import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkStatus;
+import com.brcsrc.yaws.model.requests.ListNetworksRequest;
+import com.brcsrc.yaws.model.requests.ListNetworksResponse;
 import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
 import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.shell.ExecutionResult;
@@ -42,6 +48,23 @@ public class NetworkService {
 
     public List<Network> getAllNetworks() {
         return this.repository.findAll();
+    }
+
+    public ListNetworksResponse listNetworks(ListNetworksRequest request) {
+        // see https://www.baeldung.com/spring-data-jpa-pagination-sorting for pagination approach
+        // Set page size from request, default to 10 if not provided
+        int pageSize = request.getMaxItems() != null ? request.getMaxItems() : 10;
+        int pageNumber = request.getPage() != null ? request.getPage() : 0;
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+        Page<Network> networkPage = this.repository.findAll(pageable);
+        
+        // Calculate next page number
+        Integer nextPage = null;
+        if (networkPage.hasNext()) {
+            nextPage = pageNumber + 1;
+        }
+        
+        return new ListNetworksResponse(networkPage.getContent(), nextPage);
     }
 
     public Network describeNetwork(String networkName) {

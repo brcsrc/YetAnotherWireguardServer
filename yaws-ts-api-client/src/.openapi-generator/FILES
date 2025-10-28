@@ -6,6 +6,8 @@ index.ts
 models/Client.ts
 models/CreateNetworkClientRequest.ts
 models/ListNetworkClientsRequest.ts
+models/ListNetworksRequest.ts
+models/ListNetworksResponse.ts
 models/Network.ts
 models/NetworkClient.ts
 models/UpdateNetworkRequest.ts

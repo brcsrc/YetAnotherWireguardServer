@@ -206,7 +206,9 @@ public class UserControllerTests {
                 .retrieve()
                 .toEntity(Object.class);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
+        // we are using HTTP 204 NO_CONTENT in the auth API since there is no body and the token is `HttpOnly`
+        // https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/204
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
 
         // get token
         List<String> cookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);

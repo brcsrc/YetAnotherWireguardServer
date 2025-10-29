@@ -7,6 +7,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import com.brcsrc.yaws.utility.FilepathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +32,7 @@ import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkClient;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
+import com.brcsrc.yaws.model.requests.ListNetworkClientsResponse;
 import com.brcsrc.yaws.persistence.ClientRepository;
 import com.brcsrc.yaws.persistence.NetworkClientRepository;
 import com.brcsrc.yaws.persistence.NetworkRepository;
@@ -362,11 +367,27 @@ public class NetworkClientService {
         return existingNetworkClient;
     };
 
-    // List Network Clients and return list of Clients objects from a single Network
-    public List<Client> listNetworkClients(ListNetworkClientsRequest request) {
+    // List Network Clients with pagination
+    public ListNetworkClientsResponse listNetworkClients(ListNetworkClientsRequest request) {
         checkNetworkExists(request.getNetworkName());
-        // TODO pagination
-        return this.netClientRepository.findClientsByNetworkName(request.getNetworkName());
+        
+        // Set page size from request (defaults to 10 in the request class)
+        int pageSize = request.getMaxItems();
+        int pageNumber = request.getPage() != null ? request.getPage() : 0;
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+        
+        Page<Client> clientPage = this.netClientRepository.findClientsByNetworkNamePaged(
+                request.getNetworkName(), 
+                pageable
+        );
+        
+        // Calculate next page number
+        Integer nextPage = null;
+        if (clientPage.hasNext()) {
+            nextPage = pageNumber + 1;
+        }
+        
+        return new ListNetworkClientsResponse(clientPage.getContent(), nextPage);
     }
 
     // Describe a Network Client and return the Network and Client objects of that defined relationship

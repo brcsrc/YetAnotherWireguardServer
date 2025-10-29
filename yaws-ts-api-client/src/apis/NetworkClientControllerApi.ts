@@ -15,18 +15,18 @@
 
 import * as runtime from '../runtime';
 import type {
-  Client,
   CreateNetworkClientRequest,
   ListNetworkClientsRequest,
+  ListNetworkClientsResponse,
   NetworkClient,
 } from '../models/index';
 import {
-    ClientFromJSON,
-    ClientToJSON,
     CreateNetworkClientRequestFromJSON,
     CreateNetworkClientRequestToJSON,
     ListNetworkClientsRequestFromJSON,
     ListNetworkClientsRequestToJSON,
+    ListNetworkClientsResponseFromJSON,
+    ListNetworkClientsResponseToJSON,
     NetworkClientFromJSON,
     NetworkClientToJSON,
 } from '../models/index';
@@ -224,10 +224,10 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
     }
 
     /**
-     * list clients for a specific network
+     * list clients for a specific network with pagination
      * List Network Clients
      */
-    async listNetworkClientsRaw(requestParameters: ListNetworkClientsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<Client>>> {
+    async listNetworkClientsRaw(requestParameters: ListNetworkClientsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListNetworkClientsResponse>> {
         if (requestParameters['listNetworkClientsRequest'] == null) {
             throw new runtime.RequiredError(
                 'listNetworkClientsRequest',
@@ -237,27 +237,26 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
 
         const queryParameters: any = {};
 
-        if (requestParameters['listNetworkClientsRequest'] != null) {
-            queryParameters['listNetworkClientsRequest'] = requestParameters['listNetworkClientsRequest'];
-        }
-
         const headerParameters: runtime.HTTPHeaders = {};
 
+        headerParameters['Content-Type'] = 'application/json';
+
         const response = await this.request({
-            path: `/api/v1/clients`,
-            method: 'GET',
+            path: `/api/v1/clients/list`,
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: ListNetworkClientsRequestToJSON(requestParameters['listNetworkClientsRequest']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ClientFromJSON));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListNetworkClientsResponseFromJSON(jsonValue));
     }
 
     /**
-     * list clients for a specific network
+     * list clients for a specific network with pagination
      * List Network Clients
      */
-    async listNetworkClients(requestParameters: ListNetworkClientsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Client>> {
+    async listNetworkClients(requestParameters: ListNetworkClientsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListNetworkClientsResponse> {
         const response = await this.listNetworkClientsRaw(requestParameters, initOverrides);
         return await response.value();
     }

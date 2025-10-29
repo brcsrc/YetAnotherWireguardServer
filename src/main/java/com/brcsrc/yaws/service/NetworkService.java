@@ -52,8 +52,8 @@ public class NetworkService {
 
     public ListNetworksResponse listNetworks(ListNetworksRequest request) {
         // see https://www.baeldung.com/spring-data-jpa-pagination-sorting for pagination approach
-        // Set page size from request, default to 10 if not provided
-        int pageSize = request.getMaxItems() != null ? request.getMaxItems() : 10;
+        // Set page size from request (defaults to 10 in the request class)
+        int pageSize = request.getMaxItems();
         int pageNumber = request.getPage() != null ? request.getPage() : 0;
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
         Page<Network> networkPage = this.repository.findAll(pageable);

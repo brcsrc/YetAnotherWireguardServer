@@ -7,7 +7,7 @@ import {
   UserControllerApi,
   Configuration,
   User,
-  NetworkControllerApi,
+  NetworkControllerApi, ListNetworksOperationRequest,
 } from "@yaws/yaws-ts-api-client";
 
 function App() {
@@ -34,8 +34,10 @@ function App() {
 
   const handleListNetworksClick = async () => {
     const networkClietnt = new NetworkControllerApi(new Configuration());
-    const networks = await networkClietnt.listNetworks({
-      credentials: "include",
+    const listNetworksRequest = {} as ListNetworksOperationRequest
+    const networks = await networkClietnt.listNetworks(
+        listNetworksRequest,
+        {credentials: "include",
     });
     console.log(networks);
   };

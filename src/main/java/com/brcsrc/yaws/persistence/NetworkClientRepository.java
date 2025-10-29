@@ -5,6 +5,8 @@ import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkClient;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,6 +18,9 @@ public interface NetworkClientRepository extends JpaRepository<NetworkClient, Lo
 
     @Query("SELECT nc.client FROM NetworkClient nc WHERE nc.network.networkName = :networkName")
     List<Client> findClientsByNetworkName(@Param("networkName") String networkName);
+
+    @Query("SELECT nc.client FROM NetworkClient nc WHERE nc.network.networkName = :networkName")
+    Page<Client> findClientsByNetworkNamePaged(@Param("networkName") String networkName, Pageable pageable);
 
     /**
      * used for determining if the network already has a client for

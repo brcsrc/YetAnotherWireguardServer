@@ -24,13 +24,19 @@ export interface ListNetworkClientsRequest {
      * @type {string}
      * @memberof ListNetworkClientsRequest
      */
-    clientName?: string;
+    networkName: string;
     /**
      * 
-     * @type {string}
+     * @type {number}
      * @memberof ListNetworkClientsRequest
      */
-    networkName: string;
+    page?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof ListNetworkClientsRequest
+     */
+    maxItems?: number;
 }
 
 /**
@@ -51,8 +57,9 @@ export function ListNetworkClientsRequestFromJSONTyped(json: any, ignoreDiscrimi
     }
     return {
         
-        'clientName': json['clientName'] == null ? undefined : json['clientName'],
         'networkName': json['networkName'],
+        'page': json['page'] == null ? undefined : json['page'],
+        'maxItems': json['maxItems'] == null ? undefined : json['maxItems'],
     };
 }
 
@@ -67,8 +74,9 @@ export function ListNetworkClientsRequestToJSONTyped(value?: ListNetworkClientsR
 
     return {
         
-        'clientName': value['clientName'],
         'networkName': value['networkName'],
+        'page': value['page'],
+        'maxItems': value['maxItems'],
     };
 }
 

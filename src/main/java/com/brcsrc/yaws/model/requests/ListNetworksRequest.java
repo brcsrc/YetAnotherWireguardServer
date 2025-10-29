@@ -13,7 +13,7 @@ public class ListNetworksRequest {
 
     @Min(value = 1, message = "Max items must be at least 1")
     @Max(value = 10, message = "Max items must be no more than 10")
-    private Integer maxItems;
+    private Integer maxItems = 10; // Default to 10 items per page
 
     public Integer getPage() {
         return page;

@@ -7,7 +7,7 @@ RUN npm install && npm run build
 WORKDIR /app
 COPY yaws-frontend/ /app/yaws-frontend/
 WORKDIR yaws-frontend
-RUN npm install && npm run build
+RUN npm install && npm run build-dev
 
 ### stage 2 build java artifact ###
 FROM gradle:8.9.0-jdk21-alpine AS build-spring

@@ -75,30 +75,38 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(registry -> {
                     // Allow unauthenticated access to frontend resources
                     registry.requestMatchers(
-                            "/", // Allow access to the root path
-                            "/index.html", // Allow access to the main frontend file
-                            "/static/**", // Allow access to static resources
-                            "/assets/**", // Allow access to assets (CSS, JS, images)
-                            "/vite.svg" // Allow access to the Vite logo
+                            "/",    // Allow access to the root path
+                            "/index.html",  // Allow access to the main frontend file
+                            "/static/**",   // Allow access to static resources
+                            "/assets/**",   // Allow access to assets (CSS, JS, images)
+                            "/vite.svg"     // Allow access to the Vite logo
                     ).permitAll();
 
                     // Allow unauthenticated access to public API endpoints
                     registry.requestMatchers(
-                            "/api/v1/user/register", // User creation API
-                            "/api/v1/user/authenticate", // User authentication API
-                            "/error" // Allow error page access
+                            "/api/v1/user/register",            // User creation API
+                            "/api/v1/user/authenticate",        // User authentication API
+                            "/api/v1/user/logout",              // User logout API
+                            "/error"                            // Allow error page access
                     ).permitAll();
 
                     // Allow Swagger and OpenAPI docs in development mode
                     boolean isDev = Boolean.parseBoolean(System.getenv("DEV"));
                     if (isDev) {
                         registry.requestMatchers(
-                                "/swagger-ui/**", // Swagger UI static resources
-                                "/swagger-ui.html", // Swagger UI main page
-                                "/v3/api-docs/**", // OpenAPI docs
-                                "/api-docs/**" // Alternative path
+                                "/swagger-ui/**",           // Swagger UI static resources
+                                "/swagger-ui.html",         // Swagger UI main page
+                                "/v3/api-docs/**",          // OpenAPI docs
+                                "/api-docs/**"              // Alternative path
                         ).permitAll();
                     }
+
+                    // Allow all GET requests for SPA routing (except API calls which are handled above)
+                    // todo add security tests to see if this is as unsafe as it seems
+                    registry.requestMatchers(request ->
+                        "GET".equals(request.getMethod()) &&
+                        !request.getRequestURI().toLowerCase().startsWith("/api/")
+                    ).permitAll();
 
                     // Require authentication for all other requests
                     registry.anyRequest().authenticated();

@@ -1,5 +1,7 @@
 package com.brcsrc.yaws.api;
 
+import com.brcsrc.yaws.model.requests.WhoamiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,11 +41,11 @@ public class UserController {
     }
 
     @Operation(
-            summary = "Authenticate user and get token",
-            description = "attempts to authenticate a user and returns an encoded JWT",
-            responses = {
-                @ApiResponse(responseCode = "204", description = "Authenticated, no content returned")
-            }
+        summary = "Authenticate user and get token",
+        description = "attempts to authenticate a user and returns an encoded JWT",
+        responses = {
+            @ApiResponse(responseCode = "204", description = "Authenticated, no content returned")
+        }
     )
     @PostMapping("/authenticate")
     public ResponseEntity<Void> authenticateAndIssueToken(@RequestBody User user, HttpServletResponse response) {
@@ -51,6 +53,24 @@ public class UserController {
         final String jwt = this.userService.authenticateAndIssueToken(user);
         final String cookieValue = HeaderUtils.createResponseHttpOnlyAuthTokenCookieValue(jwt);
         response.setHeader("Set-Cookie", cookieValue);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "whoami", description = "returns the username of the logged in user if their token is valid")
+    @PostMapping("/whoami")
+    public WhoamiResponse whoami(HttpServletRequest request) {
+        logger.info("got Whoami request");
+        final String jwt = HeaderUtils.getRequestHttpOnlyAuthTokenCookieValue(request);
+        final String username = this.userService.whoami(jwt);
+        return new WhoamiResponse(username);
+    }
+
+    @Operation(summary = "logout", description = "clears the authentication token cookie")
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        logger.info("got Logout request");
+        final String expiredCookie = HeaderUtils.createExpiredAuthTokenCookie();
+        response.setHeader("Set-Cookie", expiredCookie);
         return ResponseEntity.noContent().build();
     }
 }

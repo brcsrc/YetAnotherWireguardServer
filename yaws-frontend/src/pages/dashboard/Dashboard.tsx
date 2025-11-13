@@ -6,8 +6,8 @@ import {
   SpaceBetween,
   Table,
 } from "@cloudscape-design/components";
-import { Network } from "../types/network";
-import Layout from "../components/Layout";
+import { Network } from "yaws-ts-api-client/dist/types/index";
+import Breadcrumbs from "../../components/layout/Breadcrumbs";
 
 // TODO Have Dashboard Page Load List Networks API Call on load of page
 const mockNetworks: Network[] = [
@@ -25,13 +25,8 @@ const mockNetworks: Network[] = [
 // TODO: Refresh  button  to refresh List Networks API Call manually
 export default function Dashboard() {
   return (
-    <Layout
-      breadcrumbs={[
-        { text: "Home", href: "<Placeholder>" }, // TODO: Probably  make home/dashboard the same
-        { text: "Dashboard", href: "/dashboard" },
-      ]}
-    >
       <SpaceBetween size="m">
+        <Breadcrumbs/>
         <Container>
           <Table
             columnDefinitions={[
@@ -94,6 +89,5 @@ export default function Dashboard() {
           />
         </Container>
       </SpaceBetween>
-    </Layout>
   );
 }

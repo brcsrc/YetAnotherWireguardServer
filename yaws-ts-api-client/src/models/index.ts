@@ -10,3 +10,4 @@ export * from './Network';
 export * from './NetworkClient';
 export * from './UpdateNetworkRequest';
 export * from './User';
+export * from './WhoamiResponse';

@@ -22,27 +22,34 @@ public class HeaderUtils {
 
         boolean isDev = Boolean.parseBoolean(System.getenv("DEV"));
         if (isDev) {
+            cookieValue += "Domain=localhost; ";                                    // share cookie across all localhost ports (5173 and 8080)
             cookieValue += "SameSite=Lax;";                                         // if dev allow cross origin use of the cookie for vite dev server
         } else {
             cookieValue += "SameSite=None; Secure;";                                // if not in dev then prevent cross origin and also tell the browser to
         }                                                                           // not store the cookie unless it was issued under https communication
 
         return cookieValue;
-//    public static String createResponseHttpOnlyAuthTokenCookieValue(String jwt) {
-//        ResponseCookie.ResponseCookieBuilder cookie =
-//                ResponseCookie.from("accessToken", jwt)
-//                        .httpOnly(true)
-//                        .path("/")
-//                        .maxAge(Duration.ofHours(3));
-//
-//        boolean isDev = Boolean.parseBoolean(System.getenv("DEV"));
-//        if (isDev) {
-//            cookie.sameSite("Lax");
-//        } else {
-//            cookie.sameSite("None").secure(true);
-//        }
-//
-//        return cookie.build().toString();
+    }
+
+    /**
+     * creates an expired authentication token cookie to clear the user's session
+     * @return String - the cookie header value with Max-Age=0 to delete the cookie
+     */
+    public static String createExpiredAuthTokenCookie() {
+        String cookieValue = "accessToken=; " +
+                "HttpOnly; " +
+                "Path=/; " +
+                "Max-Age=0; ";  // This expires the cookie immediately
+
+        boolean isDev = Boolean.parseBoolean(System.getenv("DEV"));
+        if (isDev) {
+            cookieValue += "Domain=localhost; ";
+            cookieValue += "SameSite=Lax;";
+        } else {
+            cookieValue += "SameSite=None; Secure;";
+        }
+
+        return cookieValue;
     }
 
     /**

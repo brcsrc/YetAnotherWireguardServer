@@ -2,6 +2,7 @@ package com.brcsrc.yaws.api;
 
 import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.User;
+import com.brcsrc.yaws.model.requests.WhoamiResponse;
 import com.brcsrc.yaws.persistence.UserRepository;
 import com.brcsrc.yaws.security.JwtService;
 import com.brcsrc.yaws.service.UserService;
@@ -20,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.client.RestClient;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -313,5 +315,62 @@ public class UserControllerTests {
         String authenticateResponseBadPassBody = authenticateResponseBadPass.getBody();
         assert authenticateResponseBadPassBody != null;
         assertTrue(authenticateResponseBadPassBody.contains("authentication failed"));
+    }
+
+    @Test
+    public void whoamiReturnsUsernameWhenAuthenticated() {
+        User user = new User();
+        user.setUserName(testUserName);
+        user.setPassword(testPassword);
+
+        userService.createAdminUser(user);
+
+        String authenticateUrl = baseUrl + "/authenticate";
+
+        ResponseEntity<?> authenticateResponse = restClient.post()
+                .uri(authenticateUrl)
+                .body(user)
+                .retrieve()
+                .toEntity(Object.class);
+
+        assertEquals(HttpStatus.NO_CONTENT, authenticateResponse.getStatusCode());
+
+        // extract the auth token cookie
+        List<String> cookies = authenticateResponse.getHeaders().get(HttpHeaders.SET_COOKIE);
+        assertNotNull(cookies);
+        Optional<String> jwtCookieOpt = cookies.stream()
+                .filter(cookie -> cookie.contains("accessToken="))
+                .findFirst();
+
+        assertTrue(jwtCookieOpt.isPresent());
+        String jwtCookie = jwtCookieOpt.get();
+
+        // call whoami with the auth token
+        String whoamiUrl = baseUrl + "/whoami";
+
+        ResponseEntity<WhoamiResponse> whoamiResponse = restClient.post()
+                .uri(whoamiUrl)
+                .header(HttpHeaders.COOKIE, jwtCookie)
+                .retrieve()
+                .toEntity(WhoamiResponse.class);
+
+        assertEquals(HttpStatus.OK, whoamiResponse.getStatusCode());
+        assertNotNull(whoamiResponse.getBody());
+        assertEquals(testUserName, whoamiResponse.getBody().getUser());
+    }
+
+    @Test
+    public void whoamiReturns403WhenUnauthenticated() {
+        // call whoami without any auth token
+        String whoamiUrl = baseUrl + "/whoami";
+
+        ResponseEntity<String> whoamiResponse = restClient.post()
+                .uri(whoamiUrl)
+                .exchange((request, response) -> {
+                    String body = response.bodyTo(String.class);
+                    return ResponseEntity.status(response.getStatusCode()).body(body);
+                });
+
+        assertEquals(HttpStatus.FORBIDDEN, whoamiResponse.getStatusCode());
     }
 }

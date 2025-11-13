@@ -47,7 +47,6 @@ public class UserService {
     }
 
     public String authenticateAndIssueToken(@RequestBody User user) {
-        logger.info("got AuthenticateAndIssueToken request");
         // TODO validate input fields
         // if the user is not found when attempting to authenticate, a BadCredentialsException is
         // thrown and is set in GlobalExceptionHandler to throw a 403
@@ -70,6 +69,10 @@ public class UserService {
                         user.getUserName()
                 )
         );
+    }
+
+    public String whoami(String jwt) {
+        return this.jwtService.extractUsernameFromJwt(jwt);
     }
 
     protected static boolean passwordMeetsComplexityRequirements(String requestedPassword) {

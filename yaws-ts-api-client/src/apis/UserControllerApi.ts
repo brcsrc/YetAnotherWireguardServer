@@ -16,10 +16,13 @@
 import * as runtime from '../runtime';
 import type {
   User,
+  WhoamiResponse,
 } from '../models/index';
 import {
     UserFromJSON,
     UserToJSON,
+    WhoamiResponseFromJSON,
+    WhoamiResponseToJSON,
 } from '../models/index';
 
 export interface AuthenticateAndIssueTokenRequest {
@@ -107,6 +110,61 @@ export class UserControllerApi extends runtime.BaseAPI {
      */
     async createAdminUser(requestParameters: CreateAdminUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<User> {
         const response = await this.createAdminUserRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * clears the authentication token cookie
+     * logout
+     */
+    async logoutRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/api/v1/user/logout`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * clears the authentication token cookie
+     * logout
+     */
+    async logout(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.logoutRaw(initOverrides);
+    }
+
+    /**
+     * returns the username of the logged in user if their token is valid
+     * whoami
+     */
+    async whoamiRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<WhoamiResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/api/v1/user/whoami`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => WhoamiResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * returns the username of the logged in user if their token is valid
+     * whoami
+     */
+    async whoami(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<WhoamiResponse> {
+        const response = await this.whoamiRaw(initOverrides);
         return await response.value();
     }
 

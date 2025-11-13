@@ -13,5 +13,6 @@ models/Network.ts
 models/NetworkClient.ts
 models/UpdateNetworkRequest.ts
 models/User.ts
+models/WhoamiResponse.ts
 models/index.ts
 runtime.ts

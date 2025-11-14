@@ -1,6 +1,12 @@
 import { Routes, Route } from "react-router";
 import Login from "./pages/login/Login.tsx";
 import Dashboard from "./pages/dashboard/Dashboard.tsx";
+import Networks from "./pages/network/Networks.tsx";
+import Network from "./pages/network/Network.tsx";
+import CreateNetwork from "./pages/network/CreateNetwork.tsx";
+import UpdateNetwork from "./pages/network/UpdateNetwork.tsx";
+import Client from "./pages/client/Client.tsx";
+import CreateClient from "./pages/client/CreateClient.tsx";
 import { ThemeContextProvider } from "./context/ThemeContextProvider";
 import {FlashbarContextProvider, useFlashbarContext} from "./context/FlashbarContextProvider";
 import { AuthContextProvider, useAuthContext } from "./context/AuthContextProvider";
@@ -18,6 +24,12 @@ const UnauthenticatedRoutes = () => {
 const AuthenticatedRoutes = () => {
     return <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/networks" element={<Networks />} />
+        <Route path="/networks/create" element={<CreateNetwork />} />
+        <Route path="/networks/:networkName/update" element={<UpdateNetwork />} />
+        <Route path="/networks/:networkName/clients/create" element={<CreateClient />} />
+        <Route path="/networks/:networkName/clients/:clientName" element={<Client />} />
+        <Route path="/networks/:networkName" element={<Network />} />
     </Routes>
 }
 
@@ -51,7 +63,8 @@ const AppContent = () => {
                     isAuthenticated ? (
                         <SideNavigation
                             items={[
-                                {type: 'link', text: 'foo', href: '/foo'},
+                                {type: 'link', text: 'Dashboard', href: '/'},
+                                {type: 'link', text: 'Networks', href: '/networks'},
                             ]}
                         />
                     ) : undefined

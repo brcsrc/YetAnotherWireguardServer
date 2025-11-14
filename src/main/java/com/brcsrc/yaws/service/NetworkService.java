@@ -31,6 +31,7 @@ import com.brcsrc.yaws.model.requests.ListNetworksRequest;
 import com.brcsrc.yaws.model.requests.ListNetworksResponse;
 import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
 import com.brcsrc.yaws.persistence.NetworkRepository;
+import com.brcsrc.yaws.persistence.NetworkClientRepository;
 import com.brcsrc.yaws.shell.ExecutionResult;
 import com.brcsrc.yaws.shell.Executor;
 import com.brcsrc.yaws.utility.FilepathUtils;
@@ -39,15 +40,17 @@ import com.brcsrc.yaws.utility.IPUtils;
 @Service
 public class NetworkService {
 
-    private final NetworkRepository repository;
+    private final NetworkRepository networkRepository;
+    private final NetworkClientRepository networkClientRepository;
     private static final Logger logger = LoggerFactory.getLogger(NetworkService.class);
 
-    public NetworkService(NetworkRepository repository) {
-        this.repository = repository;
+    public NetworkService(NetworkRepository networkRepository, NetworkClientRepository networkClientRepository) {
+        this.networkRepository = networkRepository;
+        this.networkClientRepository = networkClientRepository;
     }
 
     public List<Network> getAllNetworks() {
-        return this.repository.findAll();
+        return this.networkRepository.findAll();
     }
 
     public ListNetworksResponse listNetworks(ListNetworksRequest request) {
@@ -56,7 +59,7 @@ public class NetworkService {
         int pageSize = request.getMaxItems();
         int pageNumber = request.getPage() != null ? request.getPage() : 0;
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
-        Page<Network> networkPage = this.repository.findAll(pageable);
+        Page<Network> networkPage = this.networkRepository.findAll(pageable);
         
         // Calculate next page number
         Integer nextPage = null;
@@ -68,7 +71,7 @@ public class NetworkService {
     }
 
     public Network describeNetwork(String networkName) {
-        Optional<Network> existingNetwork = this.repository.findByNetworkName(networkName);
+        Optional<Network> existingNetwork = this.networkRepository.findByNetworkName(networkName);
         if (existingNetwork.isEmpty()) {
             String errMsg = String.format("network '%s' does not exist", networkName);
             logger.error(errMsg);
@@ -108,7 +111,7 @@ public class NetworkService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
 
-        boolean resourcesInUse = this.repository.existsByNetworkNameOrNetworkCidrOrListenPort(
+        boolean resourcesInUse = this.networkRepository.existsByNetworkNameOrNetworkCidrOrListenPort(
                 network.getNetworkName(),
                 network.getNetworkCidr(),
                 network.getNetworkListenPort());
@@ -124,7 +127,7 @@ public class NetworkService {
         network.setNetworkStatus(NetworkStatus.CREATED);
 
         // save the network now with CREATED status
-        Network savedNetwork = this.repository.save(network);
+        Network savedNetwork = this.networkRepository.save(network);
 
         // determine absolute paths for different files
         final String NETWORK_DIR_PATH = FilepathUtils.getNetworkDirectoryPath(network.getNetworkName());
@@ -167,7 +170,7 @@ public class NetworkService {
                     createKeyPairExecResult.getStdout()));
             // mark the network for removal
             network.setNetworkStatus(NetworkStatus.INACTIVE);
-            this.repository.save(network);
+            this.networkRepository.save(network);
             // cleanup network on separate thread
             CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
             throw new InternalServerException("failed to create network");
@@ -192,7 +195,7 @@ public class NetworkService {
                     createNetConfigExecResult.getExitCode(),
                     createNetConfigExecResult.getStdout()));
             network.setNetworkStatus(NetworkStatus.INACTIVE);
-            this.repository.save(network);
+            this.networkRepository.save(network);
             CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
             throw new InternalServerException("failed to create network");
         }
@@ -212,7 +215,7 @@ public class NetworkService {
                     configureIptablesExecResult.getExitCode(),
                     configureIptablesExecResult.getStderr()));
             network.setNetworkStatus(NetworkStatus.INACTIVE);
-            this.repository.save(network);
+            this.networkRepository.save(network);
             CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
             throw new InternalServerException("failed to create network");
         }
@@ -228,13 +231,13 @@ public class NetworkService {
                     wgUpExecResult.getExitCode(),
                     wgUpExecResult.getStdout()));
             network.setNetworkStatus(NetworkStatus.INACTIVE);
-            this.repository.save(network);
+            this.networkRepository.save(network);
             CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
             throw new InternalServerException("failed to create network");
         }
 
         network.setNetworkStatus(NetworkStatus.ACTIVE);
-        savedNetwork = this.repository.save(network);
+        savedNetwork = this.networkRepository.save(network);
         logger.info("CreateNetwork operation complete");
         return savedNetwork;
     }
@@ -318,7 +321,7 @@ public class NetworkService {
                     "asyncRemoveNetworkFromSystem completed successfully for network %s",
                     network.getNetworkName())
             );
-            this.repository.delete(network);
+            this.networkRepository.delete(network);
         }
 
         return CompletableFuture.completedFuture(network);
@@ -326,8 +329,7 @@ public class NetworkService {
 
     public Network deleteNetwork(String networkName) {
         // TODO input validation is missing
-        // TODO check requested network does not have clients
-        Optional<Network> existingNetwork = this.repository.findByNetworkName(networkName);
+        Optional<Network> existingNetwork = this.networkRepository.findByNetworkName(networkName);
         if (existingNetwork.isEmpty()) {
             String errMsg = String.format("network '%s' does not exist", networkName);
             logger.error(errMsg);
@@ -335,11 +337,17 @@ public class NetworkService {
         }
         Network network = existingNetwork.get();
 
+        // Delete all NetworkClient records associated with this network BEFORE async cleanup
+        // This will cascade delete the Client records due to CascadeType.REMOVE on NetworkClient.client
+        logger.info("Deleting all network clients for network '{}'", networkName);
+        int deletedCount = this.networkClientRepository.deleteAllByNetwork_NetworkName(networkName);
+        logger.info("Deleted {} network client records for network '{}'", deletedCount, networkName);
+
         CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
         try {
             Network deletedNetwork = deletedNetworkFuture.get();
             // if ExeceptionExecution is not thrown then the async job was successful
-            this.repository.delete(network); // TODO maybe we dont need here also
+            // Note: asyncRemoveNetworkFromSystem already deletes the network from the database
             network.setNetworkStatus(NetworkStatus.DELETED);
             return network;
         } catch (InterruptedException | ExecutionException e) {
@@ -357,7 +365,7 @@ public class NetworkService {
 
         // Retrieve the existing network from DB or throw an exception if it doesn't exist
         // TODO: Maybe include system level check through wg show <networkName> ?
-        Optional<Network> existingNetwork = this.repository.findByNetworkName(networkName);
+        Optional<Network> existingNetwork = this.networkRepository.findByNetworkName(networkName);
         if (existingNetwork.isEmpty()) {
             String errMsg = String.format("Network '%s' does not exist", networkName);
             logger.error(errMsg);
@@ -444,7 +452,7 @@ public class NetworkService {
     // Helper method to save the updated network
     private Network saveUpdatedNetwork(String networkName, Network network) {
         try {
-            Network updatedNetwork = repository.save(network);
+            Network updatedNetwork = networkRepository.save(network);
             logger.info("Successfully updated network '{}': {}", networkName, updatedNetwork);
             return updatedNetwork;
         } catch (Exception e) {

@@ -2,6 +2,7 @@ import {
     Configuration,
     UserControllerApi,
     NetworkControllerApi,
+    NetworkClientControllerApi,
     ResponseContext,
     Middleware,
 } from "@yaws/yaws-ts-api-client";
@@ -46,3 +47,4 @@ const config = new Configuration({
 
 export const userClient = new UserControllerApi(config);
 export const networkClient = new NetworkControllerApi(config);
+export const networkClientClient = new NetworkClientControllerApi(config);

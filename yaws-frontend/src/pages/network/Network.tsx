@@ -178,7 +178,7 @@ const Network = () => {
           {
             id: "clients",
             label: "Clients",
-            content: <Clients networkName={networkName} />
+            content: <Clients network={network} />
           }
         ]}
       />

@@ -1,7 +1,6 @@
 import {
   Button,
   CollectionPreferences,
-  Container,
   Header,
   PropertyFilter,
   Table,
@@ -14,13 +13,14 @@ import * as React from "react";
 import {useEffect, useState} from "react";
 import {useFlashbarContext} from "../../../context/FlashbarContextProvider";
 import { useNavigate } from "react-router";
+import {Network} from "yaws-ts-api-client/dist/types/models/Network";
 
 interface ClientsTableProps {
-  networkName: string;
+  network: Network;
   showCreateButton?: boolean
 }
 
-const ClientsTable = ({ networkName, showCreateButton }: ClientsTableProps): React.ReactNode => {
+const ClientsTable = ({ network, showCreateButton }: ClientsTableProps): React.ReactNode => {
   const navigate = useNavigate();
   const [clients, setClients] = useState<NetworkClient[]>([])
   const [loading, setLoading] = useState(true)
@@ -32,13 +32,17 @@ const ClientsTable = ({ networkName, showCreateButton }: ClientsTableProps): Rea
   const { addFlashbarItem } = useFlashbarContext()
 
   useEffect(() => {
+      if (!network) {
+          setLoading(false)
+          return
+      }
       (async function () {
           try {
               let page: number | undefined = 0;
               while (page !== undefined) {
                   const response = await networkClientClient.listNetworkClients({
                       listNetworkClientsRequest: {
-                          networkName: networkName,
+                          networkName: network.networkName,
                           page: page
                       },
                   })
@@ -58,7 +62,7 @@ const ClientsTable = ({ networkName, showCreateButton }: ClientsTableProps): Rea
               setLoading(false)
           }
       })()
-  }, [networkName])
+  }, [network])
 
   const { items, collectionProps, propertyFilterProps } = useCollection(clients, {
     sorting: {},
@@ -95,8 +99,9 @@ const ClientsTable = ({ networkName, showCreateButton }: ClientsTableProps): Rea
                       clients.length ? `(${clients.length})` : undefined
                   }
                   actions={(showCreateButton) ? (<Button
+                      disabled={(network?.networkStatus !== "ACTIVE")}
                       variant="primary"
-                      onClick={() => navigate(`/networks/${networkName}/clients/create`)}
+                      onClick={() => navigate(`/networks/${network?.networkName}/clients/create`)}
                   >
                       Create Client
                   </Button>) : <></>}
@@ -104,7 +109,7 @@ const ClientsTable = ({ networkName, showCreateButton }: ClientsTableProps): Rea
                   Clients
               </Header>
           }
-        columnDefinitions={getClientsTableColDef(networkName)}
+        columnDefinitions={getClientsTableColDef(network?.networkName)}
         items={items}
         loading={loading}
         visibleColumns={preferences.visibleContent}

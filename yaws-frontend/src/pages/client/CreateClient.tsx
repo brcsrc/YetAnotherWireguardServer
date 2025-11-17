@@ -19,9 +19,10 @@ const CreateClient = () => {
   const { addFlashbarItem } = useFlashbarContext();
 
   const [clientName, setClientName] = useState("");
-  const [clientCidr, setClientCidr] = useState("");
+  const [clientIp, setClientIp] = useState("");
+  const [clientSubnetMask, setClientSubnetMask] = useState("/32");
   const [clientDns, setClientDns] = useState("");
-  const [allowedIps, setAllowedIps] = useState("");
+  const [allowedIps, setAllowedIps] = useState("0.0.0.0/0");
   const [networkEndpoint, setNetworkEndpoint] = useState("");
 
   const [activeStepIndex, setActiveStepIndex] = useState(0);
@@ -31,6 +32,7 @@ const CreateClient = () => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      const clientCidr = `${clientIp}${clientSubnetMask}`;
       await networkClientClient.createNetworkClient({
         createNetworkClientRequest: {
           clientName,
@@ -65,7 +67,8 @@ const CreateClient = () => {
 
   const isConfigureStepValid = () => {
     return clientName.trim() !== "" &&
-           clientCidr.trim() !== "" &&
+           clientIp.trim() !== "" &&
+           clientSubnetMask.trim() !== "" &&
            clientDns.trim() !== "" &&
            allowedIps.trim() !== "" &&
            networkEndpoint.trim() !== "";
@@ -131,14 +134,25 @@ const CreateClient = () => {
                 </FormField>
 
                 <FormField
-                  label="Client CIDR"
-                  description="CIDR block for the client"
+                  label="Client IP address / Subnet mask"
+                  description="IP address and subnet mask for the client (typically /32 for single device)"
                 >
-                  <Input
-                    value={clientCidr}
-                    onChange={({ detail }) => setClientCidr(detail.value)}
-                    placeholder="e.g., 10.100.0.3/24"
-                  />
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <div style={{ flex: "3" }}>
+                      <Input
+                        value={clientIp}
+                        onChange={({ detail }) => setClientIp(detail.value)}
+                        placeholder="e.g., 10.100.0.3"
+                      />
+                    </div>
+                    <div style={{ flex: "1" }}>
+                      <Input
+                        value={clientSubnetMask}
+                        onChange={({ detail }) => setClientSubnetMask(detail.value)}
+                        placeholder="/32"
+                      />
+                    </div>
+                  </div>
                 </FormField>
 
                 <FormField
@@ -195,8 +209,12 @@ const CreateClient = () => {
                         value: clientName || "-"
                       },
                       {
-                        label: "Client CIDR",
-                        value: clientCidr || "-"
+                        label: "Client IP address",
+                        value: clientIp || "-"
+                      },
+                      {
+                        label: "Subnet mask",
+                        value: clientSubnetMask || "-"
                       }
                     ]}
                   />

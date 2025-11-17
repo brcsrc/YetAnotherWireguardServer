@@ -57,7 +57,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (SignatureException e) {
             String errMsg = String.format("jwt is invalid: %s", e.getMessage());
             logger.error(errMsg);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, errMsg);
+            // Set 401 status and clear the invalid token cookie
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setHeader("Set-Cookie", "accessToken=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict");
+            return;
         }
 
         logger.info(String.format("username from jwt: %s", userName));

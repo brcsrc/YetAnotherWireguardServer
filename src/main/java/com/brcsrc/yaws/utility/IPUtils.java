@@ -63,7 +63,7 @@ public class IPUtils {
 
         // they technically should be able to use a smaller subnet mask on the client
         // but the client would lose routing to other hosts on the same network
-        if (networkSubnetMask < networkMemberSubnetMask) {
+        if (networkMemberSubnetMask != 32 && networkSubnetMask < networkMemberSubnetMask) {
             throw new IllegalArgumentException(String.format("client subnet mask /%s is outside of network subnet mask /%s", networkMemberSubnetMask, networkSubnetMask));
         }
 

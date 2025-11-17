@@ -18,7 +18,8 @@ const CreateNetwork = () => {
   const { addFlashbarItem } = useFlashbarContext();
 
   const [networkName, setNetworkName] = useState("");
-  const [networkCidr, setNetworkCidr] = useState("");
+  const [networkIp, setNetworkIp] = useState("");
+  const [networkSubnetMask, setNetworkSubnetMask] = useState("/24");
   const [networkListenPort, setNetworkListenPort] = useState("");
   const [networkTag, setNetworkTag] = useState("");
 
@@ -29,6 +30,7 @@ const CreateNetwork = () => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      const networkCidr = `${networkIp}${networkSubnetMask}`;
       await networkClient.createNetwork({
         network: {
           networkName,
@@ -61,7 +63,8 @@ const CreateNetwork = () => {
 
   const isConfigureStepValid = () => {
     return networkName.trim() !== "" &&
-           networkCidr.trim() !== "" &&
+           networkIp.trim() !== "" &&
+           networkSubnetMask.trim() !== "" &&
            networkListenPort.trim() !== "" &&
            !isNaN(parseInt(networkListenPort));
   };
@@ -116,14 +119,25 @@ const CreateNetwork = () => {
                 </FormField>
 
                 <FormField
-                  label="Network CIDR"
-                  description="CIDR block for the network"
+                  label="Network IP address / Subnet mask"
+                  description="IP address and subnet mask for the network (typically /24)"
                 >
-                  <Input
-                    value={networkCidr}
-                    onChange={({ detail }) => setNetworkCidr(detail.value)}
-                    placeholder="e.g., 10.100.0.1/24"
-                  />
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <div style={{ flex: "3" }}>
+                      <Input
+                        value={networkIp}
+                        onChange={({ detail }) => setNetworkIp(detail.value)}
+                        placeholder="e.g., 10.100.0.1"
+                      />
+                    </div>
+                    <div style={{ flex: "1" }}>
+                      <Input
+                        value={networkSubnetMask}
+                        onChange={({ detail }) => setNetworkSubnetMask(detail.value)}
+                        placeholder="/24"
+                      />
+                    </div>
+                  </div>
                 </FormField>
 
                 <FormField
@@ -166,8 +180,12 @@ const CreateNetwork = () => {
                         value: networkName || "-"
                       },
                       {
-                        label: "Network CIDR",
-                        value: networkCidr || "-"
+                        label: "Network IP address",
+                        value: networkIp || "-"
+                      },
+                      {
+                        label: "Subnet mask",
+                        value: networkSubnetMask || "-"
                       }
                     ]}
                   />

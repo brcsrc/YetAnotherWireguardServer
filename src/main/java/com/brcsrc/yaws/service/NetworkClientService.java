@@ -7,6 +7,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
+import com.brcsrc.yaws.model.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,10 +27,6 @@ import org.springframework.web.server.ResponseStatusException;
 import jakarta.transaction.Transactional;
 
 import com.brcsrc.yaws.exceptions.InternalServerException;
-import com.brcsrc.yaws.model.Constants;
-import com.brcsrc.yaws.model.Client;
-import com.brcsrc.yaws.model.Network;
-import com.brcsrc.yaws.model.NetworkClient;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsResponse;
@@ -119,6 +116,13 @@ public class NetworkClientService {
 
         // check requested network already exists
         Network existingNetwork = checkNetworkExists(request.getNetworkName());
+
+        // the network must be in ACTIVE state in order to add clients to it
+        if (existingNetwork.getNetworkStatus() != NetworkStatus.ACTIVE) {
+            String errMsg = "network is not in ACTIVE state and cannot add clients";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
 
         // check network can be placed in network based off requested cidr
         if (!IPUtils.isNetworkMemberInNetworkRange(existingNetwork.getNetworkCidr(), request.getClientCidr())) {

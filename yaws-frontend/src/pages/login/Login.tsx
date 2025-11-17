@@ -35,6 +35,9 @@ const Login = () => {
                             confirmPassword !== "" &&
                             passwordsMatch;
 
+  // Validation for login form
+  const loginFormValid = usernameInput.trim() !== "" && password !== "";
+
   // if we are already authenticated then navigate back to home
   useEffect(() => {
     (async function (){
@@ -179,7 +182,7 @@ const Login = () => {
                         <Button
                           variant="primary"
                           onClick={handleAuthenticateClick}
-                          disabled={loading}
+                          disabled={loading || !loginFormValid}
                           formAction="none"
                         >
                           {loading ? "Signing In..." : "Sign In"}

@@ -1,5 +1,5 @@
 import {useLocation} from "react-router";
-import {BreadcrumbGroup, BreadcrumbGroupProps} from "@cloudscape-design/components";
+import {BreadcrumbGroup} from "@cloudscape-design/components";
 
 
 const Breadcrumbs = () => {

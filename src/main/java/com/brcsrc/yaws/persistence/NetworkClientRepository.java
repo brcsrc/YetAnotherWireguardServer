@@ -8,8 +8,10 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.brcsrc.yaws.model.Client;
 import com.brcsrc.yaws.model.NetworkClient;
@@ -38,8 +40,6 @@ public interface NetworkClientRepository extends JpaRepository<NetworkClient, Lo
             @Param("clientName") String clientName);
 
 
-
-
     // TODO use this in place of existsByNetworkNameAndClientCidr
     NetworkClient findNetworkClientByNetwork_NetworkNameAndClient_ClientCidr(String networkName, String clientCidr);
 
@@ -57,7 +57,13 @@ public interface NetworkClientRepository extends JpaRepository<NetworkClient, Lo
 
     NetworkClient findNetworkClientByNetwork_NetworkNameAndClient_ClientName(String networkName, String clientName);
 
+    @Transactional
+    @Modifying
     int deleteNetworkClientByNetwork_NetworkNameAndClient_ClientName(String networkName, String clientName);
+
+    @Transactional
+    @Modifying
+    int deleteAllByNetwork_NetworkName(String networkName);
 
     @Query("SELECT nc FROM NetworkClient nc "
             + "WHERE nc.network.networkName = :networkName "

@@ -454,4 +454,36 @@ public class NetworkClientService {
                 .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment;  filename=\"" + configFile.getName() + "\"")
                 .body(configFileResource);
     }
+
+    public String getNextAvailableClientAddress(String networkName) {
+        // check networkName is valid input
+        if (!networkName.matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
+            String errMsg = "networkName is not valid";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        // check network exists
+        Network existingNetwork = checkNetworkExists(networkName);
+
+        // get addresses in use for that network from repo
+        List<String> clientCidrs = this.netClientRepository.findClientCidrsByNetworkName(networkName);
+        // add the network's own CIDR to the unavailable list
+        clientCidrs.add(existingNetwork.getNetworkCidr());
+
+        // get with IPUtils.getNextAvailableIpv4Address
+        try {
+            String nextAvailableAddress = IPUtils.getNextAvailableIpv4Address(
+                    existingNetwork.getNetworkCidr(),
+                    new java.util.ArrayList<>(clientCidrs)
+            );
+            logger.info(String.format("Next available address for network '%s': %s", networkName, nextAvailableAddress));
+            return nextAvailableAddress;
+        } catch (IllegalArgumentException e) {
+            // return next address, propagate exceptions as 400
+            String errMsg = String.format("Failed to get next available address: %s", e.getMessage());
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+    }
 }

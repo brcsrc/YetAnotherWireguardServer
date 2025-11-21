@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   CreateNetworkClientRequest,
+  GetNextAvailableClientAddressResponse,
   ListNetworkClientsRequest,
   ListNetworkClientsResponse,
   NetworkClient,
@@ -23,6 +24,8 @@ import type {
 import {
     CreateNetworkClientRequestFromJSON,
     CreateNetworkClientRequestToJSON,
+    GetNextAvailableClientAddressResponseFromJSON,
+    GetNextAvailableClientAddressResponseToJSON,
     ListNetworkClientsRequestFromJSON,
     ListNetworkClientsRequestToJSON,
     ListNetworkClientsResponseFromJSON,
@@ -48,6 +51,10 @@ export interface DescribeNetworkClientRequest {
 export interface GetNetworkClientConfigFileRequest {
     networkName: string;
     clientName: string;
+}
+
+export interface GetNextAvailableClientAddressRequest {
+    networkName: string;
 }
 
 export interface ListNetworkClientsOperationRequest {
@@ -220,6 +227,41 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
      */
     async getNetworkClientConfigFile(requestParameters: GetNetworkClientConfigFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
         const response = await this.getNetworkClientConfigFileRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * get the next available IP address for a client on a given network
+     * Get Next Available Client Address
+     */
+    async getNextAvailableClientAddressRaw(requestParameters: GetNextAvailableClientAddressRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetNextAvailableClientAddressResponse>> {
+        if (requestParameters['networkName'] == null) {
+            throw new runtime.RequiredError(
+                'networkName',
+                'Required parameter "networkName" was null or undefined when calling getNextAvailableClientAddress().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/api/v1/clients/{networkName}/next-ip`.replace(`{${"networkName"}}`, encodeURIComponent(String(requestParameters['networkName']))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => GetNextAvailableClientAddressResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * get the next available IP address for a client on a given network
+     * Get Next Available Client Address
+     */
+    async getNextAvailableClientAddress(requestParameters: GetNextAvailableClientAddressRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetNextAvailableClientAddressResponse> {
+        const response = await this.getNextAvailableClientAddressRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

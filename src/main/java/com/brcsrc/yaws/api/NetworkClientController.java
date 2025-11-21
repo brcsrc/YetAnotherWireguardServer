@@ -67,4 +67,14 @@ public class NetworkClientController {
         logger.info("received GetNetworkClientConfigFile request");
         return this.networkClientService.getNetworkClientConfigFile(networkName, clientName);
     }
+
+    @Operation(summary = "Get Next Available Client Address", description = "get the next available IP address for a client on a given network")
+    @GetMapping("/{networkName}/next-ip")
+    public GetNextAvailableClientAddressResponse getNextAvailableClientAddress(@PathVariable String networkName) {
+        logger.info("received GetNextAvailableClientAddress request for network: {}", networkName);
+        String nextAddress = this.networkClientService.getNextAvailableClientAddress(networkName);
+        return new GetNextAvailableClientAddressResponse(nextAddress);
+    }
+
+    public record GetNextAvailableClientAddressResponse(String nextAvailableAddress) {}
 }

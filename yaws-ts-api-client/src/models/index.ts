@@ -2,6 +2,8 @@
 /* eslint-disable */
 export * from './Client';
 export * from './CreateNetworkClientRequest';
+export * from './GetNextAvailableClientAddressResponse';
+export * from './GetPublicIpResponse';
 export * from './ListNetworkClientsRequest';
 export * from './ListNetworkClientsResponse';
 export * from './ListNetworksRequest';

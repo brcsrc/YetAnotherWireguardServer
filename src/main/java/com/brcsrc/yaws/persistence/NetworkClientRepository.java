@@ -19,9 +19,6 @@ import com.brcsrc.yaws.model.NetworkClient;
 public interface NetworkClientRepository extends JpaRepository<NetworkClient, Long> {
 
     @Query("SELECT nc.client FROM NetworkClient nc WHERE nc.network.networkName = :networkName")
-    List<Client> findClientsByNetworkName(@Param("networkName") String networkName);
-
-    @Query("SELECT nc.client FROM NetworkClient nc WHERE nc.network.networkName = :networkName")
     Page<Client> findClientsByNetworkNamePaged(@Param("networkName") String networkName, Pageable pageable);
 
     /**
@@ -39,23 +36,10 @@ public interface NetworkClientRepository extends JpaRepository<NetworkClient, Lo
             @Param("clientCidr") String clientCidr,
             @Param("clientName") String clientName);
 
-
-    // TODO use this in place of existsByNetworkNameAndClientCidr
-    NetworkClient findNetworkClientByNetwork_NetworkNameAndClient_ClientCidr(String networkName, String clientCidr);
-
-    /**
-     * used for determining if a network has a client by that name
-     * @param networkName String
-     * @param clientName String
-     * @return boolean
-     */
-    @Query("SELECT COUNT(nc) > 0 FROM NetworkClient nc " +
-            "WHERE nc.network.networkName = :networkName " +
-            "AND nc.client.clientName = :clientName")
-    boolean existsByClientNameAndNetworkName(@Param("networkName") String networkName,
-                                             @Param("clientName") String clientName);
-
     NetworkClient findNetworkClientByNetwork_NetworkNameAndClient_ClientName(String networkName, String clientName);
+
+    @Query("SELECT nc.client.clientCidr FROM NetworkClient nc WHERE nc.network.networkName = :networkName")
+    List<String> findClientCidrsByNetworkName(@Param("networkName") String networkName);
 
     @Transactional
     @Modifying

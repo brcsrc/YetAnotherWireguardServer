@@ -1,10 +1,13 @@
 apis/NetworkClientControllerApi.ts
 apis/NetworkControllerApi.ts
+apis/ToolControllerApi.ts
 apis/UserControllerApi.ts
 apis/index.ts
 index.ts
 models/Client.ts
 models/CreateNetworkClientRequest.ts
+models/GetNextAvailableClientAddressResponse.ts
+models/GetPublicIpResponse.ts
 models/ListNetworkClientsRequest.ts
 models/ListNetworkClientsResponse.ts
 models/ListNetworksRequest.ts

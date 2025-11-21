@@ -6,11 +6,13 @@ import {
   FormField,
   Input,
   ColumnLayout,
-  KeyValuePairs
+  KeyValuePairs,
+  Popover,
+  Icon
 } from "@cloudscape-design/components";
-import { useState } from "react";
+import {useEffect, useState} from "react";
 import { useNavigate, useParams } from "react-router";
-import { networkClientClient } from "../../utils/clients";
+import {networkClientClient, toolsClient} from "../../utils/clients";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
 
 const CreateClient = () => {
@@ -87,6 +89,40 @@ const CreateClient = () => {
     setActiveStepIndex(requestedStepIndex);
   };
 
+  // try to help the client creation by getting the public ip and next client ip
+  useEffect(() => {
+    (async function (){
+      try {
+        const response = await toolsClient.getPublicIp()
+        setNetworkEndpoint(response.publicIp)
+      } catch (error) {
+        const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+        addFlashbarItem({
+          type: "error",
+          header: "Failure in Get Public IP",
+          content: errorMessage,
+          dismissLabel: "Dismiss",
+          duration: 10000
+        });
+      }
+      try {
+        const response = await networkClientClient.getNextAvailableClientAddress({
+          networkName: networkName
+        })
+        setClientIp(response.nextAvailableAddress)
+      } catch (error) {
+        const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+        addFlashbarItem({
+          type: "error",
+          header: "Failure in Get Next Available Client IP",
+          content: errorMessage,
+          dismissLabel: "Dismiss",
+          duration: 10000
+        });
+      }
+    })()
+  }, [])
+
   return (
     <Wizard
       i18nStrings={{
@@ -134,7 +170,20 @@ const CreateClient = () => {
                 </FormField>
 
                 <FormField
-                  label="Client IP address / Subnet mask"
+                  label={
+                    <span>
+                      Client IP address / Subnet mask{" "}
+                      <Popover
+                          dismissButton={false}
+                          position="top"
+                          size="small"
+                          triggerType="custom"
+                          content="This is the next available IP address for this network"
+                      >
+                        <Icon name="status-info" variant="link" />
+                      </Popover>
+                    </span>
+                  }
                   description="IP address and subnet mask for the client (typically /32 for single device)"
                 >
                   <div style={{ display: "flex", gap: "8px" }}>
@@ -178,7 +227,20 @@ const CreateClient = () => {
                 </FormField>
 
                 <FormField
-                  label="Network endpoint"
+                  label={
+                    <span>
+                      Network endpoint{" "}
+                      <Popover
+                        dismissButton={false}
+                        position="top"
+                        size="small"
+                        triggerType="custom"
+                        content="Public IP reported from ifconfig.me"
+                      >
+                        <Icon name="status-info" variant="link" />
+                      </Popover>
+                    </span>
+                  }
                   description="Server endpoint IP/hostname for the client"
                 >
                   <Input

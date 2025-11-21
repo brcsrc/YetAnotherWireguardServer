@@ -2,6 +2,7 @@ package com.brcsrc.yaws.utility;
 
 import com.brcsrc.yaws.model.Constants;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -89,5 +90,46 @@ public class IPUtils {
         }
 
         return true;
+    }
+
+    public static String getNextAvailableIpv4Address(String networkCidr, ArrayList<String> unavailableAddresses) {
+        if (!isValidIpv4Cidr(networkCidr)) {
+            throw new IllegalArgumentException(String.format("%s is not a valid CIDR", networkCidr));
+        }
+
+        String[] cidrParts = networkCidr.split("/");
+        String networkAddress = cidrParts[0];
+        int subnetMask = Integer.parseInt(cidrParts[1]);
+
+        // Get the network octets (first 3 for /24)
+        String[] networkOctets = networkAddress.split("\\.");
+        String networkPrefix = networkOctets[0] + "." + networkOctets[1] + "." + networkOctets[2];
+
+        // Start from 2 to skip the network address (.0) and gateway (.1)
+        // End at 254 to skip broadcast (.255)
+        for (int hostOctet = 2; hostOctet < 255; hostOctet++) {
+            String candidateAddress = networkPrefix + "." + hostOctet;
+
+            // Check if this address is already taken
+            boolean isAvailable = true;
+            for (String unavailableAddress : unavailableAddresses) {
+                // Extract just the IP part if it's a CIDR
+                String unavailableIp = unavailableAddress.contains("/")
+                    ? unavailableAddress.split("/")[0]
+                    : unavailableAddress;
+
+                if (candidateAddress.equals(unavailableIp)) {
+                    isAvailable = false;
+                    break;
+                }
+            }
+
+            if (isAvailable) {
+                return candidateAddress;
+            }
+        }
+
+        // No available addresses found
+        throw new IllegalArgumentException(String.format("No available IP addresses in network %s", networkCidr));
     }
 }

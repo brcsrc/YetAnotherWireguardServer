@@ -6,7 +6,17 @@ import java.io.File;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import javax.imageio.ImageIO;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
 import com.brcsrc.yaws.model.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,7 +32,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.server.ResponseStatusException;
 import jakarta.transaction.Transactional;
 
@@ -405,7 +414,7 @@ public class NetworkClientService {
         return networkClient;
     }
 
-    public ResponseEntity<Resource> getNetworkClientConfigFile(@PathVariable String networkName, @PathVariable String clientName) {
+    private String getNetworkClientConfigFileContent(String networkName, String clientName) {
         // validate inputs before putting them in jpa queries
         if (!networkName.matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "networkName is not valid";
@@ -432,27 +441,58 @@ public class NetworkClientService {
         // check and get reference to the requested configuration file.
         // should be yaws responsibility to create and maintain the file. if not found return 500
         String configFilePath = FilepathUtils.getClientConfigPath(networkName, clientName);
-        String configFileNotExistsErrMsg = "requested configuration file does not exist";
-        File configFile;
-        Resource configFileResource;
-        try {
-            configFile = new File(configFilePath);
-            if (!configFile.exists()) {
-                logger.error(configFileNotExistsErrMsg);
-                throw new InternalServerException(configFileNotExistsErrMsg);
-            }
-            configFileResource = new FileSystemResource(configFile);
-            logger.info(String.format("found config file '%s'", configFilePath));
-        } catch (NullPointerException e) {
-            logger.error(configFileNotExistsErrMsg);
-            throw new InternalServerException(configFileNotExistsErrMsg);
+        File configFile = new File(configFilePath);
+        if (!configFile.exists()) {
+            String errMsg = "requested configuration file does not exist";
+            logger.error(errMsg);
+            throw new InternalServerException(errMsg);
         }
 
-        // all error states should be handled before this block. if no errors return the file
-        return ResponseEntity.ok()
-                .contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
-                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment;  filename=\"" + configFile.getName() + "\"")
-                .body(configFileResource);
+        // read and return config file contents
+        try {
+            String configContent = Files.readString(configFile.toPath());
+            logger.info(String.format("Read config file '%s'", configFilePath));
+            return configContent;
+        } catch (IOException e) {
+            String errMsg = String.format("Failed to read config file: %s", e.getMessage());
+            logger.error(errMsg);
+            throw new InternalServerException(errMsg);
+        }
+    }
+
+    public File getNetworkClientConfigFile(String networkName, String clientName) {
+        // reuse validation and config content retrieval
+        getNetworkClientConfigFileContent(networkName, clientName);
+
+        // return the file reference for controller to handle response entity
+        String configFilePath = FilepathUtils.getClientConfigPath(networkName, clientName);
+        return new File(configFilePath);
+    }
+
+
+    public byte[] getNetworkClientConfigFileQR(String networkName, String clientName) {
+        // reuse validation and config content retrieval
+        String configContent = getNetworkClientConfigFileContent(networkName, clientName);
+
+        // generate QR code from config content
+        try {
+            QRCodeWriter qrCodeWriter = new QRCodeWriter();
+            // Size of 512x512 is good balance between scanability and file size
+            BitMatrix bitMatrix = qrCodeWriter.encode(configContent, BarcodeFormat.QR_CODE, 512, 512);
+            BufferedImage qrImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
+
+            // convert BufferedImage to byte array
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(qrImage, "PNG", baos);
+            byte[] imageBytes = baos.toByteArray();
+
+            logger.info(String.format("Generated QR code for client '%s' on network '%s'", clientName, networkName));
+            return imageBytes;
+        } catch (WriterException | IOException e) {
+            String errMsg = String.format("Failed to generate QR code: %s", e.getMessage());
+            logger.error(errMsg);
+            throw new InternalServerException(errMsg);
+        }
     }
 
     public String getNextAvailableClientAddress(String networkName) {

@@ -38,6 +38,10 @@ dependencies {
 	implementation 'org.hibernate.orm:hibernate-community-dialects:6.3.1.Final'
     implementation 'org.testng:testng:7.1.0'
 
+	// QR code generation
+	implementation 'com.google.zxing:core:3.5.3'
+	implementation 'com.google.zxing:javase:3.5.3'
+
     // testing
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'

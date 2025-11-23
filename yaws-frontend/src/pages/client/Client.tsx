@@ -6,13 +6,15 @@ import {
   ColumnLayout,
   KeyValuePairs,
   Modal,
-  Box
+  Box,
+  Toggle
 } from "@cloudscape-design/components";
 import { useParams, useLocation, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { Client } from "@yaws/yaws-ts-api-client";
 import { networkClientClient } from "../../utils/clients";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
+import ClientConfigQRCode from "./components/ClientConfigQRCode";
 
 const Client = () => {
   const { networkName, clientName } = useParams<{ networkName: string; clientName: string }>();
@@ -23,6 +25,7 @@ const Client = () => {
   const [loading, setLoading] = useState(!client);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   const { addFlashbarItem } = useFlashbarContext();
 
@@ -170,7 +173,7 @@ const Client = () => {
       </Header>
 
       <Container header={<Header variant="h2">Client details</Header>}>
-        <ColumnLayout columns={2} variant="text-grid">
+        <ColumnLayout columns={3} variant="text-grid">
           <KeyValuePairs
             columns={1}
             items={[
@@ -218,6 +221,29 @@ const Client = () => {
                 {
                     label: "Network Listen Port",
                     value: client?.networkListenPort?.toString() || "-"
+                }
+            ]}
+          />
+          <KeyValuePairs
+            columns={1}
+            items={[
+                {
+                    label: "Configuration QR Code",
+                    value: networkName && clientName ? (
+                        <SpaceBetween size="s">
+                            <Toggle
+                                checked={showQR}
+                                onChange={({ detail }) => setShowQR(detail.checked)}
+                            >
+                                Show QR Code
+                            </Toggle>
+                            <ClientConfigQRCode
+                                networkName={networkName}
+                                clientName={clientName}
+                                blur={!showQR}
+                            />
+                        </SpaceBetween>
+                    ) : "-"
                 }
             ]}
           />

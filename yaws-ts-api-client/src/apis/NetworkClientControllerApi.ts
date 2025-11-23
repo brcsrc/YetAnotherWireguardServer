@@ -53,6 +53,11 @@ export interface GetNetworkClientConfigFileRequest {
     clientName: string;
 }
 
+export interface GetNetworkClientConfigFileQRRequest {
+    networkName: string;
+    clientName: string;
+}
+
 export interface GetNextAvailableClientAddressRequest {
     networkName: string;
 }
@@ -227,6 +232,48 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
      */
     async getNetworkClientConfigFile(requestParameters: GetNetworkClientConfigFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
         const response = await this.getNetworkClientConfigFileRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * get a QR code image of the client configuration for easy mobile scanning
+     * Get Network Client Configuration QR Code
+     */
+    async getNetworkClientConfigFileQRRaw(requestParameters: GetNetworkClientConfigFileQRRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Blob>> {
+        if (requestParameters['networkName'] == null) {
+            throw new runtime.RequiredError(
+                'networkName',
+                'Required parameter "networkName" was null or undefined when calling getNetworkClientConfigFileQR().'
+            );
+        }
+
+        if (requestParameters['clientName'] == null) {
+            throw new runtime.RequiredError(
+                'clientName',
+                'Required parameter "clientName" was null or undefined when calling getNetworkClientConfigFileQR().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/api/v1/clients/{networkName}/{clientName}/config/qr`.replace(`{${"networkName"}}`, encodeURIComponent(String(requestParameters['networkName']))).replace(`{${"clientName"}}`, encodeURIComponent(String(requestParameters['clientName']))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.BlobApiResponse(response);
+    }
+
+    /**
+     * get a QR code image of the client configuration for easy mobile scanning
+     * Get Network Client Configuration QR Code
+     */
+    async getNetworkClientConfigFileQR(requestParameters: GetNetworkClientConfigFileQRRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
+        const response = await this.getNetworkClientConfigFileQRRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

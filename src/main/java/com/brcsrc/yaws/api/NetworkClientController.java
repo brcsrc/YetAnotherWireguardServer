@@ -65,7 +65,32 @@ public class NetworkClientController {
     @GetMapping("/{networkName}/{clientName}/config")
     public ResponseEntity<Resource> getNetworkClientConfigFile(@PathVariable String networkName, @PathVariable String clientName) {
         logger.info("received GetNetworkClientConfigFile request");
-        return this.networkClientService.getNetworkClientConfigFile(networkName, clientName);
+        java.io.File configFile = this.networkClientService.getNetworkClientConfigFile(networkName, clientName);
+        Resource configFileResource = new org.springframework.core.io.FileSystemResource(configFile);
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + configFile.getName() + "\"")
+                .body(configFileResource);
+    }
+
+    @Operation(
+        summary = "Get Network Client Configuration QR Code",
+        description = "get a QR code image of the client configuration for easy mobile scanning",
+        responses = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "QR code image",
+                content = @io.swagger.v3.oas.annotations.media.Content(
+                    mediaType = "image/png",
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(type = "string", format = "binary")
+                )
+            )
+        }
+    )
+    @GetMapping(value = "/{networkName}/{clientName}/config/qr", produces = "image/png")
+    public byte[] getNetworkClientConfigFileQR(@PathVariable String networkName, @PathVariable String clientName) {
+        logger.info("received GetNetworkClientConfigFileQR request for network: {}, client: {}", networkName, clientName);
+        return this.networkClientService.getNetworkClientConfigFileQR(networkName, clientName);
     }
 
     @Operation(summary = "Get Next Available Client Address", description = "get the next available IP address for a client on a given network")

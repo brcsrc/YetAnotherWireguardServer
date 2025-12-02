@@ -15,6 +15,14 @@ public class IPUtils {
         return address.matches(Constants.IPV4_ADDRESS_REGEXP);
     }
 
+    public static boolean isValidFQDN(String fqdn) {
+        return fqdn.matches(Constants.FQDN_REGEXP);
+    }
+
+    public static boolean isValidOrigin(String origin) {
+        return origin.matches(Constants.ORIGIN_REGEXP);
+    }
+
     public static boolean isValidClientConfigEndpoint(String endpoint) {
         String[] parts = endpoint.split(":");
         if (parts.length != 2) {

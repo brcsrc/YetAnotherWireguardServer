@@ -26,6 +26,12 @@ docker run \
  yaws:latest
 ```
 
+## Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DEV` | Enables development mode (allows Swagger UI, permits localhost CORS) | `-e DEV="true"` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed CORS origins, usually needed when deployed behind a proxy | `-e CORS_ALLOWED_ORIGINS="https://example.com,https://app.example.com"` |
 
 ##### *Links*
 

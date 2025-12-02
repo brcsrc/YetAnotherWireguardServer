@@ -1,5 +1,8 @@
 package com.brcsrc.yaws.security;
 
+import com.brcsrc.yaws.utility.IPUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +26,8 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfiguration {
 
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfiguration.class);
+
     private final UserDetailsServiceImpl userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
@@ -34,8 +39,21 @@ public class SecurityConfiguration {
 
     @Bean
     UrlBasedCorsConfigurationSource corsConfigurationSource() {
-        // TODO we need to add env vars for domains here if specified
         List<String> allowedOrigins = new ArrayList<>();
+
+        // load allowed origins from environment
+        String allowedOriginsFromEnv = System.getenv("CORS_ALLOWED_ORIGINS");
+        if (allowedOriginsFromEnv != null && !allowedOriginsFromEnv.isBlank()) {
+            String[] origins = allowedOriginsFromEnv.split(",");
+            for (String origin : origins) {
+                if(IPUtils.isValidOrigin(origin)) {
+                    logger.info(String.format("adding valid origin to allowed origins: '%s'", origin));
+                    allowedOrigins.add(origin.trim());
+                } else {
+                    logger.error(String.format("omitting invalid origin from allowed origins: '%s'", origin));
+                }
+            }
+        }
 
         // allow access from vite if started in dev
         boolean isDev = Boolean.parseBoolean(System.getenv("DEV"));
@@ -99,6 +117,14 @@ public class SecurityConfiguration {
                                 "/v3/api-docs/**",          // OpenAPI docs
                                 "/api-docs/**"              // Alternative path
                         ).permitAll();
+                    } else {
+                        // if not, explicitly deny
+                        registry.requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/api-docs/**"
+                        ).authenticated();
                     }
 
                     // Allow all GET requests for SPA routing (except API calls which are handled above)

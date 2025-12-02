@@ -26,10 +26,10 @@ const AuthenticatedRoutes = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/networks" element={<Networks />} />
         <Route path="/networks/create" element={<CreateNetwork />} />
+        <Route path="/networks/:networkName" element={<Network />} />
         <Route path="/networks/:networkName/update" element={<UpdateNetwork />} />
         <Route path="/networks/:networkName/clients/create" element={<CreateClient />} />
         <Route path="/networks/:networkName/clients/:clientName" element={<Client />} />
-        <Route path="/networks/:networkName" element={<Network />} />
     </Routes>
 }
 

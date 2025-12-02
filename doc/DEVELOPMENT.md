@@ -126,6 +126,66 @@ http://localhost:8080/v3/api-docs
 
 
 
+## AWS EC2 Deployment
+
+YAWS includes a deployment script for quickly spinning up a development environment on AWS EC2.
+
+### Prerequisites
+- AWS CLI configured with credentials
+- Docker installed locally
+- AWS account with permissions to create CloudFormation stacks, ECR repositories, EC2 instances, and IAM roles
+
+### Deploy to EC2
+
+Full deployment (creates infrastructure, builds image, and deploys):
+```shell
+./scripts/deploy-to-ec2.sh deploy
+```
+
+Update app only (skips CloudFormation, rebuilds image and refreshes instances):
+```shell
+./scripts/deploy-to-ec2.sh deploy --skip-stack
+```
+
+Teardown everything:
+```shell
+./scripts/deploy-to-ec2.sh teardown
+```
+
+### What Gets Deployed
+
+The CloudFormation stack (`scripts/ec2-based-infrastructure.yml`) creates:
+- **ECR Repository** - Private Docker registry for YAWS images
+- **IAM Role** - EC2 instance role with ECR pull and SSM access
+- **Security Group** - Allows 443/tcp (restricted to deployer IP) and 51820/udp (open for VPN)
+- **Auto Scaling Group** - Single t3.small instance running Amazon Linux 2023
+- **Elastic IP** - Consistent public IP address
+
+The EC2 instance userdata automatically:
+1. Installs Docker
+2. Downloads and configures [JnbRelay](https://github.com/brcsrc/JnbRelay) as a TLS proxy (systemd service)
+3. Generates self-signed certificate for HTTPS
+4. Pulls YAWS image from ECR
+5. Runs YAWS container with CORS configured for the instance's public DNS
+
+### Connecting to the Instance
+
+Via SSM Session Manager (no SSH key required):
+```shell
+aws ssm start-session \
+  --target $(aws autoscaling describe-auto-scaling-groups \
+    --auto-scaling-group-names yaws-dev-asg \
+    --region us-west-2 \
+    --query 'AutoScalingGroups[0].Instances[0].InstanceId' \
+    --output text) \
+  --region us-west-2
+```
+
+### Options
+
+- `--stack-name NAME` - Use a custom stack name (default: `yaws-dev`)
+- `--image-tag TAG` - Use a custom image tag (default: `latest`)
+
 ## Notes
 
 ##### wireguard on alpine

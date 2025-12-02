@@ -1,0 +1,272 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'YAWS Development Environment - ECR, EC2, and supporting infrastructure for testing VPN server'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: yaws-dev
+    Description: Environment name prefix for resources
+
+  InstanceType:
+    Type: String
+    Default: t3.small
+    Description: EC2 instance type
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+    Description: Latest Amazon Linux 2023 AMI ID from SSM Parameter Store
+
+  AllowedIP:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: IP address CIDR to allow HTTPS access (default allows all)
+
+Resources:
+  # ECR Repository for Docker images
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${EnvironmentName}'
+      ImageScanningConfiguration:
+        ScanOnPush: false
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep only 1 image",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 1
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+  # IAM Role for EC2 Instance
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${EnvironmentName}-ec2-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore'
+      Policies:
+        - PolicyName: ECRPullPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ecr:GetAuthorizationToken'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:BatchGetImage'
+                Resource: !GetAtt ECRRepository.Arn
+
+  # Instance Profile for EC2
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub '${EnvironmentName}-instance-profile'
+      Roles:
+        - !Ref EC2InstanceRole
+
+  # Security Group for YAWS
+  YAWSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for YAWS VPN server - allows HTTPS and WireGuard traffic
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref AllowedIP
+          Description: HTTPS traffic
+        - IpProtocol: udp
+          FromPort: 51820
+          ToPort: 51820
+          CidrIp: 0.0.0.0/0
+          Description: WireGuard VPN traffic
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-sg'
+
+  # Launch Template for ASG
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub '${EnvironmentName}-launch-template'
+      LaunchTemplateData:
+        ImageId: !Ref LatestAmiId
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        SecurityGroupIds:
+          - !GetAtt YAWSSecurityGroup.GroupId
+        MetadataOptions:
+          HttpTokens: required
+          HttpPutResponseHopLimit: 1
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub '${EnvironmentName}-instance'
+              - Key: Environment
+                Value: !Ref EnvironmentName
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            set -euo pipefail
+
+            # Install Docker
+            yum update -y
+            yum install -y docker openssl
+            systemctl start docker
+            systemctl enable docker
+
+            # Setup jnb-relay
+            mkdir -p /opt/jnb-relay
+            cd /opt/jnb-relay
+
+            # Download jnb-relay binary
+            curl -L -o jnb-relay https://github.com/brcsrc/JnbRelay/releases/download/v1.0.0-linux-x86_64/jnb-relay
+            chmod +x jnb-relay
+
+            # Generate self-signed certificate
+            openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.crt -sha256 -days 3650 -nodes -subj "/C=US/ST=State/L=City/O=YAWS/OU=Dev/CN=localhost"
+
+            # Create systemd service for jnb-relay
+            cat > /etc/systemd/system/jnb-relay.service <<EOF
+            [Unit]
+            Description=JnbRelay TLS Proxy
+            After=network.target
+
+            [Service]
+            Type=simple
+            WorkingDirectory=/opt/jnb-relay
+            ExecStart=/opt/jnb-relay/jnb-relay --host 0.0.0.0 --port 443 --proxy-for-host 127.0.0.1 --proxy-for-port 8080 --cert cert.crt --key key.pem
+            Restart=always
+            RestartSec=5
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+
+            systemctl daemon-reload
+            systemctl enable jnb-relay
+            systemctl start jnb-relay
+
+            # Get instance public DNS for CORS configuration
+            TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+            PUBLIC_DNS=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-hostname)
+
+            # Login to ECR and pull YAWS image
+            aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
+            docker pull ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EnvironmentName}:latest
+
+            # Run YAWS container
+            docker run \
+              --privileged \
+              --cap-add=NET_ADMIN \
+              -e CORS_ALLOWED_ORIGINS="https://$PUBLIC_DNS" \
+              -p 0.0.0.0:51820:51820/udp \
+              -p 127.0.0.1:8080:8080/tcp \
+              --name yaws \
+              --restart unless-stopped \
+              -d \
+              ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EnvironmentName}:latest
+
+            echo "UserData executed successfully at $(date)" > /var/log/yaws-userdata.log
+
+  # Auto Scaling Group with 1 instance
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Sub '${EnvironmentName}-asg'
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      MinSize: 1
+      MaxSize: 1
+      DesiredCapacity: 1
+      HealthCheckType: EC2
+      HealthCheckGracePeriod: 300
+      AvailabilityZones:
+        - !Select
+          - 0
+          - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-asg'
+          PropagateAtLaunch: false
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: true
+
+  # Elastic IP for consistent public addressing
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-eip'
+
+Outputs:
+  ECRRepositoryUri:
+    Description: ECR Repository URI
+    Value: !GetAtt ECRRepository.RepositoryUri
+    Export:
+      Name: !Sub '${EnvironmentName}-ecr-uri'
+
+  ECRRepositoryName:
+    Description: ECR Repository Name
+    Value: !Ref ECRRepository
+    Export:
+      Name: !Sub '${EnvironmentName}-ecr-name'
+
+  SecurityGroupId:
+    Description: Security Group ID
+    Value: !Ref YAWSSecurityGroup
+    Export:
+      Name: !Sub '${EnvironmentName}-sg-id'
+
+  AutoScalingGroupName:
+    Description: Auto Scaling Group Name
+    Value: !Ref AutoScalingGroup
+    Export:
+      Name: !Sub '${EnvironmentName}-asg-name'
+
+  ElasticIPAddress:
+    Description: Elastic IP Address
+    Value: !Ref ElasticIP
+    Export:
+      Name: !Sub '${EnvironmentName}-eip'
+
+  InstanceRole:
+    Description: IAM Role for EC2 Instance
+    Value: !Ref EC2InstanceRole
+    Export:
+      Name: !Sub '${EnvironmentName}-instance-role'

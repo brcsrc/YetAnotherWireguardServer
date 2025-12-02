@@ -42,7 +42,8 @@ const errorMiddleware: Middleware = {
 };
 
 const config = new Configuration({
-    credentials: "include", // Include cookies in all requests
+    basePath: window.location.origin,   // use relative urls
+    credentials: "include",             // Include cookies in all requests
     middleware: [errorMiddleware],
 });
 

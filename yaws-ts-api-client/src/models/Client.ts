@@ -42,6 +42,12 @@ export interface Client {
      * @type {string}
      * @memberof Client
      */
+    clientPublicKeyValue?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof Client
+     */
     clientCidr?: string;
     /**
      * 
@@ -101,6 +107,7 @@ export function ClientFromJSONTyped(json: any, ignoreDiscriminator: boolean): Cl
         'clientName': json['clientName'] == null ? undefined : json['clientName'],
         'clientPrivateKeyName': json['clientPrivateKeyName'] == null ? undefined : json['clientPrivateKeyName'],
         'clientPublicKeyName': json['clientPublicKeyName'] == null ? undefined : json['clientPublicKeyName'],
+        'clientPublicKeyValue': json['clientPublicKeyValue'] == null ? undefined : json['clientPublicKeyValue'],
         'clientCidr': json['clientCidr'] == null ? undefined : json['clientCidr'],
         'clientDns': json['clientDns'] == null ? undefined : json['clientDns'],
         'allowedIps': json['allowedIps'] == null ? undefined : json['allowedIps'],
@@ -125,6 +132,7 @@ export function ClientToJSONTyped(value?: Client | null, ignoreDiscriminator: bo
         'clientName': value['clientName'],
         'clientPrivateKeyName': value['clientPrivateKeyName'],
         'clientPublicKeyName': value['clientPublicKeyName'],
+        'clientPublicKeyValue': value['clientPublicKeyValue'],
         'clientCidr': value['clientCidr'],
         'clientDns': value['clientDns'],
         'allowedIps': value['allowedIps'],

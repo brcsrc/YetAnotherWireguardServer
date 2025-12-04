@@ -176,6 +176,19 @@ public class NetworkService {
             throw new InternalServerException("failed to create network");
         }
 
+        // read the public key value from the file
+        try {
+            String publicKeyValue = Files.readString(Path.of(NETWORK_PUB_KEY_PATH)).trim();
+            network.setNetworkPublicKeyValue(publicKeyValue);
+        } catch (IOException e) {
+            String errMsg = String.format("error reading public key file: %s", e.getMessage());
+            logger.error(errMsg);
+            network.setNetworkStatus(NetworkStatus.INACTIVE);
+            this.networkRepository.save(network);
+            CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
+            throw new InternalServerException("failed to create network");
+        }
+
         logger.info(String.format(
                 "creating wireguard network config: CIDR = %s, listen port = %s",
                 network.getNetworkCidr(),

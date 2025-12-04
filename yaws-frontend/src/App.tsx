@@ -8,88 +8,92 @@ import UpdateNetwork from "./pages/network/UpdateNetwork.tsx";
 import Client from "./pages/client/Client.tsx";
 import CreateClient from "./pages/client/CreateClient.tsx";
 import { ThemeContextProvider } from "./context/ThemeContextProvider";
-import {FlashbarContextProvider, useFlashbarContext} from "./context/FlashbarContextProvider";
+import { FlashbarContextProvider, useFlashbarContext } from "./context/FlashbarContextProvider";
 import { AuthContextProvider, useAuthContext } from "./context/AuthContextProvider";
-import {useState} from "react";
+import { useState } from "react";
 import TopNavigationBar from "./components/layout/TopNavigation";
-import {AppLayout, Flashbar, SideNavigation} from "@cloudscape-design/components";
+import { AppLayout, Flashbar, SideNavigation } from "@cloudscape-design/components";
 import Breadcrumbs from "./components/layout/Breadcrumbs";
 
 const UnauthenticatedRoutes = () => {
-    return <Routes>
-        <Route path="/login" element={<Login />} />
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
     </Routes>
-}
+  );
+};
 
 const AuthenticatedRoutes = () => {
-    return <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/networks" element={<Networks />} />
-        <Route path="/networks/create" element={<CreateNetwork />} />
-        <Route path="/networks/:networkName" element={<Network />} />
-        <Route path="/networks/:networkName/update" element={<UpdateNetwork />} />
-        <Route path="/networks/:networkName/clients/create" element={<CreateClient />} />
-        <Route path="/networks/:networkName/clients/:clientName" element={<Client />} />
+  return (
+    <Routes>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/networks" element={<Networks />} />
+      <Route path="/networks/create" element={<CreateNetwork />} />
+      <Route path="/networks/:networkName" element={<Network />} />
+      <Route path="/networks/:networkName/update" element={<UpdateNetwork />} />
+      <Route path="/networks/:networkName/clients/create" element={<CreateClient />} />
+      <Route path="/networks/:networkName/clients/:clientName" element={<Client />} />
     </Routes>
-}
+  );
+};
 
 // this app content component wraps everything with AppLayout
 // it conditionally shows/hides nav and breadcrumbs based on authentication
 const AppContent = () => {
-    const { username } = useAuthContext();
-    const isAuthenticated = username !== null;
+  const { username } = useAuthContext();
+  const isAuthenticated = username !== null;
 
-    // persist side nav preferences in session storage so it doesnt open/close
-    // on renders from other pages/components etc
-    const [navigationOpen, setNavigationOpen] = useState(() => {
-        const saved = sessionStorage.getItem('navigationOpen')
-        return saved !== null ? JSON.parse(saved) : true
-    })
-    const handleNavigationChange = ({detail}) => {
-        setNavigationOpen(detail.open)
-        sessionStorage.setItem('navigationOpen', JSON.stringify(detail.open))
-    }
+  // persist side nav preferences in session storage so it doesnt open/close
+  // on renders from other pages/components etc
+  const [navigationOpen, setNavigationOpen] = useState(() => {
+    const saved = sessionStorage.getItem("navigationOpen");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  const handleNavigationChange = ({ detail }) => {
+    setNavigationOpen(detail.open);
+    sessionStorage.setItem("navigationOpen", JSON.stringify(detail.open));
+  };
 
-    // any other component that adds a flashbar item will be collected in this array
-    const { flashbarItems } = useFlashbarContext()
+  // any other component that adds a flashbar item will be collected in this array
+  const { flashbarItems } = useFlashbarContext();
 
-    return (
-        <>
-            <TopNavigationBar/>
-            <AppLayout
-                toolsHide={true}
-                navigationHide={!isAuthenticated}
-                navigation={
-                    isAuthenticated ? (
-                        <SideNavigation
-                            items={[
-                                {type: 'link', text: 'Dashboard', href: '/'},
-                                {type: 'link', text: 'Networks', href: '/networks'},
-                            ]}
-                        />
-                    ) : undefined
-                }
-                navigationOpen={navigationOpen}
-                onNavigationChange={handleNavigationChange}
-                navigationWidth={175}
-                notifications={<Flashbar items={flashbarItems} stackItems={true}/>}
-                breadcrumbs={isAuthenticated ? <Breadcrumbs/> : undefined}
-                content={isAuthenticated ? <AuthenticatedRoutes/> : <UnauthenticatedRoutes/>}
+  return (
+    <>
+      <TopNavigationBar />
+      <AppLayout
+        toolsHide={true}
+        navigationHide={!isAuthenticated}
+        navigation={
+          isAuthenticated ? (
+            <SideNavigation
+              items={[
+                { type: "link", text: "Dashboard", href: "/" },
+                { type: "link", text: "Networks", href: "/networks" },
+              ]}
             />
-        </>
-    )
-}
+          ) : undefined
+        }
+        navigationOpen={navigationOpen}
+        onNavigationChange={handleNavigationChange}
+        navigationWidth={175}
+        notifications={<Flashbar items={flashbarItems} stackItems={true} />}
+        breadcrumbs={isAuthenticated ? <Breadcrumbs /> : undefined}
+        content={isAuthenticated ? <AuthenticatedRoutes /> : <UnauthenticatedRoutes />}
+      />
+    </>
+  );
+};
 
 const App = () => {
   return (
     <ThemeContextProvider>
       <FlashbarContextProvider>
         <AuthContextProvider>
-          <AppContent/>
+          <AppContent />
         </AuthContextProvider>
       </FlashbarContextProvider>
     </ThemeContextProvider>
   );
-}
+};
 
 export default App;

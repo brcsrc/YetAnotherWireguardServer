@@ -6,7 +6,7 @@ import {
   FormField,
   Input,
   ColumnLayout,
-  KeyValuePairs
+  KeyValuePairs,
 } from "@cloudscape-design/components";
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -24,7 +24,7 @@ const CreateNetwork = () => {
   const [networkTag, setNetworkTag] = useState("");
 
   const [activeStepIndex, setActiveStepIndex] = useState(0);
-  const [showErrorText, setShowErrorText] = useState(false)
+  const [showErrorText, setShowErrorText] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -36,25 +36,26 @@ const CreateNetwork = () => {
           networkName,
           networkCidr,
           networkListenPort: parseInt(networkListenPort),
-          networkTag: networkTag || undefined
-        }
+          networkTag: networkTag || undefined,
+        },
       });
       addFlashbarItem({
         type: "success",
         header: "Network Created",
         content: `Network "${networkName}" was created successfully.`,
         dismissLabel: "Dismiss",
-        duration: 5000
+        duration: 5000,
       });
       navigate("/networks");
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+      const errorMessage =
+        error.response?.data?.message || error.response?.data?.error || error.message;
       addFlashbarItem({
         type: "error",
         header: "Create Network Failed",
         content: errorMessage,
         dismissLabel: "Dismiss",
-        duration: 10000
+        duration: 10000,
       });
     } finally {
       setLoading(false);
@@ -62,11 +63,13 @@ const CreateNetwork = () => {
   };
 
   const isConfigureStepValid = () => {
-    return networkName.trim() !== "" &&
-           networkIp.trim() !== "" &&
-           networkSubnetMask.trim() !== "" &&
-           networkListenPort.trim() !== "" &&
-           !isNaN(parseInt(networkListenPort));
+    return (
+      networkName.trim() !== "" &&
+      networkIp.trim() !== "" &&
+      networkSubnetMask.trim() !== "" &&
+      networkListenPort.trim() !== "" &&
+      !isNaN(parseInt(networkListenPort))
+    );
   };
 
   const handleNavigate = ({ detail }) => {
@@ -74,7 +77,7 @@ const CreateNetwork = () => {
     // If moving forward from step 0, validate the configure step
     if (activeStepIndex === 0 && requestedStepIndex > activeStepIndex) {
       if (!isConfigureStepValid()) {
-        setShowErrorText(true)
+        setShowErrorText(true);
         return; // Prevent navigation if validation fails
       }
     }
@@ -85,13 +88,13 @@ const CreateNetwork = () => {
   return (
     <Wizard
       i18nStrings={{
-        stepNumberLabel: stepNumber => `Step ${stepNumber}`,
+        stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
         collapsedStepsLabel: (stepNumber, stepsCount) => `Step ${stepNumber} of ${stepsCount}`,
         cancelButton: "Cancel",
         previousButton: "Previous",
         nextButton: "Next",
         submitButton: "Create network",
-        optional: "optional"
+        optional: "optional",
       }}
       onNavigate={handleNavigate}
       onCancel={() => navigate("/networks")}
@@ -103,7 +106,7 @@ const CreateNetwork = () => {
           title: "Configure network",
           description: "Enter the network configuration details",
           isOptional: false,
-          errorText: (showErrorText) ? "Please fill in all required fields" : "",
+          errorText: showErrorText ? "Please fill in all required fields" : "",
           content: (
             <Container header={<Header variant="h2">Network configuration</Header>}>
               <SpaceBetween size="l">
@@ -152,10 +155,7 @@ const CreateNetwork = () => {
                   />
                 </FormField>
 
-                <FormField
-                  label="Network tag"
-                  description="Optional tag for the network"
-                >
+                <FormField label="Network tag" description="Optional tag for the network">
                   <Input
                     value={networkTag}
                     onChange={({ detail }) => setNetworkTag(detail.value)}
@@ -164,7 +164,7 @@ const CreateNetwork = () => {
                 </FormField>
               </SpaceBetween>
             </Container>
-          )
+          ),
         },
         {
           title: "Review and create",
@@ -177,16 +177,16 @@ const CreateNetwork = () => {
                     items={[
                       {
                         label: "Network name",
-                        value: networkName || "-"
+                        value: networkName || "-",
                       },
                       {
                         label: "Network IP address",
-                        value: networkIp || "-"
+                        value: networkIp || "-",
                       },
                       {
                         label: "Subnet mask",
-                        value: networkSubnetMask || "-"
-                      }
+                        value: networkSubnetMask || "-",
+                      },
                     ]}
                   />
                   <KeyValuePairs
@@ -194,19 +194,19 @@ const CreateNetwork = () => {
                     items={[
                       {
                         label: "Network listen port",
-                        value: networkListenPort || "-"
+                        value: networkListenPort || "-",
                       },
                       {
                         label: "Network tag",
-                        value: networkTag || "-"
-                      }
+                        value: networkTag || "-",
+                      },
                     ]}
                   />
                 </ColumnLayout>
               </Container>
             </SpaceBetween>
-          )
-        }
+          ),
+        },
       ]}
     />
   );

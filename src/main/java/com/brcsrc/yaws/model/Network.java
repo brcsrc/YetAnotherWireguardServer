@@ -40,6 +40,9 @@ public class Network {
     private String networkPublicKeyName;
 
     @Null
+    private String networkPublicKeyValue;
+
+    @Null
     private String networkTag;
 
     // internal use only
@@ -87,6 +90,14 @@ public class Network {
         this.networkPublicKeyName = networkPublicKeyName;
     }
 
+    public String getNetworkPublicKeyValue() {
+        return networkPublicKeyValue;
+    }
+
+    public void setNetworkPublicKeyValue(String networkPublicKeyValue) {
+        this.networkPublicKeyValue = networkPublicKeyValue;
+    }
+
     public String getNetworkTag() {
         return networkTag;
     }
@@ -111,6 +122,7 @@ public class Network {
                 ", networkListenPort='" + networkListenPort + '\'' +
                 ", networkPrivateKeyName='" + networkPrivateKeyName + '\'' +
                 ", networkPublicKeyName='" + networkPublicKeyName + '\'' +
+                ", networkPublicKeyValue='" + networkPublicKeyValue + '\'' +
                 ", networkTag='" + networkTag + '\'' +
                 ", networkStatus=" + networkStatus +
                 '}';

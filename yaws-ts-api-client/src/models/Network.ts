@@ -54,6 +54,12 @@ export interface Network {
      * @type {string}
      * @memberof Network
      */
+    networkPublicKeyValue?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof Network
+     */
     networkTag?: string;
     /**
      * 
@@ -101,6 +107,7 @@ export function NetworkFromJSONTyped(json: any, ignoreDiscriminator: boolean): N
         'networkListenPort': json['networkListenPort'],
         'networkPrivateKeyName': json['networkPrivateKeyName'] == null ? undefined : json['networkPrivateKeyName'],
         'networkPublicKeyName': json['networkPublicKeyName'] == null ? undefined : json['networkPublicKeyName'],
+        'networkPublicKeyValue': json['networkPublicKeyValue'] == null ? undefined : json['networkPublicKeyValue'],
         'networkTag': json['networkTag'] == null ? undefined : json['networkTag'],
         'networkStatus': json['networkStatus'] == null ? undefined : json['networkStatus'],
     };
@@ -122,6 +129,7 @@ export function NetworkToJSONTyped(value?: Network | null, ignoreDiscriminator: 
         'networkListenPort': value['networkListenPort'],
         'networkPrivateKeyName': value['networkPrivateKeyName'],
         'networkPublicKeyName': value['networkPublicKeyName'],
+        'networkPublicKeyValue': value['networkPublicKeyValue'],
         'networkTag': value['networkTag'],
         'networkStatus': value['networkStatus'],
     };

@@ -1,11 +1,11 @@
 import {
-    Configuration,
-    UserControllerApi,
-    NetworkControllerApi,
-    NetworkClientControllerApi,
-    ToolControllerApi,
-    ResponseContext,
-    Middleware,
+  Configuration,
+  UserControllerApi,
+  NetworkControllerApi,
+  NetworkClientControllerApi,
+  ToolControllerApi,
+  ResponseContext,
+  Middleware,
 } from "@yaws/yaws-ts-api-client";
 
 /**
@@ -26,25 +26,30 @@ import {
  * Reference: https://github.com/OpenAPITools/openapi-generator/issues/17979
  */
 const errorMiddleware: Middleware = {
-    post: async (context: ResponseContext): Promise<Response | void> => {
-        if (!context.response.ok) {
-            const body = await context.response.clone().json().catch(() => ({}));
-            const error: any = new Error(`HTTP ${context.response.status}: ${context.response.statusText}`);
-            error.response = {
-                status: context.response.status,
-                statusText: context.response.statusText,
-                data: body
-            };
-            throw error;
-        }
-        return context.response;
+  post: async (context: ResponseContext): Promise<Response | void> => {
+    if (!context.response.ok) {
+      const body = await context.response
+        .clone()
+        .json()
+        .catch(() => ({}));
+      const error: any = new Error(
+        `HTTP ${context.response.status}: ${context.response.statusText}`
+      );
+      error.response = {
+        status: context.response.status,
+        statusText: context.response.statusText,
+        data: body,
+      };
+      throw error;
     }
+    return context.response;
+  },
 };
 
 const config = new Configuration({
-    basePath: window.location.origin,   // use relative urls
-    credentials: "include",             // Include cookies in all requests
-    middleware: [errorMiddleware],
+  basePath: window.location.origin, // use relative urls
+  credentials: "include", // Include cookies in all requests
+  middleware: [errorMiddleware],
 });
 
 export const userClient = new UserControllerApi(config);

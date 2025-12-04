@@ -7,13 +7,13 @@ import {
   Input,
   Select,
   ColumnLayout,
-  KeyValuePairs
+  KeyValuePairs,
 } from "@cloudscape-design/components";
 import { useState } from "react";
 import { useNavigate, useLocation, useParams } from "react-router";
 import { networkClient } from "../../utils/clients";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
-import {Network, UpdateNetworkRequestNetworkStatusEnum } from "@yaws/yaws-ts-api-client";
+import { Network, UpdateNetworkRequestNetworkStatusEnum } from "@yaws/yaws-ts-api-client";
 
 const UpdateNetwork = () => {
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ const UpdateNetwork = () => {
   const network: Network = location.state;
 
   const [networkTag, setNetworkTag] = useState(network?.networkTag || "");
-  const [networkStatus, setNetworkStatus] = useState(network?.networkStatus)
+  const [networkStatus, setNetworkStatus] = useState(network?.networkStatus);
 
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -36,25 +36,26 @@ const UpdateNetwork = () => {
         networkName: networkName,
         updateNetworkRequest: {
           networkTag: networkTag || undefined,
-          networkStatus: networkStatus
-        }
+          networkStatus: networkStatus,
+        },
       });
       addFlashbarItem({
         type: "success",
         header: "Network Updated",
         content: `Network "${networkName}" was updated successfully.`,
         dismissLabel: "Dismiss",
-        duration: 5000
+        duration: 5000,
       });
       navigate(`/networks/${networkName}`);
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+      const errorMessage =
+        error.response?.data?.message || error.response?.data?.error || error.message;
       addFlashbarItem({
         type: "error",
         header: "Update Network Failed",
         content: errorMessage,
         dismissLabel: "Dismiss",
-        duration: 10000
+        duration: 10000,
       });
     } finally {
       setLoading(false);
@@ -63,19 +64,19 @@ const UpdateNetwork = () => {
 
   const statusOptions = [
     { label: "ACTIVE", value: UpdateNetworkRequestNetworkStatusEnum.Active },
-    { label: "INACTIVE", value: UpdateNetworkRequestNetworkStatusEnum.Inactive }
+    { label: "INACTIVE", value: UpdateNetworkRequestNetworkStatusEnum.Inactive },
   ];
 
   return (
     <Wizard
       i18nStrings={{
-        stepNumberLabel: stepNumber => `Step ${stepNumber}`,
+        stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
         collapsedStepsLabel: (stepNumber, stepsCount) => `Step ${stepNumber} of ${stepsCount}`,
         cancelButton: "Cancel",
         previousButton: "Previous",
         nextButton: "Next",
         submitButton: "Update network",
-        optional: "optional"
+        optional: "optional",
       }}
       onNavigate={({ detail }) => setActiveStepIndex(detail.requestedStepIndex)}
       onCancel={() => navigate(`/networks/${networkName}`)}
@@ -89,40 +90,19 @@ const UpdateNetwork = () => {
           content: (
             <Container header={<Header variant="h2">Network configuration</Header>}>
               <SpaceBetween size="l">
-                <FormField
-                  label="Network name"
-                  description="This field cannot be updated"
-                >
-                  <Input
-                    value={network?.networkName || ""}
-                    disabled={true}
-                  />
+                <FormField label="Network name" description="This field cannot be updated">
+                  <Input value={network?.networkName || ""} disabled={true} />
                 </FormField>
 
-                <FormField
-                  label="Network CIDR"
-                  description="This field cannot be updated"
-                >
-                  <Input
-                    value={network?.networkCidr || ""}
-                    disabled={true}
-                  />
+                <FormField label="Network CIDR" description="This field cannot be updated">
+                  <Input value={network?.networkCidr || ""} disabled={true} />
                 </FormField>
 
-                <FormField
-                  label="Network listen port"
-                  description="This field cannot be updated"
-                >
-                  <Input
-                    value={network?.networkListenPort?.toString() || ""}
-                    disabled={true}
-                  />
+                <FormField label="Network listen port" description="This field cannot be updated">
+                  <Input value={network?.networkListenPort?.toString() || ""} disabled={true} />
                 </FormField>
 
-                <FormField
-                  label="Network tag"
-                  description="Optional tag for the network"
-                >
+                <FormField label="Network tag" description="Optional tag for the network">
                   <Input
                     value={networkTag}
                     onChange={({ detail }) => setNetworkTag(detail.value)}
@@ -130,19 +110,20 @@ const UpdateNetwork = () => {
                   />
                 </FormField>
 
-                <FormField
-                  label="Network status"
-                  description="Set the network status"
-                >
+                <FormField label="Network status" description="Set the network status">
                   <Select
-                    selectedOption={statusOptions.find(opt => opt.value === networkStatus) || null}
-                    onChange={({ detail }) => setNetworkStatus(detail.selectedOption.value as NetworkStatusEnum)}
+                    selectedOption={
+                      statusOptions.find((opt) => opt.value === networkStatus) || null
+                    }
+                    onChange={({ detail }) =>
+                      setNetworkStatus(detail.selectedOption.value as NetworkStatusEnum)
+                    }
                     options={statusOptions}
                   />
                 </FormField>
               </SpaceBetween>
             </Container>
-          )
+          ),
         },
         {
           title: "Review and update",
@@ -155,16 +136,16 @@ const UpdateNetwork = () => {
                     items={[
                       {
                         label: "Network name",
-                        value: network?.networkName || "-"
+                        value: network?.networkName || "-",
                       },
                       {
                         label: "Network CIDR",
-                        value: network?.networkCidr || "-"
+                        value: network?.networkCidr || "-",
                       },
                       {
                         label: "Network listen port",
-                        value: network?.networkListenPort?.toString() || "-"
-                      }
+                        value: network?.networkListenPort?.toString() || "-",
+                      },
                     ]}
                   />
                   <KeyValuePairs
@@ -172,19 +153,19 @@ const UpdateNetwork = () => {
                     items={[
                       {
                         label: "Network tag",
-                        value: networkTag || "-"
+                        value: networkTag || "-",
                       },
                       {
                         label: "Network status",
-                        value: networkStatus || "-"
-                      }
+                        value: networkStatus || "-",
+                      },
                     ]}
                   />
                 </ColumnLayout>
               </Container>
             </SpaceBetween>
-          )
-        }
+          ),
+        },
       ]}
     />
   );

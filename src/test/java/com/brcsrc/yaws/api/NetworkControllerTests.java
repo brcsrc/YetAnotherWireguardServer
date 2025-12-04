@@ -11,6 +11,7 @@ import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.persistence.UserRepository;
 import com.brcsrc.yaws.service.NetworkService;
 import com.brcsrc.yaws.service.UserService;
+import com.brcsrc.yaws.utility.FilepathUtils;
 import com.brcsrc.yaws.utility.WireguardConfigReaderUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
@@ -29,6 +30,9 @@ import org.springframework.http.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
@@ -123,7 +127,7 @@ public class NetworkControllerTests {
     }
 
     @Test
-    public void testCreateNetworkCreatesNetwork() {
+    public void testCreateNetworkCreatesNetwork() throws IOException {
         Network network = new Network();
         network.setNetworkName(testNetworkName);
         network.setNetworkCidr(testNetworkCidr);
@@ -154,7 +158,22 @@ public class NetworkControllerTests {
         assertEquals(testNetworkTag, readNetworkFromDb.getNetworkTag());
         assertEquals(NetworkStatus.ACTIVE, readNetworkFromDb.getNetworkStatus());
 
-        NetworkConfig networkConfig = WireguardConfigReaderUtils.readNetworkConfig(String.format("%s.conf", network.getNetworkName()));
+        // Assert that private and public key names are present
+        assertNotNull(readNetworkFromDb.getNetworkPrivateKeyName());
+        assertNotNull(readNetworkFromDb.getNetworkPublicKeyName());
+
+        // Assert that public key value is present
+        assertNotNull(readNetworkFromDb.getNetworkPublicKeyValue());
+
+        // Read the public key file and assert it matches the database value
+        String publicKeyPath = FilepathUtils.getNetworkKeyPath(
+                readNetworkFromDb.getNetworkName(),
+                readNetworkFromDb.getNetworkPublicKeyName()
+        );
+        String publicKeyFromFile = Files.readString(Path.of(publicKeyPath)).trim();
+        assertEquals(publicKeyFromFile, readNetworkFromDb.getNetworkPublicKeyValue());
+
+        NetworkConfig networkConfig = WireguardConfigReaderUtils.readNetworkConfig(String.format("%s.conf", readNetworkFromDb.getNetworkName()));
         assertEquals(networkConfig.networkInterface.address, "10.100.0.1/24");
     }
 

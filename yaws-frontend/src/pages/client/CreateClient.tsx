@@ -8,11 +8,11 @@ import {
   ColumnLayout,
   KeyValuePairs,
   Popover,
-  Icon
+  Icon,
 } from "@cloudscape-design/components";
-import {useEffect, useState} from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import {networkClientClient, toolsClient} from "../../utils/clients";
+import { networkClientClient, toolsClient } from "../../utils/clients";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
 
 const CreateClient = () => {
@@ -42,25 +42,26 @@ const CreateClient = () => {
           clientDns,
           allowedIps,
           networkName,
-          networkEndpoint
-        }
+          networkEndpoint,
+        },
       });
       addFlashbarItem({
         type: "success",
         header: "Client Created",
         content: `Client "${clientName}" was created successfully.`,
         dismissLabel: "Dismiss",
-        duration: 5000
+        duration: 5000,
       });
       navigate(`/networks/${networkName}`);
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+      const errorMessage =
+        error.response?.data?.message || error.response?.data?.error || error.message;
       addFlashbarItem({
         type: "error",
         header: "Create Client Failed",
         content: errorMessage,
         dismissLabel: "Dismiss",
-        duration: 10000
+        duration: 10000,
       });
     } finally {
       setLoading(false);
@@ -68,12 +69,14 @@ const CreateClient = () => {
   };
 
   const isConfigureStepValid = () => {
-    return clientName.trim() !== "" &&
-           clientIp.trim() !== "" &&
-           clientSubnetMask.trim() !== "" &&
-           clientDns.trim() !== "" &&
-           allowedIps.trim() !== "" &&
-           networkEndpoint.trim() !== "";
+    return (
+      clientName.trim() !== "" &&
+      clientIp.trim() !== "" &&
+      clientSubnetMask.trim() !== "" &&
+      clientDns.trim() !== "" &&
+      allowedIps.trim() !== "" &&
+      networkEndpoint.trim() !== ""
+    );
   };
 
   const handleNavigate = ({ detail }) => {
@@ -91,48 +94,50 @@ const CreateClient = () => {
 
   // try to help the client creation by getting the public ip and next client ip
   useEffect(() => {
-    (async function (){
+    (async function () {
       try {
-        const response = await toolsClient.getPublicIp()
-        setNetworkEndpoint(response.publicIp)
+        const response = await toolsClient.getPublicIp();
+        setNetworkEndpoint(response.publicIp);
       } catch (error) {
-        const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+        const errorMessage =
+          error.response?.data?.message || error.response?.data?.error || error.message;
         addFlashbarItem({
           type: "error",
           header: "Failure in Get Public IP",
           content: errorMessage,
           dismissLabel: "Dismiss",
-          duration: 10000
+          duration: 10000,
         });
       }
       try {
         const response = await networkClientClient.getNextAvailableClientAddress({
-          networkName: networkName
-        })
-        setClientIp(response.nextAvailableAddress)
+          networkName: networkName,
+        });
+        setClientIp(response.nextAvailableAddress);
       } catch (error) {
-        const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+        const errorMessage =
+          error.response?.data?.message || error.response?.data?.error || error.message;
         addFlashbarItem({
           type: "error",
           header: "Failure in Get Next Available Client IP",
           content: errorMessage,
           dismissLabel: "Dismiss",
-          duration: 10000
+          duration: 10000,
         });
       }
-    })()
-  }, [])
+    })();
+  }, []);
 
   return (
     <Wizard
       i18nStrings={{
-        stepNumberLabel: stepNumber => `Step ${stepNumber}`,
+        stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
         collapsedStepsLabel: (stepNumber, stepsCount) => `Step ${stepNumber} of ${stepsCount}`,
         cancelButton: "Cancel",
         previousButton: "Previous",
         nextButton: "Next",
         submitButton: "Create client",
-        optional: "optional"
+        optional: "optional",
       }}
       onNavigate={handleNavigate}
       onCancel={() => navigate(`/networks/${networkName}`)}
@@ -152,16 +157,10 @@ const CreateClient = () => {
                   label="Network name"
                   description="This client will be created for this network"
                 >
-                  <Input
-                    value={networkName}
-                    disabled={true}
-                  />
+                  <Input value={networkName} disabled={true} />
                 </FormField>
 
-                <FormField
-                  label="Client name"
-                  description="Unique name for the client"
-                >
+                <FormField label="Client name" description="Unique name for the client">
                   <Input
                     value={clientName}
                     onChange={({ detail }) => setClientName(detail.value)}
@@ -174,11 +173,11 @@ const CreateClient = () => {
                     <span>
                       Client IP address / Subnet mask{" "}
                       <Popover
-                          dismissButton={false}
-                          position="top"
-                          size="small"
-                          triggerType="custom"
-                          content="This is the next available IP address for this network"
+                        dismissButton={false}
+                        position="top"
+                        size="small"
+                        triggerType="custom"
+                        content="This is the next available IP address for this network"
                       >
                         <Icon name="status-info" variant="link" />
                       </Popover>
@@ -204,10 +203,7 @@ const CreateClient = () => {
                   </div>
                 </FormField>
 
-                <FormField
-                  label="Client DNS"
-                  description="DNS server for the client"
-                >
+                <FormField label="Client DNS" description="DNS server for the client">
                   <Input
                     value={clientDns}
                     onChange={({ detail }) => setClientDns(detail.value)}
@@ -251,7 +247,7 @@ const CreateClient = () => {
                 </FormField>
               </SpaceBetween>
             </Container>
-          )
+          ),
         },
         {
           title: "Review and create",
@@ -264,20 +260,20 @@ const CreateClient = () => {
                     items={[
                       {
                         label: "Network name",
-                        value: networkName || "-"
+                        value: networkName || "-",
                       },
                       {
                         label: "Client name",
-                        value: clientName || "-"
+                        value: clientName || "-",
                       },
                       {
                         label: "Client IP address",
-                        value: clientIp || "-"
+                        value: clientIp || "-",
                       },
                       {
                         label: "Subnet mask",
-                        value: clientSubnetMask || "-"
-                      }
+                        value: clientSubnetMask || "-",
+                      },
                     ]}
                   />
                   <KeyValuePairs
@@ -285,23 +281,23 @@ const CreateClient = () => {
                     items={[
                       {
                         label: "Client DNS",
-                        value: clientDns || "-"
+                        value: clientDns || "-",
                       },
                       {
                         label: "Allowed IPs",
-                        value: allowedIps || "-"
+                        value: allowedIps || "-",
                       },
                       {
                         label: "Network endpoint",
-                        value: networkEndpoint || "-"
-                      }
+                        value: networkEndpoint || "-",
+                      },
                     ]}
                   />
                 </ColumnLayout>
               </Container>
             </SpaceBetween>
-          )
-        }
+          ),
+        },
       ]}
     />
   );

@@ -182,6 +182,9 @@ public class NetworkClientControllerTests {
         assertEquals(savedNetworkClient.getClient().getClientPrivateKeyName(), expectedClientPrivateKeyFileName);
         assertEquals(savedNetworkClient.getClient().getClientPublicKeyName(), expectedClientPublicKeyFileName);
 
+        // assert that public key value is present
+        assertNotNull(savedNetworkClient.getClient().getClientPublicKeyValue());
+
         // assert the client keys and config exist
         String clientPublicKeyAbsPath = FilepathUtils.getClientKeyPath(testNetworkName, expectedClientPublicKeyFileName);
         String clientPrivateKeyAbsPath = FilepathUtils.getClientKeyPath(testNetworkName, expectedClientPrivateKeyFileName);
@@ -193,6 +196,14 @@ public class NetworkClientControllerTests {
         );
         for (String path : filePaths) {
             assertTrue(Files.exists(Paths.get(path)));
+        }
+
+        // read the public key file and assert it matches the database value
+        try {
+            String publicKeyFromFile = Files.readString(Paths.get(clientPublicKeyAbsPath)).trim();
+            assertEquals(publicKeyFromFile, savedNetworkClient.getClient().getClientPublicKeyValue());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read public key file", e);
         }
 
         // assert the network config has a new entry

@@ -196,6 +196,17 @@ public class NetworkClientService {
             throw new InternalServerException("failed to create key pair");
         }
 
+        // read the public key value from the file
+        try {
+            String publicKeyValue = Files.readString(java.nio.file.Path.of(CLIENT_PUB_KEY_PATH)).trim();
+            client.setClientPublicKeyValue(publicKeyValue);
+            logger.info(String.format("read public key value for client '%s'", client.getClientName()));
+        } catch (IOException e) {
+            String errMsg = String.format("error reading public key file: %s", e.getMessage());
+            logger.error(errMsg);
+            throw new InternalServerException("failed to create client");
+        }
+
         // generate the client config
         logger.info(String.format("creating client configuration '%s'", CLIENT_CONFIG_PATH));
         final String createClientConfigCommand = String.join(" ",

@@ -11,12 +11,12 @@ import {
   Header,
   Input,
   SpaceBetween,
-  Tabs, Toggle,
+  Tabs,
+  Toggle,
 } from "@cloudscape-design/components";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
 import { useAuthContext } from "../../context/AuthContextProvider";
 import { userClient } from "../../utils/clients";
-
 
 const Login = () => {
   const navigate = useNavigate();
@@ -26,29 +26,27 @@ const Login = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeTabId, setActiveTabId] = useState("login");
-  const [showPassword, setShowPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false);
 
   // Validation for register form
   const passwordsMatch = password === confirmPassword;
-  const registerFormValid = usernameInput.trim() !== "" &&
-                            password !== "" &&
-                            confirmPassword !== "" &&
-                            passwordsMatch;
+  const registerFormValid =
+    usernameInput.trim() !== "" && password !== "" && confirmPassword !== "" && passwordsMatch;
 
   // Validation for login form
   const loginFormValid = usernameInput.trim() !== "" && password !== "";
 
   // if we are already authenticated then navigate back to home
   useEffect(() => {
-    (async function (){
+    (async function () {
       try {
-        await userClient.whoami()
-        navigate("/")
+        await userClient.whoami();
+        navigate("/");
       } catch (error) {
         // nothing
       }
-    })()
-  }, [])
+    })();
+  }, []);
 
   // TODO: Integrate with utils/validation.ts for username / password validation
   // Register admin user
@@ -60,7 +58,7 @@ const Login = () => {
         header: "Passwords Do Not Match",
         content: "Please ensure both password fields match.",
         dismissLabel: "Dismiss",
-        duration: 5000
+        duration: 5000,
       });
       return;
     }
@@ -78,7 +76,7 @@ const Login = () => {
         header: "Registration Successful",
         content: `User "${usernameInput}" was created successfully.`,
         dismissLabel: "Dismiss",
-        duration: 5000
+        duration: 5000,
       });
 
       // Automatically log in after successful registration
@@ -91,13 +89,16 @@ const Login = () => {
         });
         navigate("/");
       } catch (loginError: any) {
-        const errorMessage = loginError.response?.data?.message || loginError.response?.data?.error || loginError.message;
+        const errorMessage =
+          loginError.response?.data?.message ||
+          loginError.response?.data?.error ||
+          loginError.message;
         addFlashbarItem({
           type: "error",
           header: "Auto-login Failed",
           content: `Registration succeeded but automatic login failed: ${errorMessage}. Please sign in manually.`,
           dismissLabel: "Dismiss",
-          duration: 5000
+          duration: 5000,
         });
       }
     } catch (e: any) {
@@ -107,7 +108,7 @@ const Login = () => {
         header: "Registration Failed",
         content: `Failed to create admin user: ${errorMessage}`,
         dismissLabel: "Dismiss",
-        duration: 5000
+        duration: 5000,
       });
     } finally {
       setLoading(false);
@@ -129,17 +130,18 @@ const Login = () => {
         header: "Login Successful",
         content: "Welcome back!",
         dismissLabel: "Dismiss",
-        duration: 3000
+        duration: 3000,
       });
       navigate("/");
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message
+      const errorMessage =
+        error.response?.data?.message || error.response?.data?.error || error.message;
       addFlashbarItem({
         type: "error",
         header: "Authentication Failed",
         content: errorMessage,
         dismissLabel: "Dismiss",
-        duration: 5000
+        duration: 5000,
       });
     } finally {
       setLoading(false);
@@ -160,12 +162,15 @@ const Login = () => {
       <div style={{ width: "100%", maxWidth: "500px" }}>
         <Container>
           <SpaceBetween size="l">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "16px" }}>
-              <img
-                src="/favicon.ico"
-                alt="YAWS Logo"
-                style={{ width: "48px", height: "48px" }}
-              />
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "16px",
+              }}
+            >
+              <img src="/favicon.ico" alt="YAWS Logo" style={{ width: "48px", height: "48px" }} />
               <Header variant="h1">YetAnotherWireguardServer</Header>
             </div>
 
@@ -232,37 +237,45 @@ const Login = () => {
                             value={password}
                             onChange={({ detail }) => setPassword(detail.value)}
                             placeholder="Enter password"
-                            type={(showPassword) ? "text" : "password"}
+                            type={showPassword ? "text" : "password"}
                             autoComplete="new-password"
                           />
                         </FormField>
                         <FormField
                           label="Confirm Password"
-                          errorText={confirmPassword && !passwordsMatch ? "Passwords do not match" : undefined}
-                          constraintText={confirmPassword && passwordsMatch && password !== "" ? "Passwords match" : undefined}
+                          errorText={
+                            confirmPassword && !passwordsMatch
+                              ? "Passwords do not match"
+                              : undefined
+                          }
+                          constraintText={
+                            confirmPassword && passwordsMatch && password !== ""
+                              ? "Passwords match"
+                              : undefined
+                          }
                         >
                           <Input
                             value={confirmPassword}
                             onChange={({ detail }) => setConfirmPassword(detail.value)}
                             placeholder="Re-enter password"
-                            type={(showPassword) ? "text" : "password"}
+                            type={showPassword ? "text" : "password"}
                             autoComplete="new-password"
                             invalid={confirmPassword !== "" && !passwordsMatch}
                           />
                         </FormField>
                         <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
                           <Toggle
-                              onChange={({ detail }) => setShowPassword(detail.checked)}
-                              checked={showPassword}
+                            onChange={({ detail }) => setShowPassword(detail.checked)}
+                            checked={showPassword}
                           >
                             Show Password
                           </Toggle>
                           <div style={{ textAlign: "right" }}>
                             <Button
-                                variant="primary"
-                                onClick={handleCreateUserClick}
-                                disabled={loading || !registerFormValid}
-                                formAction="none"
+                              variant="primary"
+                              onClick={handleCreateUserClick}
+                              disabled={loading || !registerFormValid}
+                              formAction="none"
                             >
                               {loading ? "Registering..." : "Register"}
                             </Button>
@@ -279,5 +292,5 @@ const Login = () => {
       </div>
     </div>
   );
-}
-export default Login
+};
+export default Login;

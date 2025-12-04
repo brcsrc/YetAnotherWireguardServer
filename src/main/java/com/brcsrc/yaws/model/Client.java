@@ -13,6 +13,7 @@ public class Client {
     private String clientName;
     private String clientPrivateKeyName;
     private String clientPublicKeyName;
+    private String clientPublicKeyValue;
     private String clientCidr;
     private String clientDns;
     private String allowedIps;
@@ -77,6 +78,14 @@ public class Client {
         this.clientPublicKeyName = clientPublicKeyName;
     }
 
+    public String getClientPublicKeyValue() {
+        return clientPublicKeyValue;
+    }
+
+    public void setClientPublicKeyValue(String clientPublicKeyValue) {
+        this.clientPublicKeyValue = clientPublicKeyValue;
+    }
+
     public String getNetworkEndpoint() {
         return networkEndpoint;
     }
@@ -106,6 +115,8 @@ public class Client {
         return "Client{" +
                 "clientName='" + clientName + '\'' +
                 ", clientPrivateKeyName='" + clientPrivateKeyName + '\'' +
+                ", clientPublicKeyName='" + clientPublicKeyName + '\'' +
+                ", clientPublicKeyValue='" + clientPublicKeyValue + '\'' +
                 ", clientCidr='" + clientCidr + '\'' +
                 ", clientDns='" + clientDns + '\'' +
                 ", allowedIps='" + allowedIps + '\'' +

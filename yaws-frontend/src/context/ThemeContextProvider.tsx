@@ -1,9 +1,5 @@
-import * as React from 'react';
-import {
-  applyMode,
-  Mode as CloudscapeMode,
-} from "@cloudscape-design/global-styles";
-
+import * as React from "react";
+import { applyMode, Mode as CloudscapeMode } from "@cloudscape-design/global-styles";
 
 /**
  * original author github.com/jon-hetrick
@@ -41,7 +37,7 @@ interface ThemeContextType {
 }
 
 const ThemeContext = React.createContext<ThemeContextType>({
-  theme: 'dark',
+  theme: "dark",
   setTheme: () => {},
   toggleTheme: () => {},
 });
@@ -71,7 +67,9 @@ export const ThemeContextProvider = (props: ThemeContextProviderProps) => {
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme: handleSetTheme, toggleTheme: handleToggleTheme }}>
+    <ThemeContext.Provider
+      value={{ theme, setTheme: handleSetTheme, toggleTheme: handleToggleTheme }}
+    >
       {props.children}
     </ThemeContext.Provider>
   );

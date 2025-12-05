@@ -11,7 +11,7 @@ import {
 } from "@cloudscape-design/components";
 import { useState } from "react";
 import { useNavigate, useLocation, useParams } from "react-router";
-import { networkClient } from "../../utils/clients";
+import { networkClient } from "../../api/HTTPClients";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
 import { Network, UpdateNetworkRequestNetworkStatusEnum } from "@yaws/yaws-ts-api-client";
 

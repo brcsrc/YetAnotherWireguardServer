@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate, useLocation } from "react-router";
-import { userClient } from "../utils/clients";
+import { userClient } from "../api/HTTPClients";
 import { useFlashbarContext } from "./FlashbarContextProvider";
 import { handleAuthError } from "../utils/auth";
 

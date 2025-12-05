@@ -12,7 +12,7 @@ import {
 } from "@cloudscape-design/components";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { networkClientClient, toolsClient } from "../../utils/clients";
+import { networkClientClient, toolsClient } from "../../api/HTTPClients";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
 
 const CreateClient = () => {

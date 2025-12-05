@@ -1,5 +1,6 @@
 apis/NetworkClientControllerApi.ts
 apis/NetworkControllerApi.ts
+apis/SystemControllerApi.ts
 apis/ToolControllerApi.ts
 apis/UserControllerApi.ts
 apis/index.ts
@@ -14,6 +15,9 @@ models/ListNetworksRequest.ts
 models/ListNetworksResponse.ts
 models/Network.ts
 models/NetworkClient.ts
+models/SseEmitter.ts
+models/StreamClientConnectionInfoRequest.ts
+models/StreamNetworkConnectionInfoRequest.ts
 models/UpdateNetworkRequest.ts
 models/User.ts
 models/WhoamiResponse.ts

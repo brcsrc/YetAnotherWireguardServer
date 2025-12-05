@@ -10,7 +10,7 @@ import {
 } from "@cloudscape-design/components";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { networkClient } from "../../utils/clients";
+import { networkClient } from "../../api/HTTPClients";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
 
 const CreateNetwork = () => {

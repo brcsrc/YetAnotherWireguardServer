@@ -1,20 +1,18 @@
 import {
   Button,
-  Container,
   Header,
   SpaceBetween,
-  ColumnLayout,
-  KeyValuePairs,
   Modal,
   Box,
-  Toggle,
 } from "@cloudscape-design/components";
 import { useParams, useLocation, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { Client } from "@yaws/yaws-ts-api-client";
-import { networkClientClient } from "../../utils/clients";
+import { networkClientClient } from "../../api/HTTPClients";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
-import ClientConfigQRCode from "./components/ClientConfigQRCode";
+import ClientDetails from "./components/ClientDetails";
+import ClientConnectionInfoComponent from "./components/ClientConnectionInfo";
+import LoadingState from "../../components/state/LoadingState";
 
 const Client = () => {
   const { networkName, clientName } = useParams<{ networkName: string; clientName: string }>();
@@ -25,7 +23,6 @@ const Client = () => {
   const [loading, setLoading] = useState(!client);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showQR, setShowQR] = useState(false);
 
   const { addFlashbarItem } = useFlashbarContext();
 
@@ -143,102 +140,31 @@ const Client = () => {
           </Box>
         </SpaceBetween>
       </Modal>
-
       <Header
         variant="h1"
         actions={
-          <SpaceBetween direction="horizontal" size="xs">
-            <Button variant="primary" iconName="download" onClick={handleDownloadClientClick}>
-              Download Client Config
-            </Button>
-            <Button variant="normal" onClick={() => setShowDeleteModal(true)} disabled={deleting}>
-              Delete Client
-            </Button>
-          </SpaceBetween>
+          <LoadingState height={50} loading={loading}>
+            <SpaceBetween direction="horizontal" size="xs">
+              <Button variant="primary" iconName="download" onClick={handleDownloadClientClick}>
+                Download Client Config
+              </Button>
+              <Button variant="normal" onClick={() => setShowDeleteModal(true)} disabled={deleting}>
+                Delete Client
+              </Button>
+            </SpaceBetween>
+          </LoadingState>
         }
       >
         {clientName}
       </Header>
 
-      <Container header={<Header variant="h2">Client details</Header>}>
-        <ColumnLayout columns={3} variant="text-grid">
-          <KeyValuePairs
-            columns={1}
-            items={[
-              {
-                label: "Name",
-                value: client?.clientName || "-",
-              },
-              {
-                label: "Client Public Key",
-                value:
-                  (
-                    <code
-                      style={{
-                        whiteSpace: "nowrap",
-                        fontSize: "14px",
-                      }}
-                    >
-                      {client?.clientPublicKeyValue}
-                    </code>
-                  ) || "-",
-              },
-              {
-                label: "CIDR",
-                value: client?.clientCidr || "-",
-              },
-              {
-                label: "Tag",
-                value: client?.clientTag || "-",
-              },
-            ]}
-          />
-          <KeyValuePairs
-            columns={1}
-            items={[
-              {
-                label: "DNS",
-                value: client?.clientDns || "-",
-              },
-              {
-                label: "Allowed IPs",
-                value: client?.allowedIps || "-",
-              },
-              {
-                label: "Network Endpoint",
-                value: client?.networkEndpoint || "-",
-              },
-              {
-                label: "Network Listen Port",
-                value: client?.networkListenPort?.toString() || "-",
-              },
-            ]}
-          />
-          <KeyValuePairs
-            columns={1}
-            items={[
-              {
-                label: "Configuration QR Code",
-                value:
-                  networkName && clientName ? (
-                    <SpaceBetween size="s">
-                      <Toggle checked={showQR} onChange={({ detail }) => setShowQR(detail.checked)}>
-                        Show QR Code
-                      </Toggle>
-                      <ClientConfigQRCode
-                        networkName={networkName}
-                        clientName={clientName}
-                        blur={!showQR}
-                      />
-                    </SpaceBetween>
-                  ) : (
-                    "-"
-                  ),
-              },
-            ]}
-          />
-        </ColumnLayout>
-      </Container>
+      <LoadingState loading={loading} height={350}>
+        <ClientDetails client={client} networkName={networkName} clientName={clientName} />
+      </LoadingState>
+
+      <LoadingState loading={loading} height={300}>
+        <ClientConnectionInfoComponent clientPublicKeyValue={client?.clientPublicKeyValue} />
+      </LoadingState>
     </SpaceBetween>
   );
 };

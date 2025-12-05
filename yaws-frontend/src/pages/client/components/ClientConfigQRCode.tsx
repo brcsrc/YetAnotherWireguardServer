@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Box } from "@cloudscape-design/components";
 import { useFlashbarContext } from "../../../context/FlashbarContextProvider";
-import { networkClientClient } from "../../../utils/clients";
+import { networkClientClient } from "../../../api/HTTPClients";
 import LoadingState from "../../../components/state/LoadingState";
 
 interface ClientConfigQRCodeProps {
@@ -60,7 +60,7 @@ const ClientConfigQRCode = (props: ClientConfigQRCodeProps): JSX.Element => {
             src={qrImageUrl}
             alt={`QR code for ${clientName} configuration`}
             style={{
-              maxWidth: "70%",
+              maxWidth: "60%",
               height: "auto",
               filter: blur ? "blur(10px)" : "none",
               transition: "filter 0.3s ease",

@@ -7,7 +7,7 @@ import {
 } from "@cloudscape-design/components";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { Network } from "yaws-ts-api-client/dist/types/index";
-import { networkClient } from "../../../utils/clients";
+import { networkClient } from "../../../api/HTTPClients";
 import {
   NETWORKS_TABLE_COL_DEF,
   NETWORKS_TABLE_FILTER_PROPS,

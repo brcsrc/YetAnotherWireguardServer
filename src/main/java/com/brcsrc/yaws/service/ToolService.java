@@ -36,7 +36,6 @@ public class ToolService {
             }
 
             String publicIp = response.body().trim();
-            logger.info("Public IP: {}", publicIp);
 
             return publicIp;
         } catch (Exception e) {

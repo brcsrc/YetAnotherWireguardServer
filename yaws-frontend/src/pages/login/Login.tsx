@@ -16,7 +16,7 @@ import {
 } from "@cloudscape-design/components";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
 import { useAuthContext } from "../../context/AuthContextProvider";
-import { userClient } from "../../utils/clients";
+import { userClient } from "../../api/HTTPClients";
 
 const Login = () => {
   const navigate = useNavigate();

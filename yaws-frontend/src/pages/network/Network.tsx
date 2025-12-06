@@ -13,9 +13,10 @@ import {
 import { useParams, useLocation, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { Network } from "yaws-ts-api-client/dist/types/models/Network";
-import { networkClient } from "../../utils/clients";
+import { networkClient } from "../../api/HTTPClients";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
 import Clients from "../client/Clients";
+import { PublicKeyDisplay } from "../../components/misc/PublicKeyDisplay";
 
 const Network = () => {
   const { networkName } = useParams<{ networkName: string }>();
@@ -136,17 +137,7 @@ const Network = () => {
               },
               {
                 label: "Network Public Key",
-                value:
-                  (
-                    <code
-                      style={{
-                        whiteSpace: "nowrap",
-                        fontSize: "14px",
-                      }}
-                    >
-                      {network?.networkPublicKeyValue}
-                    </code>
-                  ) || "-",
+                value: <PublicKeyDisplay publicKey={network?.networkPublicKeyValue} />,
               },
               {
                 label: "Tag",

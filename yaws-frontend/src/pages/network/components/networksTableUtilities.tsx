@@ -1,5 +1,6 @@
 import { Badge } from "@cloudscape-design/components";
 import { Link } from "../../../components/misc/Link";
+import { PublicKeyDisplay } from "../../../components/misc/PublicKeyDisplay";
 
 export const NETWORKS_TABLE_COL_DEF = [
   {
@@ -15,7 +16,7 @@ export const NETWORKS_TABLE_COL_DEF = [
   {
     id: "publicKeyValue",
     header: "Public Key",
-    cell: (item) => <code>{item.networkPublicKeyValue}</code>,
+    cell: (item) => <PublicKeyDisplay publicKey={item.networkPublicKeyValue} />,
     sortingField: "networkPublicKeyValue",
   },
   {

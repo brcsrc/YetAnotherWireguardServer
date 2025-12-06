@@ -1,4 +1,5 @@
 import { Link } from "../../../components/misc/Link";
+import { PublicKeyDisplay } from "../../../components/misc/PublicKeyDisplay";
 
 export const getClientsTableColDef = (networkName: string) => [
   {
@@ -14,7 +15,7 @@ export const getClientsTableColDef = (networkName: string) => [
   {
     id: "publicKeyValue",
     header: "Public Key",
-    cell: (item) => <code>{item.clientPublicKeyValue}</code>,
+    cell: (item) => <PublicKeyDisplay publicKey={item.clientPublicKeyValue} />,
     sortingField: "networkPublicKeyValue",
   },
   {

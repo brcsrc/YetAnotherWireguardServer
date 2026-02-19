@@ -27,7 +27,7 @@ COPY --from=build-frontend /app/yaws-frontend/dist /opt/src/main/resources/stati
 RUN ./gradlew build -x test --no-daemon;
 
 #### stage 3 build environment ###
-FROM alpine:3.14 AS final
+FROM alpine:3.23 AS final
 WORKDIR /opt
 # https://docs.aws.amazon.com/corretto/latest/corretto-21-ug/generic-linux-install.html#alpine-linux-install-instruct
 RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub  https://apk.corretto.aws/amazoncorretto.rsa.pub && \
@@ -35,7 +35,7 @@ RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub  https://apk.corretto.aws/amazo
     apk update && \
     apk add amazon-corretto-21
 
-RUN apk add --no-cache openrc wireguard-tools iproute2 sqlite
+RUN apk add --no-cache openrc wireguard-tools iproute2 sqlite iptables
 COPY --from=build-spring /opt/build/libs/yaws-0.0.1-SNAPSHOT.jar .
 COPY shell/* .
 COPY docker/prod/entrypoint.sh /usr/local/bin/

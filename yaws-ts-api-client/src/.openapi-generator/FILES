@@ -5,6 +5,8 @@ apis/ToolControllerApi.ts
 apis/UserControllerApi.ts
 apis/index.ts
 index.ts
+models/AuthenticateStartRequest.ts
+models/AuthenticateStartResponse.ts
 models/Client.ts
 models/CreateNetworkClientRequest.ts
 models/GetNextAvailableClientAddressResponse.ts
@@ -15,11 +17,16 @@ models/ListNetworksRequest.ts
 models/ListNetworksResponse.ts
 models/Network.ts
 models/NetworkClient.ts
+models/RegenerateRecoveryCodesResponse.ts
 models/SseEmitter.ts
 models/StreamClientConnectionInfoRequest.ts
 models/StreamNetworkConnectionInfoRequest.ts
+models/TotpEnrollConfirmRequest.ts
+models/TotpEnrollStartResponse.ts
 models/UpdateNetworkRequest.ts
 models/User.ts
+models/VerifyRecoveryCodeRequest.ts
+models/VerifyTotpRequest.ts
 models/WhoamiResponse.ts
 models/index.ts
 runtime.ts

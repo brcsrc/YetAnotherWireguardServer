@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import {
-  Box,
   Button,
-  ColumnLayout,
   Container,
   Form,
   FormField,
@@ -15,7 +13,6 @@ import {
   Toggle,
 } from "@cloudscape-design/components";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
-import { useAuthContext } from "../../context/AuthContextProvider";
 import { userClient } from "../../api/HTTPClients";
 
 const Login = () => {
@@ -27,6 +24,12 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [activeTabId, setActiveTabId] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [requiresSecondFactor, setRequiresSecondFactor] = useState(false);
+  const [allowedSecondFactors, setAllowedSecondFactors] = useState<string[]>([]);
+  const [secondFactorMethod, setSecondFactorMethod] = useState<"TOTP" | "RECOVERY">("TOTP");
+  const [challengeExpiresAt, setChallengeExpiresAt] = useState<string | null>(null);
 
   // Validation for register form
   const passwordsMatch = password === confirmPassword;
@@ -35,6 +38,20 @@ const Login = () => {
 
   // Validation for login form
   const loginFormValid = usernameInput.trim() !== "" && password !== "";
+  const verifyTotpFormValid = otpCode.trim().match(/^\d{6}$/) !== null;
+  const verifyRecoveryCodeFormValid =
+    recoveryCode.trim().match(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/) !== null;
+
+  const formatRecoveryCodeInput = (inputValue: string): string => {
+    const sanitized = inputValue
+      .toUpperCase()
+      .replace(/[^A-Z2-9]/g, "")
+      .slice(0, 8);
+    if (sanitized.length <= 4) {
+      return sanitized;
+    }
+    return `${sanitized.slice(0, 4)}-${sanitized.slice(4)}`;
+  };
 
   // if we are already authenticated then navigate back to home
   useEffect(() => {
@@ -49,6 +66,51 @@ const Login = () => {
   }, []);
 
   // TODO: Integrate with utils/validation.ts for username / password validation
+  const handleStartAuthentication = async (showSuccessToast: boolean) => {
+    const authStartResponse = await userClient.authenticateStart({
+      authenticateStartRequest: {
+        userName: usernameInput,
+        password: password,
+      },
+    });
+
+    if (authStartResponse.twoFactorRequired) {
+      setRequiresSecondFactor(true);
+      setChallengeExpiresAt(authStartResponse.challengeExpiresAt || null);
+      const serverAllowedFactors = (authStartResponse.allowedSecondFactors || []).filter(
+        (factor): factor is "TOTP" | "RECOVERY" => factor === "TOTP" || factor === "RECOVERY"
+      );
+      const effectiveAllowedFactors =
+        serverAllowedFactors.length > 0 ? serverAllowedFactors : ["TOTP"];
+      setAllowedSecondFactors(effectiveAllowedFactors);
+      setSecondFactorMethod(effectiveAllowedFactors.includes("TOTP") ? "TOTP" : "RECOVERY");
+      setOtpCode("");
+      setRecoveryCode("");
+      addFlashbarItem({
+        type: "info",
+        header: "Second Factor Required",
+        content: effectiveAllowedFactors.includes("RECOVERY")
+          ? "Use your authenticator code or a recovery code to finish signing in."
+          : "Enter the 6-digit code from your authenticator app to finish signing in.",
+        dismissLabel: "Dismiss",
+        duration: 5000,
+      });
+      return;
+    }
+
+    if (showSuccessToast) {
+      addFlashbarItem({
+        type: "success",
+        header: "Login Successful",
+        content: "Welcome back!",
+        dismissLabel: "Dismiss",
+        duration: 3000,
+      });
+    }
+
+    navigate("/");
+  };
+
   // Register admin user
   const handleCreateUserClick = async () => {
     // Validate passwords match
@@ -81,13 +143,7 @@ const Login = () => {
 
       // Automatically log in after successful registration
       try {
-        await userClient.authenticateAndIssueToken({
-          user: {
-            userName: usernameInput,
-            password: password,
-          },
-        });
-        navigate("/");
+        await handleStartAuthentication(false);
       } catch (loginError: any) {
         const errorMessage =
           loginError.response?.data?.message ||
@@ -119,16 +175,34 @@ const Login = () => {
   const handleAuthenticateClick = async () => {
     setLoading(true);
     try {
-      await userClient.authenticateAndIssueToken({
-        user: {
-          userName: usernameInput,
-          password: password,
+      await handleStartAuthentication(true);
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.message || error.response?.data?.error || error.message;
+      addFlashbarItem({
+        type: "error",
+        header: "Authentication Failed",
+        content: errorMessage,
+        dismissLabel: "Dismiss",
+        duration: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyTotpClick = async () => {
+    setLoading(true);
+    try {
+      await userClient.verifyTotp({
+        verifyTotpRequest: {
+          otpCode,
         },
       });
       addFlashbarItem({
         type: "success",
         header: "Login Successful",
-        content: "Welcome back!",
+        content: "Two-factor verification successful.",
         dismissLabel: "Dismiss",
         duration: 3000,
       });
@@ -138,7 +212,38 @@ const Login = () => {
         error.response?.data?.message || error.response?.data?.error || error.message;
       addFlashbarItem({
         type: "error",
-        header: "Authentication Failed",
+        header: "Verification Failed",
+        content: errorMessage,
+        dismissLabel: "Dismiss",
+        duration: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyRecoveryCodeClick = async () => {
+    setLoading(true);
+    try {
+      await userClient.verifyRecoveryCode({
+        verifyRecoveryCodeRequest: {
+          recoveryCode,
+        },
+      });
+      addFlashbarItem({
+        type: "success",
+        header: "Login Successful",
+        content: "Recovery code verification successful.",
+        dismissLabel: "Dismiss",
+        duration: 3000,
+      });
+      navigate("/");
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.message || error.response?.data?.error || error.message;
+      addFlashbarItem({
+        type: "error",
+        header: "Verification Failed",
         content: errorMessage,
         dismissLabel: "Dismiss",
         duration: 5000,
@@ -176,7 +281,17 @@ const Login = () => {
 
             <Tabs
               activeTabId={activeTabId}
-              onChange={({ detail }) => setActiveTabId(detail.activeTabId)}
+              onChange={({ detail }) => {
+                setActiveTabId(detail.activeTabId);
+                if (detail.activeTabId !== "login") {
+                  setRequiresSecondFactor(false);
+                  setAllowedSecondFactors([]);
+                  setSecondFactorMethod("TOTP");
+                  setChallengeExpiresAt(null);
+                  setOtpCode("");
+                  setRecoveryCode("");
+                }
+              }}
               tabs={[
                 {
                   id: "login",
@@ -184,14 +299,54 @@ const Login = () => {
                   content: (
                     <Form
                       actions={
-                        <Button
-                          variant="primary"
-                          onClick={handleAuthenticateClick}
-                          disabled={loading || !loginFormValid}
-                          formAction="none"
-                        >
-                          {loading ? "Signing In..." : "Sign In"}
-                        </Button>
+                        <SpaceBetween size="xs" direction="horizontal">
+                          {requiresSecondFactor ? (
+                            <Button
+                              variant="normal"
+                              onClick={() => {
+                                setRequiresSecondFactor(false);
+                                setAllowedSecondFactors([]);
+                                setSecondFactorMethod("TOTP");
+                                setChallengeExpiresAt(null);
+                                setOtpCode("");
+                                setRecoveryCode("");
+                              }}
+                              disabled={loading}
+                              formAction="none"
+                            >
+                              Back
+                            </Button>
+                          ) : null}
+                          <Button
+                            variant="primary"
+                            onClick={
+                              requiresSecondFactor
+                                ? secondFactorMethod === "RECOVERY"
+                                  ? handleVerifyRecoveryCodeClick
+                                  : handleVerifyTotpClick
+                                : handleAuthenticateClick
+                            }
+                            disabled={
+                              loading ||
+                              (requiresSecondFactor
+                                ? secondFactorMethod === "RECOVERY"
+                                  ? !verifyRecoveryCodeFormValid
+                                  : !verifyTotpFormValid
+                                : !loginFormValid)
+                            }
+                            formAction="none"
+                          >
+                            {loading
+                              ? requiresSecondFactor
+                                ? "Verifying..."
+                                : "Signing In..."
+                              : requiresSecondFactor
+                                ? secondFactorMethod === "RECOVERY"
+                                  ? "Verify Recovery Code"
+                                  : "Verify Code"
+                                : "Sign In"}
+                          </Button>
+                        </SpaceBetween>
                       }
                     >
                       <SpaceBetween size="m">
@@ -202,6 +357,7 @@ const Login = () => {
                             placeholder="Enter username"
                             type="text"
                             autoComplete="username"
+                            disabled={requiresSecondFactor}
                           />
                         </FormField>
                         <FormField label="Password">
@@ -211,8 +367,68 @@ const Login = () => {
                             placeholder="Enter password"
                             type="password"
                             autoComplete="current-password"
+                            disabled={requiresSecondFactor}
                           />
                         </FormField>
+                        {requiresSecondFactor ? (
+                          <SpaceBetween size="s">
+                            {allowedSecondFactors.includes("RECOVERY") ? (
+                              <SpaceBetween direction="horizontal" size="xs">
+                                <Button
+                                  variant={secondFactorMethod === "TOTP" ? "primary" : "normal"}
+                                  onClick={() => setSecondFactorMethod("TOTP")}
+                                  disabled={loading}
+                                  formAction="none"
+                                >
+                                  Authenticator App
+                                </Button>
+                                <Button
+                                  variant={secondFactorMethod === "RECOVERY" ? "primary" : "normal"}
+                                  onClick={() => setSecondFactorMethod("RECOVERY")}
+                                  disabled={loading}
+                                  formAction="none"
+                                >
+                                  Recovery Code
+                                </Button>
+                              </SpaceBetween>
+                            ) : null}
+
+                            {secondFactorMethod === "RECOVERY" ? (
+                              <FormField
+                                label="Recovery Code"
+                                description="Enter one of your backup codes in format XXXX-XXXX"
+                              >
+                                <Input
+                                  value={recoveryCode}
+                                  onChange={({ detail }) =>
+                                    setRecoveryCode(formatRecoveryCodeInput(detail.value))
+                                  }
+                                  placeholder="ABCD-2345"
+                                  type="text"
+                                />
+                              </FormField>
+                            ) : (
+                              <FormField
+                                label="Authenticator Code"
+                                description={
+                                  challengeExpiresAt
+                                    ? `Challenge expires at ${new Date(challengeExpiresAt).toLocaleTimeString()}`
+                                    : "Enter the 6-digit code from your authenticator app"
+                                }
+                              >
+                                <Input
+                                  value={otpCode}
+                                  onChange={({ detail }) =>
+                                    setOtpCode(detail.value.replace(/\D/g, "").slice(0, 6))
+                                  }
+                                  placeholder="123456"
+                                  type="text"
+                                  inputMode="numeric"
+                                />
+                              </FormField>
+                            )}
+                          </SpaceBetween>
+                        ) : null}
                       </SpaceBetween>
                     </Form>
                   ),

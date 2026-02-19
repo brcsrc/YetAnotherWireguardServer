@@ -23,6 +23,11 @@ public class Constants {
     // length of time that JWT for authentication is valid for
     public static final Long AUTH_TOKEN_VALIDITY_PERIOD_MILLIS = Duration.ofMinutes(180).toMillis();  // 3 hours
     public static final Long AUTH_TOKEN_VALIDITY_PERIOD_SECONDS = AUTH_TOKEN_VALIDITY_PERIOD_MILLIS / 1000;
+    public static final Long PRE_AUTH_TOKEN_VALIDITY_PERIOD_MILLIS = Duration.ofMinutes(5).toMillis();
+    public static final Long PRE_AUTH_TOKEN_VALIDITY_PERIOD_SECONDS = PRE_AUTH_TOKEN_VALIDITY_PERIOD_MILLIS / 1000;
+    public static final int PRE_AUTH_MAX_ATTEMPTS = 5;
+    public static final int RECOVERY_CODES_COUNT = 10;
     // pattern for usernames, 32 chars alphanumeric with dashes or underscores, no special chars
     public static final String CHAR_32_ALPHANUMERIC_DASHES_UNDERSC_REGEX = "^[a-zA-Z0-9_-]{4,32}$";
+    public static final String SIX_DIGIT_NUMERIC_CODE_REGEX = "^[0-9]{6}$";
 }

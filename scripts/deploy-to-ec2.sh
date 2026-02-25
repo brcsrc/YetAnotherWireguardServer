@@ -10,6 +10,8 @@
 # Options:
 #   --stack-name NAME    Override default stack name (default: yaws-dev)
 #   --image-tag TAG      Override default image tag (default: latest)
+#   --arch ARCH          Target architecture: amd64, arm64 (default: both as multi-arch manifest)
+#   --stage STAGE        Dockerfile stage: dev, prod (default: prod)
 #
 
 set -eo pipefail
@@ -20,8 +22,10 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 AWS_REGION="us-west-2"
 STACK_NAME="yaws-dev"
 TEMPLATE_FILE="${SCRIPT_DIR}/ec2-based-infrastructure.yml"
-DOCKERFILE="${PROJECT_ROOT}/docker/prod/Dockerfile"
+STAGE="prod"
+DOCKERFILE="${PROJECT_ROOT}/docker/${STAGE}/Dockerfile"
 IMAGE_TAG="latest"
+BUILD_PLATFORMS="linux/amd64,linux/arm64"
 
 function log_info() {
   echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [deploy-to-ec2] $1"
@@ -135,19 +139,26 @@ function deploy_cloudformation_stack() {
 function build_and_push_image() {
   local ecr_uri="$1"
   local image_tag="$2"
-
-  log_info "building Docker image from ${DOCKERFILE}"
-  docker build \
-    -f "${DOCKERFILE}" \
-    -t "${ecr_uri}:${image_tag}" \
-    "${PROJECT_ROOT}"
+  local platforms="$3"
 
   log_info "logging in to ECR"
   aws ecr get-login-password --region "${AWS_REGION}" | \
     docker login --username AWS --password-stdin "${ecr_uri}"
 
-  log_info "pushing image to ECR: ${ecr_uri}:${image_tag}"
-  docker push "${ecr_uri}:${image_tag}"
+  log_info "building Docker image from ${DOCKERFILE}. Platform: ${platforms}"
+
+  if ! docker buildx inspect yaws-multiarch &>/dev/null; then
+    docker buildx create --name yaws-multiarch --use
+  else
+    docker buildx use yaws-multiarch
+  fi
+
+  docker buildx build \
+    --platform "${platforms}" \
+    -f "${DOCKERFILE}" \
+    -t "${ecr_uri}:${image_tag}" \
+    --push \
+    "${PROJECT_ROOT}"
 
   log_info "image pushed successfully"
 }
@@ -274,7 +285,7 @@ function deploy() {
     exit 1
   fi
 
-  build_and_push_image "${ecr_uri}" "${IMAGE_TAG}"
+  build_and_push_image "${ecr_uri}" "${IMAGE_TAG}" "${BUILD_PLATFORMS}"
   refresh_asg "${STACK_NAME}"
 
   print_deployment_info "${STACK_NAME}"
@@ -343,10 +354,14 @@ function main() {
       --skip-stack          ) SKIP_STACK="true"; shift 1;;
       --stack-name          ) STACK_NAME="${2:-}"; shift 2;;
       --image-tag           ) IMAGE_TAG="${2:-}"; shift 2;;
+      --arch                ) BUILD_PLATFORMS="linux/${2:-}"; shift 2;;
+      --stage               ) STAGE="${2:-}"; shift 2;;
       -- ) shift; break ;;
       * ) break ;;
     esac
   done
+
+  DOCKERFILE="${PROJECT_ROOT}/docker/${STAGE}/Dockerfile"
 
   case "$OPERATION" in
     "deploy")
@@ -356,7 +371,7 @@ function main() {
       teardown
       ;;
     *)
-      log_error "invalid operation. Usage: $0 {deploy|teardown} [--skip-stack] [--stack-name NAME] [--image-tag TAG]"
+      log_error "invalid operation. Usage: $0 {deploy|teardown} [--skip-stack] [--stack-name NAME] [--image-tag TAG] [--arch ARCH] [--stage STAGE]"
       exit 1
       ;;
   esac

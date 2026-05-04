@@ -15,12 +15,33 @@
 
 import * as runtime from '../runtime';
 import type {
+  AuthenticateStartRequest,
+  AuthenticateStartResponse,
+  RegenerateRecoveryCodesResponse,
+  TotpEnrollConfirmRequest,
+  TotpEnrollStartResponse,
   User,
+  VerifyRecoveryCodeRequest,
+  VerifyTotpRequest,
   WhoamiResponse,
 } from '../models/index';
 import {
+    AuthenticateStartRequestFromJSON,
+    AuthenticateStartRequestToJSON,
+    AuthenticateStartResponseFromJSON,
+    AuthenticateStartResponseToJSON,
+    RegenerateRecoveryCodesResponseFromJSON,
+    RegenerateRecoveryCodesResponseToJSON,
+    TotpEnrollConfirmRequestFromJSON,
+    TotpEnrollConfirmRequestToJSON,
+    TotpEnrollStartResponseFromJSON,
+    TotpEnrollStartResponseToJSON,
     UserFromJSON,
     UserToJSON,
+    VerifyRecoveryCodeRequestFromJSON,
+    VerifyRecoveryCodeRequestToJSON,
+    VerifyTotpRequestFromJSON,
+    VerifyTotpRequestToJSON,
     WhoamiResponseFromJSON,
     WhoamiResponseToJSON,
 } from '../models/index';
@@ -29,8 +50,24 @@ export interface AuthenticateAndIssueTokenRequest {
     user: User;
 }
 
+export interface AuthenticateStartOperationRequest {
+    authenticateStartRequest: AuthenticateStartRequest;
+}
+
+export interface ConfirmTotpEnrollmentRequest {
+    totpEnrollConfirmRequest: TotpEnrollConfirmRequest;
+}
+
 export interface CreateAdminUserRequest {
     user: User;
+}
+
+export interface VerifyRecoveryCodeOperationRequest {
+    verifyRecoveryCodeRequest: VerifyRecoveryCodeRequest;
+}
+
+export interface VerifyTotpOperationRequest {
+    verifyTotpRequest: VerifyTotpRequest;
 }
 
 /**
@@ -73,6 +110,81 @@ export class UserControllerApi extends runtime.BaseAPI {
      */
     async authenticateAndIssueToken(requestParameters: AuthenticateAndIssueTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.authenticateAndIssueTokenRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * authenticates username/password and either returns challenge metadata or issues JWT
+     * Start authentication flow
+     */
+    async authenticateStartRaw(requestParameters: AuthenticateStartOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AuthenticateStartResponse>> {
+        if (requestParameters['authenticateStartRequest'] == null) {
+            throw new runtime.RequiredError(
+                'authenticateStartRequest',
+                'Required parameter "authenticateStartRequest" was null or undefined when calling authenticateStart().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        const response = await this.request({
+            path: `/api/v1/user/authenticate/start`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: AuthenticateStartRequestToJSON(requestParameters['authenticateStartRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AuthenticateStartResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * authenticates username/password and either returns challenge metadata or issues JWT
+     * Start authentication flow
+     */
+    async authenticateStart(requestParameters: AuthenticateStartOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthenticateStartResponse> {
+        const response = await this.authenticateStartRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * verifies initial OTP and enables TOTP
+     * Confirm TOTP enrollment
+     */
+    async confirmTotpEnrollmentRaw(requestParameters: ConfirmTotpEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['totpEnrollConfirmRequest'] == null) {
+            throw new runtime.RequiredError(
+                'totpEnrollConfirmRequest',
+                'Required parameter "totpEnrollConfirmRequest" was null or undefined when calling confirmTotpEnrollment().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        const response = await this.request({
+            path: `/api/v1/user/2fa/totp/enroll/confirm`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: TotpEnrollConfirmRequestToJSON(requestParameters['totpEnrollConfirmRequest']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * verifies initial OTP and enables TOTP
+     * Confirm TOTP enrollment
+     */
+    async confirmTotpEnrollment(requestParameters: ConfirmTotpEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.confirmTotpEnrollmentRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -138,6 +250,136 @@ export class UserControllerApi extends runtime.BaseAPI {
      */
     async logout(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.logoutRaw(initOverrides);
+    }
+
+    /**
+     * regenerates one-time recovery codes
+     * Regenerate recovery codes
+     */
+    async regenerateRecoveryCodesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RegenerateRecoveryCodesResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/api/v1/user/2fa/recovery-codes/regenerate`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RegenerateRecoveryCodesResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * regenerates one-time recovery codes
+     * Regenerate recovery codes
+     */
+    async regenerateRecoveryCodes(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RegenerateRecoveryCodesResponse> {
+        const response = await this.regenerateRecoveryCodesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * generates a TOTP secret and returns setup metadata
+     * Start TOTP enrollment
+     */
+    async startTotpEnrollmentRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TotpEnrollStartResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/api/v1/user/2fa/totp/enroll/start`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TotpEnrollStartResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * generates a TOTP secret and returns setup metadata
+     * Start TOTP enrollment
+     */
+    async startTotpEnrollment(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TotpEnrollStartResponse> {
+        const response = await this.startTotpEnrollmentRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * verifies recovery code and issues JWT on success
+     * Verify recovery code second factor
+     */
+    async verifyRecoveryCodeRaw(requestParameters: VerifyRecoveryCodeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['verifyRecoveryCodeRequest'] == null) {
+            throw new runtime.RequiredError(
+                'verifyRecoveryCodeRequest',
+                'Required parameter "verifyRecoveryCodeRequest" was null or undefined when calling verifyRecoveryCode().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        const response = await this.request({
+            path: `/api/v1/user/2fa/verify/recovery-code`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: VerifyRecoveryCodeRequestToJSON(requestParameters['verifyRecoveryCodeRequest']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * verifies recovery code and issues JWT on success
+     * Verify recovery code second factor
+     */
+    async verifyRecoveryCode(requestParameters: VerifyRecoveryCodeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.verifyRecoveryCodeRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * verifies TOTP code and issues JWT on success
+     * Verify TOTP second factor
+     */
+    async verifyTotpRaw(requestParameters: VerifyTotpOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['verifyTotpRequest'] == null) {
+            throw new runtime.RequiredError(
+                'verifyTotpRequest',
+                'Required parameter "verifyTotpRequest" was null or undefined when calling verifyTotp().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        const response = await this.request({
+            path: `/api/v1/user/2fa/verify/totp`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: VerifyTotpRequestToJSON(requestParameters['verifyTotpRequest']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * verifies TOTP code and issues JWT on success
+     * Verify TOTP second factor
+     */
+    async verifyTotp(requestParameters: VerifyTotpOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.verifyTotpRaw(requestParameters, initOverrides);
     }
 
     /**

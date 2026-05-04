@@ -31,6 +31,30 @@ export interface User {
      * @memberof User
      */
     password?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof User
+     */
+    twoFactorEnabled?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof User
+     */
+    twoFactorMethod?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof User
+     */
+    totpSecretEncrypted?: string;
+    /**
+     * 
+     * @type {Date}
+     * @memberof User
+     */
+    totpEnabledAt?: Date;
 }
 
 /**
@@ -52,6 +76,10 @@ export function UserFromJSONTyped(json: any, ignoreDiscriminator: boolean): User
         
         'userName': json['userName'] == null ? undefined : json['userName'],
         'password': json['password'] == null ? undefined : json['password'],
+        'twoFactorEnabled': json['twoFactorEnabled'] == null ? undefined : json['twoFactorEnabled'],
+        'twoFactorMethod': json['twoFactorMethod'] == null ? undefined : json['twoFactorMethod'],
+        'totpSecretEncrypted': json['totpSecretEncrypted'] == null ? undefined : json['totpSecretEncrypted'],
+        'totpEnabledAt': json['totpEnabledAt'] == null ? undefined : (new Date(json['totpEnabledAt'])),
     };
 }
 
@@ -68,6 +96,10 @@ export function UserToJSONTyped(value?: User | null, ignoreDiscriminator: boolea
         
         'userName': value['userName'],
         'password': value['password'],
+        'twoFactorEnabled': value['twoFactorEnabled'],
+        'twoFactorMethod': value['twoFactorMethod'],
+        'totpSecretEncrypted': value['totpSecretEncrypted'],
+        'totpEnabledAt': value['totpEnabledAt'] == null ? undefined : ((value['totpEnabledAt']).toISOString()),
     };
 }
 

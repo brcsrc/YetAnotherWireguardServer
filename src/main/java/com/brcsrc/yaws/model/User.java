@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Pattern;
 import org.hibernate.annotations.Check;
 
+import java.time.LocalDateTime;
+
 /**
  * this entity is not conventional, the users table is designed to only have a
  * single row for the 'admin' user. the user should be able to determine what the
@@ -21,6 +23,11 @@ public class User {
     @Pattern(regexp = Constants.CHAR_32_ALPHANUMERIC_DASHES_UNDERSC_REGEX)
     private String userName;
     private String password;
+    private boolean twoFactorEnabled = false;
+    private String twoFactorMethod;
+    @Column(columnDefinition = "TEXT")
+    private String totpSecretEncrypted;
+    private LocalDateTime totpEnabledAt;
 
     public Long getId() {
         return id;
@@ -46,12 +53,46 @@ public class User {
         this.password = password;
     }
 
+    public boolean isTwoFactorEnabled() {
+        return twoFactorEnabled;
+    }
+
+    public void setTwoFactorEnabled(boolean twoFactorEnabled) {
+        this.twoFactorEnabled = twoFactorEnabled;
+    }
+
+    public String getTwoFactorMethod() {
+        return twoFactorMethod;
+    }
+
+    public void setTwoFactorMethod(String twoFactorMethod) {
+        this.twoFactorMethod = twoFactorMethod;
+    }
+
+    public String getTotpSecretEncrypted() {
+        return totpSecretEncrypted;
+    }
+
+    public void setTotpSecretEncrypted(String totpSecretEncrypted) {
+        this.totpSecretEncrypted = totpSecretEncrypted;
+    }
+
+    public LocalDateTime getTotpEnabledAt() {
+        return totpEnabledAt;
+    }
+
+    public void setTotpEnabledAt(LocalDateTime totpEnabledAt) {
+        this.totpEnabledAt = totpEnabledAt;
+    }
+
     @Override
     public String toString() {
         return "User{" +
                 "id=" + id +
                 ", userName='" + userName + '\'' +
-                ", password='" + password + '\'' +
+                ", password='[REDACTED]'" +
+                ", twoFactorEnabled='" + twoFactorEnabled + '\'' +
+                ", twoFactorMethod='" + twoFactorMethod + '\'' +
                 '}';
     }
 }

@@ -37,7 +37,10 @@ const TopNavigationBar = (): JSX.Element => {
       type: "menu-dropdown" as const,
       text: username,
       iconName: "user-profile",
-      items: [{ id: "logout", text: "Logout", iconName: "undo" }],
+      items: [
+        { id: "security", text: "Security", href: "/security", iconName: "settings" },
+        { id: "logout", text: "Logout", iconName: "undo" },
+      ],
       onItemClick: ({ detail }) => {
         if (detail.id === "logout") logout();
       },

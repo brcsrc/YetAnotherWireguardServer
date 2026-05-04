@@ -2,6 +2,10 @@ package com.brcsrc.yaws.api;
 
 import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.User;
+import com.brcsrc.yaws.model.requests.AuthenticateStartRequest;
+import com.brcsrc.yaws.model.requests.AuthenticateStartResponse;
+import com.brcsrc.yaws.model.requests.VerifyRecoveryCodeRequest;
+import com.brcsrc.yaws.model.requests.VerifyTotpRequest;
 import com.brcsrc.yaws.model.requests.WhoamiResponse;
 import com.brcsrc.yaws.persistence.UserRepository;
 import com.brcsrc.yaws.security.JwtService;
@@ -268,7 +272,7 @@ public class UserControllerTests {
                 });
 
         assertEquals(HttpStatus.FORBIDDEN, authenticateResponseBadUserName.getStatusCode());
-        String authenticateResponseBadUserNameBody = authenticateResponseBadPass.getBody();
+        String authenticateResponseBadUserNameBody = authenticateResponseBadUserName.getBody();
         assert authenticateResponseBadUserNameBody != null;
         assertTrue(authenticateResponseBadUserNameBody.contains("authentication failed"));
 
@@ -285,9 +289,133 @@ public class UserControllerTests {
                 });
 
         assertEquals(HttpStatus.FORBIDDEN, authenticateResponseBadUserNameAndPass.getStatusCode());
-        String authenticateResponseBadUserNameAndPassBody = authenticateResponseBadPass.getBody();
+        String authenticateResponseBadUserNameAndPassBody = authenticateResponseBadUserNameAndPass.getBody();
         assert authenticateResponseBadUserNameAndPassBody != null;
         assertTrue(authenticateResponseBadUserNameAndPassBody.contains("authentication failed"));
+    }
+
+    @Test
+    public void authenticateStartIssuesAuthCookieWhen2faDisabled() {
+        User user = new User();
+        user.setUserName(testUserName);
+        user.setPassword(testPassword);
+
+        userService.createAdminUser(user);
+
+        String authenticateStartUrl = baseUrl + "/authenticate/start";
+
+        ResponseEntity<AuthenticateStartResponse> response = restClient.post()
+                .uri(authenticateStartUrl)
+                .body(new AuthenticateStartRequest(testUserName, testPassword))
+                .retrieve()
+                .toEntity(AuthenticateStartResponse.class);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(false, response.getBody().isTwoFactorRequired());
+
+        List<String> cookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
+        assertNotNull(cookies);
+        assertTrue(cookies.stream().anyMatch(cookie -> cookie.contains("accessToken=")));
+    }
+
+    @Test
+    public void authenticateStartIssuesPreAuthCookieWhen2faEnabled() {
+        User user = new User();
+        user.setUserName(testUserName);
+        user.setPassword(testPassword);
+
+        userService.createAdminUser(user);
+
+        Optional<User> createdUserOpt = userRepository.findByUserName(testUserName);
+        assertTrue(createdUserOpt.isPresent());
+        User createdUser = createdUserOpt.get();
+        createdUser.setTwoFactorEnabled(true);
+        createdUser.setTwoFactorMethod("TOTP");
+        createdUser.setTotpSecretEncrypted("not-needed-for-start-flow");
+        userRepository.save(createdUser);
+
+        String authenticateStartUrl = baseUrl + "/authenticate/start";
+
+        ResponseEntity<AuthenticateStartResponse> response = restClient.post()
+                .uri(authenticateStartUrl)
+                .body(new AuthenticateStartRequest(testUserName, testPassword))
+                .retrieve()
+                .toEntity(AuthenticateStartResponse.class);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(true, response.getBody().isTwoFactorRequired());
+
+        List<String> cookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
+        assertNotNull(cookies);
+        assertTrue(cookies.stream().anyMatch(cookie -> cookie.contains("preAuthSession=")));
+        assertTrue(cookies.stream().noneMatch(cookie -> cookie.contains("accessToken=")));
+    }
+
+    @Test
+    public void authenticateRejectsLegacyEndpointWhen2faEnabled() {
+        User user = new User();
+        user.setUserName(testUserName);
+        user.setPassword(testPassword);
+
+        userService.createAdminUser(user);
+
+        Optional<User> createdUserOpt = userRepository.findByUserName(testUserName);
+        assertTrue(createdUserOpt.isPresent());
+        User createdUser = createdUserOpt.get();
+        createdUser.setTwoFactorEnabled(true);
+        createdUser.setTwoFactorMethod("TOTP");
+        createdUser.setTotpSecretEncrypted("not-needed-for-legacy-endpoint-check");
+        userRepository.save(createdUser);
+
+        String authenticateUrl = baseUrl + "/authenticate";
+
+        ResponseEntity<String> response = restClient.post()
+                .uri(authenticateUrl)
+                .body(user)
+                .exchange((request, _response) -> {
+                    String responseBody = _response.bodyTo(String.class);
+                    return ResponseEntity.status(_response.getStatusCode()).body(responseBody);
+                });
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().contains("authentication failed"));
+    }
+
+    @Test
+    public void verifyTotpReturnsForbiddenWithoutPreAuthCookie() {
+        String verifyTotpUrl = baseUrl + "/2fa/verify/totp";
+
+        ResponseEntity<String> response = restClient.post()
+                .uri(verifyTotpUrl)
+                .body(new VerifyTotpRequest("123456"))
+                .exchange((request, _response) -> {
+                    String responseBody = _response.bodyTo(String.class);
+                    return ResponseEntity.status(_response.getStatusCode()).body(responseBody);
+                });
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().contains("authentication failed"));
+    }
+
+    @Test
+    public void verifyRecoveryCodeReturnsForbiddenWithoutPreAuthCookie() {
+        String verifyRecoveryCodeUrl = baseUrl + "/2fa/verify/recovery-code";
+
+        ResponseEntity<String> response = restClient.post()
+                .uri(verifyRecoveryCodeUrl)
+                .body(new VerifyRecoveryCodeRequest("ABCD-2345"))
+                .exchange((request, _response) -> {
+                    String responseBody = _response.bodyTo(String.class);
+                    return ResponseEntity.status(_response.getStatusCode()).body(responseBody);
+                });
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().contains("authentication failed"));
     }
 
     @Test

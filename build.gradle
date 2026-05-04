@@ -41,6 +41,7 @@ dependencies {
 	// QR code generation
 	implementation 'com.google.zxing:core:3.5.3'
 	implementation 'com.google.zxing:javase:3.5.3'
+	implementation 'commons-codec:commons-codec:1.17.1'
 
     // testing
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

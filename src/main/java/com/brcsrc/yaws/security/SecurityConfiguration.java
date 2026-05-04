@@ -104,6 +104,9 @@ public class SecurityConfiguration {
                     registry.requestMatchers(
                             "/api/v1/user/register",            // User creation API
                             "/api/v1/user/authenticate",        // User authentication API
+                            "/api/v1/user/authenticate/start",  // user staged authentication API
+                            "/api/v1/user/2fa/verify/totp",     // user second-factor verify API
+                            "/api/v1/user/2fa/verify/recovery-code", // user recovery code verify API
                             "/api/v1/user/logout",              // User logout API
                             "/error"                            // Allow error page access
                     ).permitAll();

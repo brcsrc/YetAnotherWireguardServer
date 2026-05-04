@@ -25,6 +25,12 @@ export interface WhoamiResponse {
      * @memberof WhoamiResponse
      */
     user?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof WhoamiResponse
+     */
+    twoFactorGloballyEnabled?: boolean;
 }
 
 /**
@@ -45,6 +51,7 @@ export function WhoamiResponseFromJSONTyped(json: any, ignoreDiscriminator: bool
     return {
         
         'user': json['user'] == null ? undefined : json['user'],
+        'twoFactorGloballyEnabled': json['twoFactorGloballyEnabled'] == null ? undefined : json['twoFactorGloballyEnabled'],
     };
 }
 
@@ -60,6 +67,7 @@ export function WhoamiResponseToJSONTyped(value?: WhoamiResponse | null, ignoreD
     return {
         
         'user': value['user'],
+        'twoFactorGloballyEnabled': value['twoFactorGloballyEnabled'],
     };
 }
 

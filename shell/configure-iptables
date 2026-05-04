@@ -8,7 +8,6 @@ function add_network() {
   iptables -I INPUT -s "$network_cidr" -j ACCEPT
   iptables -t nat -A POSTROUTING -s "$network_cidr" -o eth0 -j MASQUERADE
   iptables-save > /etc/iptables/rules.v4
-  rc-service iptables restart
 }
 
 function remove_network() {
@@ -18,7 +17,6 @@ function remove_network() {
   iptables -D INPUT -s "$network_cidr" -j ACCEPT
   iptables -t nat -D POSTROUTING -s "$network_cidr" -o eth0 -j MASQUERADE
   iptables-save > /etc/iptables/rules.v4
-  rc-service iptables restart
 }
 
 function main() {

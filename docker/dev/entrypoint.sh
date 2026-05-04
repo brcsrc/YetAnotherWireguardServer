@@ -16,7 +16,7 @@ SAVE_ON_STOP="yes"
 IPFORWARD="yes"
 ' > /etc/conf.d/iptables
 /etc/init.d/iptables save
-iptables-restore < /etc/iptables/rules.v4
+iptables-restore --noflush < /etc/iptables/rules.v4
 
 # enable ip forward in sysctl
 echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf

@@ -1,8 +1,7 @@
 import TopNavigation from "@cloudscape-design/components/top-navigation";
-import Toggle from "@cloudscape-design/components/toggle";
 import { useThemeContext } from "../../context/ThemeContextProvider";
 import { useAuthContext } from "../../context/AuthContextProvider";
-import { SpaceBetween } from "@cloudscape-design/components";
+import ThemeIcon from "./ThemeIcon";
 
 const TopNavigationBar = (): JSX.Element => {
   const { theme, toggleTheme } = useThemeContext();
@@ -78,14 +77,21 @@ const TopNavigationBar = (): JSX.Element => {
           borderBottom: "solid #424650 1px",
         }}
       >
-        <SpaceBetween size={"xs"} direction={"horizontal"} alignItems={"center"}>
-          🌙
-          <Toggle
-            checked={theme === "dark"}
-            onChange={() => toggleTheme()}
-            ariaLabel="Toggle dark mode"
-          />
-        </SpaceBetween>
+        <button
+          onClick={toggleTheme}
+          aria-label="Toggle dark mode"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "#ffffff",
+            padding: 0,
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <ThemeIcon isDark={theme === "dark"} />
+        </button>
       </div>
     </div>
   );

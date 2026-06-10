@@ -19,7 +19,7 @@ public class Constants {
     // admin user row id is always 1L because we can only have one
     public static final Long ADMIN_USER_ID = 1L;
     public static final int ADMIN_USER_PASSWORD_MIN_LENGTH = 12;
-    public static final String ADMIN_USER_PASSWORD_ALLOWED_SPECIAL_CHARS = "/*!@#$%^&*()\"{}_[]|\\?/<>,.=";
+    public static final String ADMIN_USER_PASSWORD_ALLOWED_SPECIAL_CHARS = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
     // length of time that JWT for authentication is valid for
     public static final Long AUTH_TOKEN_VALIDITY_PERIOD_MILLIS = Duration.ofMinutes(180).toMillis();  // 3 hours
     public static final Long AUTH_TOKEN_VALIDITY_PERIOD_SECONDS = AUTH_TOKEN_VALIDITY_PERIOD_MILLIS / 1000;

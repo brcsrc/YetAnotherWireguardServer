@@ -27,6 +27,32 @@ const CreateNetwork = () => {
   const [showErrorText, setShowErrorText] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Regex patterns for validity borrowed from backed Constants.java
+
+  const isNetworkNameInvalid = networkName.length > 0 && !/^[a-zA-Z0-9_-]{4,15}$/.test(networkName);
+
+  const isNetworkIpInvalid =
+    networkIp.length > 0 &&
+    !/^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$/.test(networkIp);
+
+  const networkInterfaceOctet = parseInt(networkIp.split(".")[3]);
+  const isNetworkIpHostInvalid =
+    networkIp.length > 0 &&
+    !isNetworkIpInvalid &&
+    (networkInterfaceOctet === 0 || networkInterfaceOctet > 254);
+
+  const subnetMaskValue = parseInt(networkSubnetMask.replace("/", ""));
+  const isSubnetMaskInvalid =
+    networkSubnetMask.length > 0 &&
+    (isNaN(subnetMaskValue) || subnetMaskValue < 24 || subnetMaskValue > 32);
+
+  const listenPortValue = parseInt(networkListenPort);
+  const isListenPortInvalid =
+    networkListenPort.length > 0 && (isNaN(listenPortValue) || listenPortValue < 1025 || listenPortValue > 65535);
+
+  const isNetworkTagInvalid =
+    networkTag.length > 0 && !/^[a-zA-Z0-9_-]{1,64}$/.test(networkTag);
+
   const handleSubmit = async () => {
     setLoading(true);
     try {
@@ -68,7 +94,12 @@ const CreateNetwork = () => {
       networkIp.trim() !== "" &&
       networkSubnetMask.trim() !== "" &&
       networkListenPort.trim() !== "" &&
-      !isNaN(parseInt(networkListenPort))
+      !isNetworkNameInvalid &&
+      !isNetworkIpInvalid &&
+      !isNetworkIpHostInvalid &&
+      !isSubnetMaskInvalid &&
+      !isListenPortInvalid &&
+      !isNetworkTagInvalid
     );
   };
 
@@ -112,18 +143,29 @@ const CreateNetwork = () => {
               <SpaceBetween size="l">
                 <FormField
                   label="Network name"
-                  description="Unique, alphanumeric, 1-64 character name for the network"
+                  description="Unique, alphanumeric, 4-15 character name for the network"
+                  errorText={isNetworkNameInvalid ? "Network name must be 4-15 alphanumeric characters, dashes, or underscores" : undefined}
                 >
                   <Input
                     value={networkName}
                     onChange={({ detail }) => setNetworkName(detail.value)}
                     placeholder="e.g., Network1"
+                    invalid={isNetworkNameInvalid}
                   />
                 </FormField>
 
                 <FormField
                   label="Network IP address / Subnet mask"
                   description="IP address and subnet mask for the network (typically /24)"
+                  errorText={
+                    isNetworkIpInvalid
+                      ? "Must be a valid IPv4 address"
+                      : isNetworkIpHostInvalid
+                        ? "Host octet must be between .1 and .254"
+                        : isSubnetMaskInvalid
+                          ? "Subnet mask must be between /24 and /32"
+                          : undefined
+                  }
                 >
                   <div style={{ display: "flex", gap: "8px" }}>
                     <div style={{ flex: "3" }}>
@@ -131,6 +173,7 @@ const CreateNetwork = () => {
                         value={networkIp}
                         onChange={({ detail }) => setNetworkIp(detail.value)}
                         placeholder="e.g., 10.100.0.1"
+                        invalid={isNetworkIpInvalid || isNetworkIpHostInvalid}
                       />
                     </div>
                     <div style={{ flex: "1" }}>
@@ -138,6 +181,7 @@ const CreateNetwork = () => {
                         value={networkSubnetMask}
                         onChange={({ detail }) => setNetworkSubnetMask(detail.value)}
                         placeholder="/24"
+                        invalid={isSubnetMaskInvalid}
                       />
                     </div>
                   </div>
@@ -146,20 +190,27 @@ const CreateNetwork = () => {
                 <FormField
                   label="Network listen port"
                   description="Server listen port for the network (1025-65535)"
+                  errorText={isListenPortInvalid ? "Listen port must be between 1025 and 65535" : undefined}
                 >
                   <Input
                     value={networkListenPort}
                     onChange={({ detail }) => setNetworkListenPort(detail.value)}
                     placeholder="e.g., 51820"
                     type="number"
+                    invalid={isListenPortInvalid}
                   />
                 </FormField>
 
-                <FormField label="Network tag" description="Optional tag for the network">
+                <FormField
+                  label="Network tag"
+                  description="Optional tag for the network"
+                  errorText={isNetworkTagInvalid ? "Tag must be alphanumeric with dashes or underscores, max 64 characters" : undefined}
+                >
                   <Input
                     value={networkTag}
                     onChange={({ detail }) => setNetworkTag(detail.value)}
                     placeholder="e.g., net1"
+                    invalid={isNetworkTagInvalid}
                   />
                 </FormField>
               </SpaceBetween>

@@ -180,9 +180,9 @@ public class NetworkControllerTests {
     @Test
     public void testCreateNetworkRejectsInvalidNetworkNames() {
         var badNames = List.of(
-                "name with spaces",
-                "name-with-%@$-chars",
-                "name-with-too-many-characters-12345678910111213141516171819202101"
+                "name w spaces",
+                "name-with-%@$",
+                "sixteencharsname"
         );
 
         for (String s : badNames) {
@@ -205,7 +205,7 @@ public class NetworkControllerTests {
             String responseBody = response.getBody();
             assert responseBody != null;
 
-            assertTrue(responseBody.contains("networkName must be alphanumeric without spaces and no more than 64 characters"));
+            assertTrue(responseBody.contains("networkName must be alphanumeric without spaces and no more than 15 characters"));
             Optional<Network> networkFromDb = networkRepository.findByNetworkName(s);
             assert networkFromDb.isEmpty();
         }
@@ -292,7 +292,7 @@ public class NetworkControllerTests {
         assert networkFromDb.isPresent();
 
         Network networkWithAddressAlreadyInUse = new Network();
-        networkWithAddressAlreadyInUse.setNetworkName("NotTestNetworkName");
+        networkWithAddressAlreadyInUse.setNetworkName("NotTestNetName");
         networkWithAddressAlreadyInUse.setNetworkCidr(testNetworkCidr);
         networkWithAddressAlreadyInUse.setNetworkListenPort(51821);
         networkWithAddressAlreadyInUse.setNetworkTag("not test network tag");
@@ -340,7 +340,7 @@ public class NetworkControllerTests {
         assert networkFromDb.isPresent();
 
         Network networkWithListenPortAlreadyInUse = new Network();
-        networkWithListenPortAlreadyInUse.setNetworkName("NotTestNetworkName");
+        networkWithListenPortAlreadyInUse.setNetworkName("NotTestNetName");
         networkWithListenPortAlreadyInUse.setNetworkCidr("192.168.0.1/24");
         networkWithListenPortAlreadyInUse.setNetworkListenPort(testNetworkListenPort); // Same listen port
         networkWithListenPortAlreadyInUse.setNetworkTag("not_test_network_tag");

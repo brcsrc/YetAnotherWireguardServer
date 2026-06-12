@@ -81,8 +81,8 @@ public class NetworkService {
     }
 
     public Network createNetwork(Network network) {
-        if (!network.getNetworkName().matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
-            String errMsg = "networkName must be alphanumeric without spaces and no more than 64 characters";
+        if (!network.getNetworkName().matches(Constants.CHAR_15_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
+            String errMsg = "networkName must be alphanumeric without spaces and no more than 15 characters";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
@@ -167,7 +167,7 @@ public class NetworkService {
                     "command: '%s' exited %s with reason: %s",
                     createKeyPairCommand,
                     createKeyPairExecResult.getExitCode(),
-                    createKeyPairExecResult.getStdout()));
+                    createKeyPairExecResult.getStderr()));
             // mark the network for removal
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.networkRepository.save(network);
@@ -206,7 +206,7 @@ public class NetworkService {
                     "command: '%s' exited %s with reason: %s",
                     createNetworkConfigCommand,
                     createNetConfigExecResult.getExitCode(),
-                    createNetConfigExecResult.getStdout()));
+                    createNetConfigExecResult.getStderr()));
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.networkRepository.save(network);
             CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
@@ -242,7 +242,7 @@ public class NetworkService {
                     "command: '%s' exited %s with reason: %s",
                     wgUpCommand,
                     wgUpExecResult.getExitCode(),
-                    wgUpExecResult.getStdout()));
+                    wgUpExecResult.getStderr()));
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.networkRepository.save(network);
             CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
@@ -275,7 +275,7 @@ public class NetworkService {
                             "command: '%s' exited %s with reason: %s",
                             wgDownCommand,
                             wgDownExecResult.getExitCode(),
-                            wgDownExecResult.getStdout()));
+                            wgDownExecResult.getStderr()));
                 }
             } else {
                 logger.info(String.format("wireguard interface '%s' does not exist", network.getNetworkName()));
@@ -295,7 +295,7 @@ public class NetworkService {
                         "command: '%s' exited %s with reason: %s",
                         configureIptablesCommand,
                         configureIptablesExecResult.getExitCode(),
-                        configureIptablesExecResult.getStdout()));
+                        configureIptablesExecResult.getStderr()));
             }
 
             // remove the files. not needed for wireguard but keeps disk space down
@@ -492,7 +492,7 @@ public class NetworkService {
         ExecutionResult wgDownResult = Executor.runCommand(wgDownCommand);
         if (wgDownResult.getExitCode() != 0) {
             String errMsg = String.format("Failed to bring down WireGuard interface for network '%s': %s",
-                    network.getNetworkName(), wgDownResult.getStdout());
+                    network.getNetworkName(), wgDownResult.getStderr());
             logger.error(errMsg);
             throw new InternalServerException(errMsg);
         }
@@ -517,7 +517,7 @@ public class NetworkService {
         ExecutionResult wgUpResult = Executor.runCommand(wgUpCommand);
         if (wgUpResult.getExitCode() != 0) {
             String errMsg = String.format("Failed to bring up WireGuard interface for network '%s': %s",
-                    network.getNetworkName(), wgUpResult.getStdout());
+                    network.getNetworkName(), wgUpResult.getStderr());
             logger.error(errMsg);
             throw new InternalServerException(errMsg);
         }

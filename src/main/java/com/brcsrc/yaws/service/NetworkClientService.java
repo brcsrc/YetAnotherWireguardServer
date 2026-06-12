@@ -26,10 +26,7 @@ import com.brcsrc.yaws.utility.FilepathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.server.ResponseStatusException;
@@ -112,12 +109,12 @@ public class NetworkClientService {
         }
 
         // check network name and client name are valid
-        if (!request.getNetworkName().matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
+        if (!request.getNetworkName().matches(Constants.CHAR_15_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "networkName is not valid";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
-        if (!request.getClientName().matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
+        if (!request.getClientName().matches(Constants.CHAR_15_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "clientName is not valid";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
@@ -343,7 +340,7 @@ public class NetworkClientService {
     @Transactional
     public NetworkClient deleteNetworkClient(String networkName, String clientName) {
         // input validation
-        if (!networkName.matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP) || !clientName.matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
+        if (!networkName.matches(Constants.CHAR_15_ALPHANUMERIC_DASHES_UNDERSC_REGEXP) || !clientName.matches(Constants.CHAR_15_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "network name or client name is invalid";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
@@ -427,12 +424,12 @@ public class NetworkClientService {
 
     private String getNetworkClientConfigFileContent(String networkName, String clientName) {
         // validate inputs before putting them in jpa queries
-        if (!networkName.matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
+        if (!networkName.matches(Constants.CHAR_15_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "networkName is not valid";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
-        if (!clientName.matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
+        if (!clientName.matches(Constants.CHAR_15_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "clientName is not valid";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
@@ -508,7 +505,7 @@ public class NetworkClientService {
 
     public String getNextAvailableClientAddress(String networkName) {
         // check networkName is valid input
-        if (!networkName.matches(Constants.CHAR_64_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
+        if (!networkName.matches(Constants.CHAR_15_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "networkName is not valid";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);

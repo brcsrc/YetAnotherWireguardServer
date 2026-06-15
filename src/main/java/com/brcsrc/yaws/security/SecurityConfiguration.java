@@ -42,7 +42,7 @@ public class SecurityConfiguration {
         List<String> allowedOrigins = new ArrayList<>();
 
         // load allowed origins from environment
-        String allowedOriginsFromEnv = System.getenv("CORS_ALLOWED_ORIGINS");
+        String allowedOriginsFromEnv = System.getenv("YAWS_CORS_ALLOWED_ORIGINS");
         if (allowedOriginsFromEnv != null && !allowedOriginsFromEnv.isBlank()) {
             String[] origins = allowedOriginsFromEnv.split(",");
             for (String origin : origins) {
@@ -56,7 +56,7 @@ public class SecurityConfiguration {
         }
 
         // allow access from vite if started in dev
-        boolean isDev = Boolean.parseBoolean(System.getenv("DEV"));
+        boolean isDev = Boolean.parseBoolean(System.getenv("YAWS_DEV"));
         if (isDev) {
             allowedOrigins.add("http://localhost:5173");
         }
@@ -109,7 +109,7 @@ public class SecurityConfiguration {
                     ).permitAll();
 
                     // Allow Swagger and OpenAPI docs in development mode
-                    boolean isDev = Boolean.parseBoolean(System.getenv("DEV"));
+                    boolean isDev = Boolean.parseBoolean(System.getenv("YAWS_DEV"));
                     if (isDev) {
                         registry.requestMatchers(
                                 "/swagger-ui/**",           // Swagger UI static resources

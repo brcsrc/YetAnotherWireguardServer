@@ -19,15 +19,26 @@ COPY --from=build-frontend /app/yaws-frontend/dist /opt/src/main/resources/stati
 RUN gradle wrapper
 RUN ./gradlew build -x test --no-daemon;
 
-#### stage 3 build environment ###
+### stage 3 build minimal JRE with jlink ###
+FROM gradle:8.9.0-jdk21-alpine AS build-jre
+# modules derived from jdeps analysis of the fat JAR (see DEVELOPMENT.md)
+# jdk.crypto.ec and jdk.crypto.cryptoki are not reported by jdeps but are required
+# at runtime for outbound TLS/SSL handshakes (ECDHE cipher suites)
+RUN jlink \
+    --add-modules java.base,java.compiler,java.desktop,java.instrument,java.management,java.net.http,java.prefs,java.rmi,java.scripting,java.security.jgss,java.sql.rowset,jdk.jfr,jdk.unsupported \
+    --add-modules jdk.crypto.ec,jdk.crypto.cryptoki \
+    --strip-debug \
+    --no-man-pages \
+    --no-header-files \
+    --compress=2 \
+    --output /opt/jre
+RUN cp /opt/java/openjdk/lib/security/cacerts /opt/jre/lib/security/cacerts
+
+### stage 4 build environment ###
 FROM alpine:3.23 AS final
 WORKDIR /opt
-# https://docs.aws.amazon.com/corretto/latest/corretto-21-ug/generic-linux-install.html#alpine-linux-install-instruct
-RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub  https://apk.corretto.aws/amazoncorretto.rsa.pub && \
-    echo "https://apk.corretto.aws/" >> /etc/apk/repositories && \
-    apk update && \
-    apk add amazon-corretto-21
-
+COPY --from=build-jre /opt/jre /opt/jre
+ENV PATH="/opt/jre/bin:$PATH"
 RUN apk add --no-cache openrc wireguard-tools iproute2 sqlite iptables
 COPY --from=build-spring /opt/build/libs/yaws-0.0.1-SNAPSHOT.jar .
 COPY shell/* .

@@ -57,7 +57,6 @@ services:
     restart: unless-stopped
     networks:
       yaws-net:
-        ipv4_address: 172.25.0.20
 
 networks:
   yaws-net:
@@ -66,8 +65,6 @@ networks:
       com.docker.network.bridge.enable_ip_masquerade: "true"
     ipam:
       driver: default
-      config:
-        - subnet: 172.25.0.0/16
 ```
 
 ---

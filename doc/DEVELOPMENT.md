@@ -1,41 +1,61 @@
 # Development
 
-## Gradle Build Helpful Commands
-### generate gradle wrapper
-generates a gradle wrapper script locally
+## Table of Contents
+- [Gradle Setup](#gradle-setup)
+- [Building and Running Locally](#building-and-running-locally)
+- [Running Tests](#running-tests)
+- [Database](#database)
+- [API Schema and Client Generation](#api-schema-and-client-generation)
+- [AWS EC2 Deployment](#aws-ec2-deployment)
+- [Production JRE Dependencies](#production-jre-dependencies)
+- [Reference Links](#reference-links)
+
+---
+
+## Gradle Setup
+
+These steps cache dependencies locally to speed up image builds. Run them once after cloning.
+
+#### Generate gradle wrapper
 ```shell
 gradle wrapper
 ```
-### cache gradle jars and zip locally (sppeds up image build)
-the gradle binary is cached in `gradle/` to remove the need to download when starting the container
+
+#### Cache gradle binary locally
+The gradle binary is cached in `gradle/` to remove the need to download it when building the container.
 ```shell
 ./gradlew downloadGradleBin
 ```
-##### cache java dependencies locally (speeds up image build)
-the jars from gradle dependencies are cached in `lib/` to remove the need to download them when starting the container
+
+#### Cache java dependencies locally
+JARs from gradle dependencies are cached in `lib/` to remove the need to download them when building the container.
 ```shell
 ./gradlew copyDependenciesToLocalRepo
 ```
 
-##### Build just the spring application without tests
+#### Build the spring application (no tests)
 ```shell
 ./gradlew build -x test
 ```
 
-##### Clean dependencies and rebuild
+#### Clean and rebuild
 ```shell
 ./gradlew clean && ./gradlew build -x test
 ```
 
-##### Build for development
-this will start the container locally for behavior testing
+---
+
+## Building and Running Locally
+
+#### Build and run the dev image
 ```shell
-\
 docker build -f docker/dev/Dockerfile -t yaws . && \
 docker run \
  --privileged \
  --cap-add=NET_ADMIN \
  -e YAWS_DEV="true" \
+ -e YAWS_ADMIN_USERNAME="admin" \
+ -e YAWS_ADMIN_PASSWORD="Str0ng!Pass#1" \
  -p 0.0.0.0:51820:51820/udp \
  -p 0.0.0.0:8080:8080/tcp \
  --name yaws \
@@ -44,16 +64,16 @@ docker run \
 docker exec -it yaws bash
 ```
 
-##### Build for development and pass the sqlite db through to project filesystem
-> you have to already have the DB available. you can run the above command and then copy it with `docker cp yaws:/opt/yaws.db .`
-
-this will bind mount the database to a container on run for manually testing 
+#### Build and run with a persistent database
+Bind mount the database to the project filesystem for manual testing. You must have a `yaws.db` available first — run the above command then copy it out with `docker cp yaws:/opt/yaws.db .`
 ```shell
-\
 docker build -f docker/prod/Dockerfile -t yaws . && \
 docker run \
  --privileged \
  --cap-add=NET_ADMIN \
+ -e YAWS_DEV="true" \
+ -e YAWS_ADMIN_USERNAME="admin" \
+ -e YAWS_ADMIN_PASSWORD="Str0ng!Pass#1" \
  -p 0.0.0.0:51820:51820/udp \
  -p 0.0.0.0:8080:8080/tcp \
  -v $(pwd)/yaws.db:/opt/yaws.db \
@@ -63,38 +83,43 @@ docker run \
 docker exec -it yaws bash
 ```
 
-##### build and run backend tests
+---
 
-run all tests. if a test container exists it will be reused, if it does not one will be created prior to tests
+## Running Tests
+
+Tests run inside a dedicated test container via `./scripts/test-runner.sh`. The container is reused between runs unless `--full-rebuild` is passed.
+
+#### Run all tests
 ```shell
 ./scripts/test-runner.sh run-tests
 ```
 
-run all tests with a new container regardless if one exists or not
-
+#### Run all tests with a fresh container
 ```shell
 ./scripts/test-runner.sh run-tests --full-rebuild
 ```
 
-run all tests of a specific test suite
-
+#### Run a specific test suite
 ```shell
 ./scripts/test-runner.sh run-tests --test-name "package com.brcsrc.yaws.api.NetworkControllerTests"
 ```
 
-run a specific test in a test suite
+#### Run a specific test
 ```shell
 ./scripts/test-runner.sh run-tests --test-name "package com.brcsrc.yaws.api.NetworkControllerTests.testCreateNetworkClientCreatesClient"
 ```
 
-run any test matching the pattern
+#### Run tests matching a pattern
 ```shell
 ./scripts/test-runner.sh run-tests --test-name "*testAddClientToNetworkThrowsException*"
 ```
 
-## YAWS Database manipulation
-### read table with column names as well as values 
-the default behavior does not respond with result sets with column names, only column values
+---
+
+## Database
+
+#### Read a table with column names
+The default SQLite behavior omits column names from result sets. Use `.headers on` and `.mode column` to include them.
 ```shell
 bash-5.1# sqlite3
 SQLite version 3.35.5 2021-04-19 18:32:05
@@ -107,24 +132,26 @@ sqlite> .mode column
 sqlite> SELECT * FROM users;
 id  password  user_name
 --  --------  ---------
-1   changeme  admin    
-sqlite> 
-
+1   changeme  admin
+sqlite>
 ```
 
-## API Schema and client generation
-##### View Swagger UI
+---
+
+## API Schema and Client Generation
+
+> the API docs are not exposed unless the app is running and `YAWS_DEV=true` is set in the environment
+
+#### View Swagger UI
 http://localhost:8080/swagger-ui/index.html
 
-##### View OpenAPI schema
+#### View OpenAPI schema
 http://localhost:8080/v3/api-docs
 
-##### generating client code
+#### Generate client code
+[See the API client README](../yaws-frontend/api-client/README.md)
 
-[see the API client README](../yaws-frontend/api-client/README.md)
-
-
-
+---
 
 ## AWS EC2 Deployment
 
@@ -186,18 +213,44 @@ aws ssm start-session \
 - `--stack-name NAME` - Use a custom stack name (default: `yaws-dev`)
 - `--image-tag TAG` - Use a custom image tag (default: `latest`)
 
-## Notes
+---
 
-##### wireguard on alpine
-https://www.cyberciti.biz/faq/how-to-set-up-wireguard-vpn-server-on-alpine-linux/
-https://docs.aws.amazon.com/corretto/latest/corretto-21-ug/generic-linux-install.html#alpine-linux-install-instruct
-https://manpages.debian.org/unstable/wireguard-tools/wg.8.en.html
+## Production JRE Dependencies
 
-##### authentication
-https://www.youtube.com/watch?v=9J-b6OlPy24
-https://www.youtube.com/watch?v=HYBRBkYtpeo
+The production image uses a minimal JRE built with `jlink` to reduce image size. The module list in the `build-jre` stage of `docker/prod/Dockerfile` must be kept in sync with the application's actual Java module dependencies. If new libraries are added, re-derive the module list as follows:
 
-##### fetching public ip
+1. Build the dev image (`docker/dev/Dockerfile`), which includes the full JDK
+2. Run `jdeps` against the exploded fat JAR:
+
+```shell
+docker run --rm --entrypoint="" yaws:latest sh -c "
+  mkdir -p /tmp/app-exploded && \
+  cd /tmp/app-exploded && \
+  jar -xf /opt/yaws-0.0.1-SNAPSHOT.jar && \
+  jdeps --ignore-missing-deps --multi-release 21 --print-module-deps -R --recursive \
+    --class-path 'BOOT-INF/lib/*' \
+    /opt/yaws-0.0.1-SNAPSHOT.jar 2>/dev/null
+"
+```
+
+3. Update the `--add-modules` list in the `build-jre` stage of `docker/prod/Dockerfile` with the output
+
+> The dev image installs the full Amazon Corretto 21 JDK so `jdeps` is always available there. The prod image's final stage only contains the minimal JRE and does not include `jdeps`.
+
+---
+
+## Reference Links
+
+#### WireGuard on Alpine
+- https://www.cyberciti.biz/faq/how-to-set-up-wireguard-vpn-server-on-alpine-linux/
+- https://docs.aws.amazon.com/corretto/latest/corretto-21-ug/generic-linux-install.html#alpine-linux-install-instruct
+- https://manpages.debian.org/unstable/wireguard-tools/wg.8.en.html
+
+#### Authentication
+- https://www.youtube.com/watch?v=9J-b6OlPy24
+- https://www.youtube.com/watch?v=HYBRBkYtpeo
+
+#### Fetching public IP
 ```shell
 # via opendns, requires `bind-utils` on alpine
 dig +short myip.opendns.com @resolver1.opendns.com

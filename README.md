@@ -76,8 +76,10 @@ networks:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `DEV` | Enables development mode (allows Swagger UI, permits localhost CORS) | `-e DEV="true"` |
-| `CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed CORS origins, usually needed when deployed behind a proxy | `-e CORS_ALLOWED_ORIGINS="https://example.com,https://app.example.com"` |
+| `YAWS_ADMIN_USERNAME` | If set alongside `YAWS_ADMIN_PASSWORD`, registers the admin user on startup if one does not already exist | `-e YAWS_ADMIN_USERNAME="admin"` |
+| `YAWS_ADMIN_PASSWORD` | Password for the admin user registered via `YAWS_ADMIN_USERNAME`. Must meet complexity requirements (12+ chars, 2 uppercase, 2 lowercase, 1 number, 1 special character) | `-e YAWS_ADMIN_PASSWORD="Str0ng!Pass#1"` |
+| `YAWS_DEV` | Enables development mode (allows Swagger UI, permits localhost CORS) | `-e YAWS_DEV="true"` |
+| `YAWS_CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed CORS origins, usually needed when deployed behind a proxy | `-e YAWS_CORS_ALLOWED_ORIGINS="https://example.com,https://app.example.com"` |
 
 ---
 

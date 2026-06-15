@@ -20,7 +20,7 @@ public class HeaderUtils {
                 "Path=/; " +                                                       // use on all paths on the site
                 "Max-Age=" + Constants.AUTH_TOKEN_VALIDITY_PERIOD_SECONDS + "; ";  // time in seconds before the browser deletes the cookie
 
-        boolean isDev = Boolean.parseBoolean(System.getenv("DEV"));
+        boolean isDev = Boolean.parseBoolean(System.getenv("YAWS_DEV"));
         if (isDev) {
             cookieValue += "Domain=localhost; ";                                    // share cookie across all localhost ports (5173 and 8080)
             cookieValue += "SameSite=Lax;";                                         // if dev allow cross origin use of the cookie for vite dev server
@@ -41,7 +41,7 @@ public class HeaderUtils {
                 "Path=/; " +
                 "Max-Age=0; ";  // This expires the cookie immediately
 
-        boolean isDev = Boolean.parseBoolean(System.getenv("DEV"));
+        boolean isDev = Boolean.parseBoolean(System.getenv("YAWS_DEV"));
         if (isDev) {
             cookieValue += "Domain=localhost; ";
             cookieValue += "SameSite=Lax;";

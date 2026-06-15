@@ -190,7 +190,7 @@ Resources:
             docker run \
               --privileged \
               --cap-add=NET_ADMIN \
-              -e CORS_ALLOWED_ORIGINS="https://$PUBLIC_DNS" \
+              -e YAWS_CORS_ALLOWED_ORIGINS="https://$PUBLIC_DNS" \
               -p 0.0.0.0:51820:51820/udp \
               -p 127.0.0.1:8080:8080/tcp \
               --name yaws \

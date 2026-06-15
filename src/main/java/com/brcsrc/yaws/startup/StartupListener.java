@@ -20,6 +20,7 @@ public class StartupListener {
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         logger.info("Application is ready, executing start up tasks");
+        this.startupTasks.registerAdminUserFromEnv();
         this.startupTasks.restartActiveNetworks();
     }
 }

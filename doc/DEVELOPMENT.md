@@ -35,7 +35,7 @@ docker build -f docker/dev/Dockerfile -t yaws . && \
 docker run \
  --privileged \
  --cap-add=NET_ADMIN \
- -e DEV="true" \
+ -e YAWS_DEV="true" \
  -p 0.0.0.0:51820:51820/udp \
  -p 0.0.0.0:8080:8080/tcp \
  --name yaws \

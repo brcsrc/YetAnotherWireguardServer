@@ -15,8 +15,21 @@ apply plugin: 'io.spring.dependency-management'
 group = 'com.brcsrc'
 version = '0.0.1-SNAPSHOT'
 
+layout.buildDirectory = file('build/backend')
+
 java {
 	sourceCompatibility = '21'
+}
+
+sourceSets {
+	main {
+		java { srcDirs = ['src/backend/main/java'] }
+		resources { srcDirs = ['src/backend/main/resources'] }
+	}
+	test {
+		java { srcDirs = ['src/backend/test/java'] }
+		resources { srcDirs = ['src/backend/test/resources'] }
+	}
 }
 
 dependencies {
@@ -61,6 +74,22 @@ task downloadGradleBin(type: Download) {
 	overwrite false
 }
 
+bootJar {
+	destinationDirectory = file('build/backend')
+}
+
+jacocoTestReport {
+	reports {
+		html.outputLocation = file('build/coverage')
+	}
+}
+
+tasks.named('test') {
+	reports.junitXml.outputLocation = file('build/coverage/test-results')
+	reports.html.outputLocation = file('build/coverage/test-report')
+}
+
+
 repositories {
 	flatDir {
 		dirs 'lib'
@@ -99,7 +128,7 @@ tasks.named('test') {
 
 task checkJarExists {
 	doLast {
-		def jarFile = file('build/libs/yaws-0.0.1-SNAPSHOT.jar')
+		def jarFile = file('build/backend/yaws-0.0.1-SNAPSHOT.jar')
 		if (!jarFile.exists()) {
 			configurations.runtimeClasspath.resolve()
 		}

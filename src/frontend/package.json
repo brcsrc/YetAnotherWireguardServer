@@ -15,7 +15,7 @@
     "@cloudscape-design/components": "^3.0.961",
     "@cloudscape-design/design-tokens": "^3.0.63",
     "@cloudscape-design/global-styles": "^1.0.42",
-    "@yaws/yaws-ts-api-client": "file:../yaws-ts-api-client",
+    "@yaws/yaws-ts-api-client": "file:../client",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-loading-skeleton": "^3.5.0",

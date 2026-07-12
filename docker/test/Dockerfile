@@ -3,8 +3,8 @@ WORKDIR /opt
 COPY build.gradle settings.gradle ./
 COPY gradle gradle
 COPY gradlew gradlew
-COPY shell/* .
-COPY src/ src/
+COPY src/shell/* .
+COPY src/backend/ src/backend/
 COPY lib/ lib/
 RUN apk update && \
     apk add openrc wireguard-tools iproute2 iptables sqlite

@@ -1,12 +1,12 @@
 ### stage 1 build web client ###
 FROM node:23-alpine AS build-frontend
 WORKDIR /app
-COPY yaws-ts-api-client /app/yaws-ts-api-client/
-WORKDIR yaws-ts-api-client/ /app/yaws-ts-api-client/
+COPY src/client /app/src/client/
+WORKDIR /app/src/client
 RUN npm install && npm run build
 WORKDIR /app
-COPY yaws-frontend/ /app/yaws-frontend/
-WORKDIR yaws-frontend
+COPY src/frontend/ /app/src/frontend/
+WORKDIR /app/src/frontend
 RUN npm install && npm run build
 
 ### stage 2 build java artifact ###
@@ -18,10 +18,10 @@ COPY build.gradle settings.gradle ./
 # this is to reduce build time as much as we can
 COPY gradle gradle
 COPY gradlew gradlew
-COPY shell/* .
-COPY src/ src/
+COPY src/shell/* .
+COPY src/backend/ src/backend/
 COPY lib/ lib/
-COPY --from=build-frontend /app/yaws-frontend/dist /opt/src/main/resources/static
+COPY --from=build-frontend /app/build/frontend /opt/src/backend/main/resources/static
 # skipping tests here as we want to build only and not modify container. also system
 # level dependencies like wireguard are not in the environment at this point and tests wont pass here
 RUN ./gradlew build -x test --no-daemon;
@@ -36,8 +36,8 @@ RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub  https://apk.corretto.aws/amazo
     apk add amazon-corretto-21
 
 RUN apk add --no-cache openrc wireguard-tools iproute2 sqlite iptables
-COPY --from=build-spring /opt/build/libs/yaws-0.0.1-SNAPSHOT.jar .
-COPY shell/* .
+COPY --from=build-spring /opt/build/backend/yaws-0.0.1-SNAPSHOT.jar .
+COPY src/shell/* .
 COPY docker/prod/entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["entrypoint.sh"]

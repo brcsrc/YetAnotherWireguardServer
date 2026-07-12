@@ -23,7 +23,7 @@ git clone https://github.com/brcsrc/YetAnotherWireguardServer
 ```
 2. Build the image
 ```shell
-cd YetAnotherWireguardServer && docker build -f docker/prod/Dockerfile -t yaws .
+cd YetAnotherWireguardServer && make image
 ```
 3. Run with the required network capabilities
 ```shell
@@ -44,6 +44,14 @@ When running YAWS in a compose stack, you must explicitly enable IP masquerading
 WireGuard traffic requires two NAT hops to reach the internet: client IPs masqueraded to the container IP (handled by YAWS), and the container IP masqueraded to the host's public IP (handled by Docker — but only if the network has masquerading enabled).
 
 ```yaml
+networks:
+  yaws-net:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+    ipam:
+      driver: default
+
 services:
   yaws:
     image: yaws:latest
@@ -57,14 +65,6 @@ services:
     restart: unless-stopped
     networks:
       yaws-net:
-
-networks:
-  yaws-net:
-    driver: bridge
-    driver_opts:
-      com.docker.network.bridge.enable_ip_masquerade: "true"
-    ipam:
-      driver: default
 ```
 
 ---

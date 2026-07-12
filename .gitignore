@@ -44,10 +44,10 @@ coverage-report/
 scratch/
 
 # node modules
-*/node_modules
+**/node_modules
 
 # node build output
-*/dist
+**/dist
 *.tsbuildinfo
 
 # filesystem stuff

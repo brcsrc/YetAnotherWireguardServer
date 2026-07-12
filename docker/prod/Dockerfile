@@ -1,21 +1,21 @@
 ### stage 1 build web client ###
 FROM node:23-alpine AS build-frontend
 WORKDIR /app
-COPY yaws-ts-api-client /app/yaws-ts-api-client/
-WORKDIR yaws-ts-api-client/ /app/yaws-ts-api-client/
+COPY src/client /app/src/client/
+WORKDIR /app/src/client
 RUN npm install && npm run build
 WORKDIR /app
-COPY yaws-frontend/ /app/yaws-frontend/
-WORKDIR yaws-frontend
+COPY src/frontend/ /app/src/frontend/
+WORKDIR /app/src/frontend
 RUN npm install && npm run build
 
 ### stage 2 build java artifact ###
 FROM gradle:8.9.0-jdk21-alpine AS build-spring
 WORKDIR /opt
 COPY build.gradle settings.gradle ./
-COPY shell/* .
-COPY src/ src/
-COPY --from=build-frontend /app/yaws-frontend/dist /opt/src/main/resources/static
+COPY src/shell/* .
+COPY src/backend/ src/backend/
+COPY --from=build-frontend /app/build/frontend /opt/src/backend/main/resources/static
 RUN gradle wrapper
 RUN ./gradlew build -x test --no-daemon;
 
@@ -40,8 +40,8 @@ WORKDIR /opt
 COPY --from=build-jre /opt/jre /opt/jre
 ENV PATH="/opt/jre/bin:$PATH"
 RUN apk add --no-cache openrc wireguard-tools iproute2 sqlite iptables
-COPY --from=build-spring /opt/build/libs/yaws-0.0.1-SNAPSHOT.jar .
-COPY shell/* .
+COPY --from=build-spring /opt/build/backend/yaws-0.0.1-SNAPSHOT.jar .
+COPY src/shell/* .
 COPY docker/prod/entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["entrypoint.sh"]

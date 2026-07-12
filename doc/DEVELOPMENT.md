@@ -1,9 +1,12 @@
 # Development
 
 ## Table of Contents
-- [Gradle Setup](#gradle-setup)
-- [Building and Running Locally](#building-and-running-locally)
+- [Project Layout](#project-layout)
+- [Setup](#setup)
+- [Building](#building)
+- [Frontend Development](#frontend-development)
 - [Running Tests](#running-tests)
+- [IntelliJ Setup](#intellij-setup)
 - [Database](#database)
 - [API Schema and Client Generation](#api-schema-and-client-generation)
 - [AWS EC2 Deployment](#aws-ec2-deployment)
@@ -12,62 +15,66 @@
 
 ---
 
-## Gradle Setup
+## Project Layout
 
-These steps cache dependencies locally to speed up image builds. Run them once after cloning.
-
-#### Generate gradle wrapper
-```shell
-gradle wrapper
 ```
-
-#### Cache gradle binary locally
-The gradle binary is cached in `gradle/` to remove the need to download it when building the container.
-```shell
-./gradlew downloadGradleBin
-```
-
-#### Cache java dependencies locally
-JARs from gradle dependencies are cached in `lib/` to remove the need to download them when building the container.
-```shell
-./gradlew copyDependenciesToLocalRepo
-```
-
-#### Build the spring application (no tests)
-```shell
-./gradlew build -x test
-```
-
-#### Clean and rebuild
-```shell
-./gradlew clean && ./gradlew build -x test
+src/
+  backend/    Java/Spring Boot backend source
+  frontend/   React frontend (Vite)
+  client/     TypeScript API client (generated from OpenAPI spec)
+  shell/      WireGuard shell scripts copied into the container
+build/
+  backend/    Gradle internals (classes, resources, tmp)
+  backend/yaws-0.0.1-SNAPSHOT.jar  Fat JAR
+  openapi.json  Generated OpenAPI spec
+  frontend/   Built frontend assets
+  client/     Compiled TypeScript API client
+  coverage/   Jacoco coverage report and test results
+docker/
+  prod/       Production Dockerfile + entrypoint
+  dev/        Development Dockerfile + entrypoint
+  test/       Test Dockerfile + entrypoint
+scripts/      Deployment and test runner scripts
 ```
 
 ---
 
-## Building and Running Locally
+## Setup
 
-#### Build and run the dev image
+Run once after cloning. Caches the Gradle binary and JARs locally to speed up image builds, and installs npm dependencies.
+
 ```shell
-docker build -f docker/dev/Dockerfile -t yaws . && \
-docker run \
- --privileged \
- --cap-add=NET_ADMIN \
- -e YAWS_DEV="true" \
- -e YAWS_ADMIN_USERNAME="admin" \
- -e YAWS_ADMIN_PASSWORD="Str0ng!Pass#1" \
- -p 0.0.0.0:51820:51820/udp \
- -p 0.0.0.0:8080:8080/tcp \
- --name yaws \
- -d \
- yaws:latest && \
-docker exec -it yaws bash
+make setup
 ```
 
-#### Build and run with a persistent database
+To wipe all build artifacts and setup caches:
+```shell
+make clean
+```
+
+---
+
+## Building
+
+The Makefile orchestrates the full build pipeline. All artifacts land in `build/`.
+
+#### Build everything
+```shell
+make build
+```
+
+#### Build individual steps
+```shell
+make build-backend    # compiles JAR → build/backend/yaws-0.0.1-SNAPSHOT.jar
+make build-api-spec   # generates OpenAPI spec → build/openapi.json
+make build-api-client # compiles TS client → build/client/
+make build-frontend   # builds React app → build/frontend/
+```
+
+#### Build and run the prod image with a persistent database
 Bind mount the database to the project filesystem for manual testing. You must have a `yaws.db` available first — run the above command then copy it out with `docker cp yaws:/opt/yaws.db .`
 ```shell
-docker build -f docker/prod/Dockerfile -t yaws . && \
+make image
 docker run \
  --privileged \
  --cap-add=NET_ADMIN \
@@ -85,14 +92,45 @@ docker exec -it yaws bash
 
 ---
 
-## Running Tests
+## Frontend Development
 
-Tests run inside a dedicated test container via `./scripts/test-runner.sh`. The container is reused between runs unless `--full-rebuild` is passed.
+The Vite dev server proxies `/api/v1` to `localhost:8080`, so you need the backend running locally before starting it.
+
+#### 1. Start the backend
+```shell
+make dev-image
+docker run \
+ --privileged \
+ --cap-add=NET_ADMIN \
+ -e YAWS_DEV="true" \
+ -e YAWS_ADMIN_USERNAME="admin" \
+ -e YAWS_ADMIN_PASSWORD="Str0ng!Pass#1" \
+ -e YAWS_CORS_ALLOWED_ORIGINS="http://localhost:5173" \
+ -p 0.0.0.0:51820:51820/udp \
+ -p 0.0.0.0:8080:8080/tcp \
+ --name yaws \
+ -d \
+ yaws-dev:latest
+```
+
+#### 2. Start the Vite dev server
+```shell
+cd src/frontend && npm run dev
+```
+
+The app is available at `http://localhost:5173`. API calls are proxied to the backend at `http://localhost:8080`.
+
+---
+
+## Running Tests
 
 #### Run all tests
 ```shell
-./scripts/test-runner.sh run-tests
+make test
 ```
+Coverage report: `build/coverage/index.html`
+
+For granular control, invoke the test runner directly. The container is reused between runs unless `--full-rebuild` is passed.
 
 #### Run all tests with a fresh container
 ```shell
@@ -113,6 +151,15 @@ Tests run inside a dedicated test container via `./scripts/test-runner.sh`. The 
 ```shell
 ./scripts/test-runner.sh run-tests --test-name "*testAddClientToNetworkThrowsException*"
 ```
+
+---
+
+## IntelliJ Setup
+
+1. Open the project by selecting `build.gradle` (not the directory)
+2. **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JVM** → set to Corretto 21
+3. Trigger a Gradle sync
+4. **File → Invalidate Caches → Invalidate and Restart**
 
 ---
 
@@ -149,7 +196,14 @@ http://localhost:8080/swagger-ui/index.html
 http://localhost:8080/v3/api-docs
 
 #### Generate client code
-[See the API client README](../yaws-frontend/api-client/README.md)
+The TypeScript API client lives in `src/client/` and is consumed by the frontend via a local package reference. To regenerate it:
+
+```shell
+make build-api-spec    # generates build/openapi.json
+make build-api-client  # compiles client from spec → build/client/
+```
+
+The spec is generated by a Spring test (`OpenApiSpecGeneratorTest`) that loads the full MVC context without binding to a port, so it runs cleanly in CI with no Docker dependency.
 
 ---
 
@@ -223,7 +277,7 @@ The production image uses a minimal JRE built with `jlink` to reduce image size.
 2. Run `jdeps` against the exploded fat JAR:
 
 ```shell
-docker run --rm --entrypoint="" yaws:latest sh -c "
+docker run --rm --entrypoint="" yaws-dev:latest sh -c "
   mkdir -p /tmp/app-exploded && \
   cd /tmp/app-exploded && \
   jar -xf /opt/yaws-0.0.1-SNAPSHOT.jar && \

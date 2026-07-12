@@ -18,7 +18,7 @@ function run_container() {
    --privileged \
    --cap-add=NET_ADMIN \
    --name "$TEST_CONTAINER_NAME" \
-   -v "$(pwd)/src:/opt/src" \
+   -v "$(pwd)/src/backend:/opt/src/backend" \
    -d \
    "${TEST_CONTAINER_NAME}:${TEST_CONTAINER_TAG}"
 }
@@ -32,7 +32,7 @@ function run_tests() {
   if [[ "$full_rebuild" == "true" ]] || [[ "$container_exists" == "false" ]] || [ -z "$container_exists" ]; then
     docker stop "$TEST_CONTAINER_NAME" || true
     docker rm "$TEST_CONTAINER_NAME" || true
-    docker build -f docker/test/test.Dockerfile -t "$TEST_CONTAINER_NAME" .
+    docker build -f docker/test/Dockerfile -t "$TEST_CONTAINER_NAME" .
     run_container
   fi
 
@@ -47,12 +47,12 @@ function run_tests() {
   echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [${TEST_CONTAINER_NAME}] retrieving test reports"
 
   set +e
-  docker exec "$TEST_CONTAINER_NAME" stat /opt/build/reports/jacoco/test/html/index.html > /dev/null 2>&1
+  docker exec "$TEST_CONTAINER_NAME" stat /opt/build/coverage/index.html > /dev/null 2>&1
   if [ $? == 0 ]; then
-    local test_report_loc="/opt/build/reports/jacoco/test/html"
-    mkdir -p coverage-report
-    docker cp "${TEST_CONTAINER_NAME}:${test_report_loc}" coverage-report/.
-    echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [${TEST_CONTAINER_NAME}] view test coverage at $(pwd)/coverage-report/index.html"
+    local test_report_loc="/opt/build/coverage"
+    mkdir -p build/coverage
+    docker cp "${TEST_CONTAINER_NAME}:${test_report_loc}" build/coverage/.
+    echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [${TEST_CONTAINER_NAME}] view test coverage at $(pwd)/build/coverage/index.html"
   else
     echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") INFO [${TEST_CONTAINER_NAME}] tests reports could not be found"
   fi

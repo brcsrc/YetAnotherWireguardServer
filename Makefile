@@ -19,6 +19,7 @@ endef
         test \
         image \
         dev-image \
+        run-dev \
         clean
 
 _setup_gradle:
@@ -54,6 +55,21 @@ image:
 
 dev-image:
 	$(call run,dev-image,docker build -f docker/dev/Dockerfile -t yaws-dev:latest .)
+
+run-dev:
+	@docker stop yaws-dev >/dev/null 2>&1 || true
+	@docker rm yaws-dev >/dev/null 2>&1 || true
+	$(call run,run-dev-backend,docker run \
+		--privileged \
+		--cap-add=NET_ADMIN \
+		-e YAWS_DEV="true" \
+		-e YAWS_CORS_ALLOWED_ORIGINS="http://localhost:5173" \
+		-p 0.0.0.0:51820:51820/udp \
+		-p 0.0.0.0:8080:8080/tcp \
+		--name yaws-dev \
+		-d \
+		yaws-dev:latest)
+	cd src/frontend && npm run dev
 
 clean:
 	$(call run,clean,./gradlew clean && rm -rf build/ src/frontend/node_modules src/client/node_modules gradle/wrapper/*.zip lib/ .gradle/)

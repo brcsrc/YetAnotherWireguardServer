@@ -1,0 +1,25 @@
+/*
+ * Flashbar is rendered outside of AppLayout's `notifications` slot (see
+ * App.tsx). That slot is a CSS grid row sized to its content
+ * (grid-area: notifications), so any time a flash message is added or
+ * removed the row grows/shrinks and pushes the breadcrumbs/content below it
+ * up or down - this happens even with AppLayout's stickyNotifications prop,
+ * which only pins the row during scroll but doesn't stop it from reflowing
+ * the grid. Floating the flashbar in its own fixed-position layer keeps it
+ * fully out of AppLayout's layout so it never shifts anything else.
+ */
+.flashbar-overlay {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 700px;
+  padding: 0 20px;
+  z-index: 5000;
+  pointer-events: none;
+}
+
+.flashbar-overlay > * {
+  pointer-events: auto;
+}

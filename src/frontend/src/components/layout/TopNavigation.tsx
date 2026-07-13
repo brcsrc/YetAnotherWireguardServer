@@ -62,13 +62,6 @@ const TopNavigationBar = (): JSX.Element => {
           i18nStrings={{ overflowMenuTriggerText: "More" }}
         />
       </div>
-      {/*<div*/}
-      {/*    style={{*/}
-      {/*        width: "1px",*/}
-      {/*        backgroundColor: "#424650", // match nav utility divider color*/}
-      {/*        alignSelf: "stretch", // make it full height of wrapper*/}
-      {/*    }}*/}
-      {/*/>*/}
       <div
         style={{
           display: "flex",

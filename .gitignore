@@ -50,6 +50,9 @@ scratch/
 **/dist
 *.tsbuildinfo
 
+# vite dev server cache
+**/.vite
+
 # filesystem stuff
 *.DS_Store
 

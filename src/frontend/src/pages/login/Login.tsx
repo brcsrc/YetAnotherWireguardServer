@@ -17,6 +17,8 @@ import {
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
 import { useAuthContext } from "../../context/AuthContextProvider";
 import { userClient } from "../../api/HTTPClients";
+import { validatePassword } from "../../utils/validation";
+import { useDebouncedValue } from "../../utils/debounce";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -28,13 +30,25 @@ const Login = () => {
   const [activeTabId, setActiveTabId] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
 
-  // Validation for register form
-  const passwordsMatch = password === confirmPassword;
-  const registerFormValid =
-    usernameInput.trim() !== "" && password !== "" && confirmPassword !== "" && passwordsMatch;
-
   // Validation for login form
   const loginFormValid = usernameInput.trim() !== "" && password !== "";
+
+  // Debounce error states by 500ms so they don't flash on every keystroke
+  // while the user is still typing - only shown once typing pauses.
+  const debouncedPassword = useDebouncedValue(password);
+  const passwordError = password === "" ? null : validatePassword(debouncedPassword);
+
+  const debouncedConfirmPassword = useDebouncedValue(confirmPassword);
+  const passwordsMatch = password === confirmPassword;
+  const passwordsMismatch =
+    confirmPassword !== "" && debouncedPassword !== debouncedConfirmPassword;
+
+  const registerFormValid =
+    usernameInput.trim() !== "" &&
+    password !== "" &&
+    confirmPassword !== "" &&
+    passwordsMatch &&
+    passwordError === null;
 
   // if we are already authenticated then navigate back to home
   useEffect(() => {
@@ -170,7 +184,7 @@ const Login = () => {
                 gap: "16px",
               }}
             >
-              <img src="/favicon.ico" alt="YAWS Logo" style={{ width: "48px", height: "48px" }} />
+              <img src="/favicon.ico" alt="YAWS Logo" style={{ width: "58px", height: "58px" }} />
               <Header variant="h1">YetAnotherWireguardServer</Header>
             </div>
 
@@ -209,10 +223,16 @@ const Login = () => {
                             value={password}
                             onChange={({ detail }) => setPassword(detail.value)}
                             placeholder="Enter password"
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             autoComplete="current-password"
                           />
                         </FormField>
+                        <Toggle
+                          onChange={({ detail }) => setShowPassword(detail.checked)}
+                          checked={showPassword}
+                        >
+                          Show Password
+                        </Toggle>
                       </SpaceBetween>
                     </Form>
                   ),
@@ -232,22 +252,19 @@ const Login = () => {
                             autoComplete="username"
                           />
                         </FormField>
-                        <FormField label="Password">
+                        <FormField label="Password" errorText={passwordError ?? undefined}>
                           <Input
                             value={password}
                             onChange={({ detail }) => setPassword(detail.value)}
                             placeholder="Enter password"
                             type={showPassword ? "text" : "password"}
                             autoComplete="new-password"
+                            invalid={passwordError !== null}
                           />
                         </FormField>
                         <FormField
                           label="Confirm Password"
-                          errorText={
-                            confirmPassword && !passwordsMatch
-                              ? "Passwords do not match"
-                              : undefined
-                          }
+                          errorText={passwordsMismatch ? "Passwords do not match" : undefined}
                           constraintText={
                             confirmPassword && passwordsMatch && password !== ""
                               ? "Passwords match"
@@ -260,7 +277,7 @@ const Login = () => {
                             placeholder="Re-enter password"
                             type={showPassword ? "text" : "password"}
                             autoComplete="new-password"
-                            invalid={confirmPassword !== "" && !passwordsMatch}
+                            invalid={passwordsMismatch}
                           />
                         </FormField>
                         <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>

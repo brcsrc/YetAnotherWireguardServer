@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router";
+import { Routes, Route, useNavigate } from "react-router";
 import Login from "./pages/login/Login.tsx";
 import Dashboard from "./pages/dashboard/Dashboard.tsx";
 import Networks from "./pages/network/Networks.tsx";
@@ -8,12 +8,13 @@ import UpdateNetwork from "./pages/network/UpdateNetwork.tsx";
 import Client from "./pages/client/Client.tsx";
 import CreateClient from "./pages/client/CreateClient.tsx";
 import { ThemeContextProvider } from "./context/ThemeContextProvider";
-import { FlashbarContextProvider, useFlashbarContext } from "./context/FlashbarContextProvider";
+import { FlashbarContextProvider } from "./context/FlashbarContextProvider";
 import { AuthContextProvider, useAuthContext } from "./context/AuthContextProvider";
 import { useState } from "react";
 import TopNavigationBar from "./components/layout/TopNavigation";
-import { AppLayout, Flashbar, SideNavigation } from "@cloudscape-design/components";
+import { AppLayout, SideNavigation } from "@cloudscape-design/components";
 import Breadcrumbs from "./components/layout/Breadcrumbs";
+import Flashbar from "./components/layout/flashbar/Flashbar";
 
 const UnauthenticatedRoutes = () => {
   return (
@@ -42,6 +43,7 @@ const AuthenticatedRoutes = () => {
 const AppContent = () => {
   const { username } = useAuthContext();
   const isAuthenticated = username !== null;
+  const navigate = useNavigate();
 
   // persist side nav preferences in session storage so it doesnt open/close
   // on renders from other pages/components etc
@@ -54,12 +56,10 @@ const AppContent = () => {
     sessionStorage.setItem("navigationOpen", JSON.stringify(detail.open));
   };
 
-  // any other component that adds a flashbar item will be collected in this array
-  const { flashbarItems } = useFlashbarContext();
-
   return (
     <>
       <TopNavigationBar />
+      <Flashbar />
       <AppLayout
         toolsHide={true}
         navigationHide={!isAuthenticated}
@@ -70,13 +70,19 @@ const AppContent = () => {
                 { type: "link", text: "Dashboard", href: "/" },
                 { type: "link", text: "Networks", href: "/networks" },
               ]}
+              // without onFollow, side nav links do hard reload of the destination when clicked
+              onFollow={(event) => {
+                if (!event.detail.external) {
+                  event.preventDefault();
+                  navigate(event.detail.href);
+                }
+              }}
             />
           ) : undefined
         }
         navigationOpen={navigationOpen}
         onNavigationChange={handleNavigationChange}
         navigationWidth={175}
-        notifications={<Flashbar items={flashbarItems} stackItems={true} />}
         breadcrumbs={isAuthenticated ? <Breadcrumbs /> : undefined}
         content={isAuthenticated ? <AuthenticatedRoutes /> : <UnauthenticatedRoutes />}
       />

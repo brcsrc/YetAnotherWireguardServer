@@ -1,4 +1,10 @@
-import { Container, Header, ColumnLayout, KeyValuePairs, Badge } from "@cloudscape-design/components";
+import {
+  Container,
+  Header,
+  ColumnLayout,
+  KeyValuePairs,
+  Badge,
+} from "@cloudscape-design/components";
 import { useEffect, useState, useRef } from "react";
 import { streamClientConnectionInfo, ClientConnectionInfo } from "../../../api/SSEClients";
 import { useFlashbarContext } from "../../../context/FlashbarContextProvider";
@@ -100,50 +106,50 @@ const ClientConnectionInfoComponent = (props: ClientConnectionInfoProps): JSX.El
 
   return (
     <Container header={<Header variant="h2">Connection Info</Header>}>
-        <ColumnLayout columns={2} variant="text-grid">
-          <KeyValuePairs
-            columns={1}
-            items={[
-              {
-                label: "Endpoint",
-                value: connectionInfo?.endpoint || "-",
-              },
-              {
-                label: "Allowed IPs",
-                value: connectionInfo?.allowedIps || "-",
-              },
-              {
-                label: "Latest Handshake",
-                value: formatTimestamp(connectionInfo?.latestHandshakeEpochSeconds),
-              },
-              {
-                label: "Persistent Keepalive",
-                value:
-                  connectionInfo?.persistentKeepalive !== null &&
-                  connectionInfo?.persistentKeepalive !== undefined
-                    ? `${connectionInfo.persistentKeepalive}s`
-                    : "-",
-              },
-            ]}
-          />
-          <KeyValuePairs
-            columns={1}
-            items={[
-              {
-                label: "Bytes Received",
-                value: formatBytes(connectionInfo?.bytesReceived),
-              },
-              {
-                label: "Bytes Sent",
-                value: formatBytes(connectionInfo?.bytesSent),
-              },
-              {
-                label: "Preshared Key",
-                value: connectionInfo?.presharedKey === "(none)" ? "No" : "Yes",
-              },
-            ]}
-          />
-        </ColumnLayout>
+      <ColumnLayout columns={2} variant="text-grid">
+        <KeyValuePairs
+          columns={1}
+          items={[
+            {
+              label: "Endpoint",
+              value: connectionInfo?.endpoint || "-",
+            },
+            {
+              label: "Allowed IPs",
+              value: connectionInfo?.allowedIps || "-",
+            },
+            {
+              label: "Latest Handshake",
+              value: formatTimestamp(connectionInfo?.latestHandshakeEpochSeconds),
+            },
+            {
+              label: "Persistent Keepalive",
+              value:
+                connectionInfo?.persistentKeepalive !== null &&
+                connectionInfo?.persistentKeepalive !== undefined
+                  ? `${connectionInfo.persistentKeepalive}s`
+                  : "-",
+            },
+          ]}
+        />
+        <KeyValuePairs
+          columns={1}
+          items={[
+            {
+              label: "Bytes Received",
+              value: formatBytes(connectionInfo?.bytesReceived),
+            },
+            {
+              label: "Bytes Sent",
+              value: formatBytes(connectionInfo?.bytesSent),
+            },
+            {
+              label: "Preshared Key",
+              value: connectionInfo?.presharedKey === "(none)" ? "No" : "Yes",
+            },
+          ]}
+        />
+      </ColumnLayout>
     </Container>
   );
 };

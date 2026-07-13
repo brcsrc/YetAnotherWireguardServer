@@ -1,10 +1,4 @@
-import {
-  Button,
-  Header,
-  SpaceBetween,
-  Modal,
-  Box,
-} from "@cloudscape-design/components";
+import { Button, Header, SpaceBetween, Modal, Box } from "@cloudscape-design/components";
 import { useParams, useLocation, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { Client } from "@yaws/yaws-ts-api-client";

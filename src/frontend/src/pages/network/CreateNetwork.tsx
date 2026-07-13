@@ -12,6 +12,61 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { networkClient } from "../../api/HTTPClients";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
+import { useDebouncedValue } from "../../utils/debounce";
+
+// Regex patterns for validity borrowed from backend Constants.java
+const NETWORK_NAME_REGEX = /^[a-zA-Z0-9_-]{4,15}$/;
+const NETWORK_IP_REGEX =
+  /^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$/;
+const NETWORK_TAG_REGEX = /^[a-zA-Z0-9_-]{1,64}$/;
+
+interface NetworkFieldValidity {
+  isNetworkNameInvalid: boolean;
+  isNetworkIpInvalid: boolean;
+  isNetworkIpHostInvalid: boolean;
+  isSubnetMaskInvalid: boolean;
+  isListenPortInvalid: boolean;
+  isNetworkTagInvalid: boolean;
+}
+
+function validateNetworkFields(
+  networkName: string,
+  networkIp: string,
+  networkSubnetMask: string,
+  networkListenPort: string,
+  networkTag: string
+): NetworkFieldValidity {
+  const isNetworkNameInvalid = networkName.length > 0 && !NETWORK_NAME_REGEX.test(networkName);
+
+  const isNetworkIpInvalid = networkIp.length > 0 && !NETWORK_IP_REGEX.test(networkIp);
+
+  const networkInterfaceOctet = parseInt(networkIp.split(".")[3]);
+  const isNetworkIpHostInvalid =
+    networkIp.length > 0 &&
+    !isNetworkIpInvalid &&
+    (networkInterfaceOctet === 0 || networkInterfaceOctet > 254);
+
+  const subnetMaskValue = parseInt(networkSubnetMask.replace("/", ""));
+  const isSubnetMaskInvalid =
+    networkSubnetMask.length > 0 &&
+    (isNaN(subnetMaskValue) || subnetMaskValue < 24 || subnetMaskValue > 32);
+
+  const listenPortValue = parseInt(networkListenPort);
+  const isListenPortInvalid =
+    networkListenPort.length > 0 &&
+    (isNaN(listenPortValue) || listenPortValue < 1025 || listenPortValue > 65535);
+
+  const isNetworkTagInvalid = networkTag.length > 0 && !NETWORK_TAG_REGEX.test(networkTag);
+
+  return {
+    isNetworkNameInvalid,
+    isNetworkIpInvalid,
+    isNetworkIpHostInvalid,
+    isSubnetMaskInvalid,
+    isListenPortInvalid,
+    isNetworkTagInvalid,
+  };
+}
 
 const CreateNetwork = () => {
   const navigate = useNavigate();
@@ -27,31 +82,33 @@ const CreateNetwork = () => {
   const [showErrorText, setShowErrorText] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Regex patterns for validity borrowed from backed Constants.java
+  // Live validity gates whether the wizard can advance to the next step -
+  // this must not be debounced, otherwise a user could click "Next" during
+  // the debounce window before an error has had a chance to show up.
+  const liveValidity = validateNetworkFields(
+    networkName,
+    networkIp,
+    networkSubnetMask,
+    networkListenPort,
+    networkTag
+  );
 
-  const isNetworkNameInvalid = networkName.length > 0 && !/^[a-zA-Z0-9_-]{4,15}$/.test(networkName);
-
-  const isNetworkIpInvalid =
-    networkIp.length > 0 &&
-    !/^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$/.test(networkIp);
-
-  const networkInterfaceOctet = parseInt(networkIp.split(".")[3]);
-  const isNetworkIpHostInvalid =
-    networkIp.length > 0 &&
-    !isNetworkIpInvalid &&
-    (networkInterfaceOctet === 0 || networkInterfaceOctet > 254);
-
-  const subnetMaskValue = parseInt(networkSubnetMask.replace("/", ""));
-  const isSubnetMaskInvalid =
-    networkSubnetMask.length > 0 &&
-    (isNaN(subnetMaskValue) || subnetMaskValue < 24 || subnetMaskValue > 32);
-
-  const listenPortValue = parseInt(networkListenPort);
-  const isListenPortInvalid =
-    networkListenPort.length > 0 && (isNaN(listenPortValue) || listenPortValue < 1025 || listenPortValue > 65535);
-
-  const isNetworkTagInvalid =
-    networkTag.length > 0 && !/^[a-zA-Z0-9_-]{1,64}$/.test(networkTag);
+  // Debounced validity drives the displayed error state, so errors don't
+  // flash on every keystroke while the user is still typing a field.
+  const {
+    isNetworkNameInvalid,
+    isNetworkIpInvalid,
+    isNetworkIpHostInvalid,
+    isSubnetMaskInvalid,
+    isListenPortInvalid,
+    isNetworkTagInvalid,
+  } = validateNetworkFields(
+    useDebouncedValue(networkName),
+    useDebouncedValue(networkIp),
+    useDebouncedValue(networkSubnetMask),
+    useDebouncedValue(networkListenPort),
+    useDebouncedValue(networkTag)
+  );
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -94,12 +151,12 @@ const CreateNetwork = () => {
       networkIp.trim() !== "" &&
       networkSubnetMask.trim() !== "" &&
       networkListenPort.trim() !== "" &&
-      !isNetworkNameInvalid &&
-      !isNetworkIpInvalid &&
-      !isNetworkIpHostInvalid &&
-      !isSubnetMaskInvalid &&
-      !isListenPortInvalid &&
-      !isNetworkTagInvalid
+      !liveValidity.isNetworkNameInvalid &&
+      !liveValidity.isNetworkIpInvalid &&
+      !liveValidity.isNetworkIpHostInvalid &&
+      !liveValidity.isSubnetMaskInvalid &&
+      !liveValidity.isListenPortInvalid &&
+      !liveValidity.isNetworkTagInvalid
     );
   };
 
@@ -144,7 +201,11 @@ const CreateNetwork = () => {
                 <FormField
                   label="Network name"
                   description="Unique, alphanumeric, 4-15 character name for the network"
-                  errorText={isNetworkNameInvalid ? "Network name must be 4-15 alphanumeric characters, dashes, or underscores" : undefined}
+                  errorText={
+                    isNetworkNameInvalid
+                      ? "Network name must be 4-15 alphanumeric characters, dashes, or underscores"
+                      : undefined
+                  }
                 >
                   <Input
                     value={networkName}
@@ -190,7 +251,9 @@ const CreateNetwork = () => {
                 <FormField
                   label="Network listen port"
                   description="Server listen port for the network (1025-65535)"
-                  errorText={isListenPortInvalid ? "Listen port must be between 1025 and 65535" : undefined}
+                  errorText={
+                    isListenPortInvalid ? "Listen port must be between 1025 and 65535" : undefined
+                  }
                 >
                   <Input
                     value={networkListenPort}
@@ -204,7 +267,11 @@ const CreateNetwork = () => {
                 <FormField
                   label="Network tag"
                   description="Optional tag for the network"
-                  errorText={isNetworkTagInvalid ? "Tag must be alphanumeric with dashes or underscores, max 64 characters" : undefined}
+                  errorText={
+                    isNetworkTagInvalid
+                      ? "Tag must be alphanumeric with dashes or underscores, max 64 characters"
+                      : undefined
+                  }
                 >
                   <Input
                     value={networkTag}

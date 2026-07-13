@@ -104,12 +104,12 @@ export function streamNetworkConnectionInfo(
   (async () => {
     try {
       const response = await fetch(url, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
         },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify(request),
         signal: controller.signal,
       });
@@ -119,16 +119,16 @@ export function streamNetworkConnectionInfo(
       }
 
       if (onOpen) {
-        onOpen(new Event('open'));
+        onOpen(new Event("open"));
       }
 
       const reader = response.body?.getReader();
       if (!reader) {
-        throw new Error('Response body is not readable');
+        throw new Error("Response body is not readable");
       }
 
       const decoder = new TextDecoder();
-      let buffer = '';
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -140,8 +140,8 @@ export function streamNetworkConnectionInfo(
         buffer += decoder.decode(value, { stream: true });
 
         // Process complete SSE messages (separated by double newlines)
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || ''; // Keep incomplete message in buffer
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || ""; // Keep incomplete message in buffer
 
         for (const message of lines) {
           if (message.trim()) {
@@ -153,15 +153,15 @@ export function streamNetworkConnectionInfo(
               let eventData: any = dataMatch[1];
 
               // For network-info-update events, parse and convert peers object to Map
-              if (eventMatch && eventMatch[1] === 'network-info-update') {
+              if (eventMatch && eventMatch[1] === "network-info-update") {
                 const parsed = JSON.parse(eventData);
-                if (parsed.peers && typeof parsed.peers === 'object') {
+                if (parsed.peers && typeof parsed.peers === "object") {
                   parsed.peers = new Map(Object.entries(parsed.peers));
                 }
                 eventData = parsed;
               }
 
-              const event = new MessageEvent(eventMatch ? eventMatch[1] : 'message', {
+              const event = new MessageEvent(eventMatch ? eventMatch[1] : "message", {
                 data: eventData,
               });
               onMessage(event);
@@ -170,8 +170,8 @@ export function streamNetworkConnectionInfo(
         }
       }
     } catch (error) {
-      if (onError && error.name !== 'AbortError') {
-        onError(new ErrorEvent('error', { error, message: error.message }));
+      if (onError && error.name !== "AbortError") {
+        onError(new ErrorEvent("error", { error, message: error.message }));
       }
     }
   })();
@@ -237,12 +237,12 @@ export function streamClientConnectionInfo(
   (async () => {
     try {
       const response = await fetch(url, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
         },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify(request),
         signal: controller.signal,
       });
@@ -252,16 +252,16 @@ export function streamClientConnectionInfo(
       }
 
       if (onOpen) {
-        onOpen(new Event('open'));
+        onOpen(new Event("open"));
       }
 
       const reader = response.body?.getReader();
       if (!reader) {
-        throw new Error('Response body is not readable');
+        throw new Error("Response body is not readable");
       }
 
       const decoder = new TextDecoder();
-      let buffer = '';
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -273,8 +273,8 @@ export function streamClientConnectionInfo(
         buffer += decoder.decode(value, { stream: true });
 
         // Process complete SSE messages (separated by double newlines)
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
 
         for (const message of lines) {
           if (message.trim()) {
@@ -285,11 +285,11 @@ export function streamClientConnectionInfo(
               let eventData: any = dataMatch[1];
 
               // For client-info-update events, parse the JSON
-              if (eventMatch && eventMatch[1] === 'client-info-update') {
+              if (eventMatch && eventMatch[1] === "client-info-update") {
                 eventData = JSON.parse(eventData);
               }
 
-              const event = new MessageEvent(eventMatch ? eventMatch[1] : 'message', {
+              const event = new MessageEvent(eventMatch ? eventMatch[1] : "message", {
                 data: eventData,
               });
               onMessage(event);
@@ -298,8 +298,8 @@ export function streamClientConnectionInfo(
         }
       }
     } catch (error) {
-      if (onError && error.name !== 'AbortError') {
-        onError(new ErrorEvent('error', { error, message: error.message }));
+      if (onError && error.name !== "AbortError") {
+        onError(new ErrorEvent("error", { error, message: error.message }));
       }
     }
   })();

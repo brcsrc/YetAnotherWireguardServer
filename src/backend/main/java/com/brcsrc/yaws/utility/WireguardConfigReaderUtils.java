@@ -4,10 +4,13 @@ import com.brcsrc.yaws.exceptions.WireguardConfigFileReadException;
 import com.brcsrc.yaws.model.wireguard.ClientConfig;
 import com.brcsrc.yaws.model.wireguard.NetworkConfig;
 import com.brcsrc.yaws.model.wireguard.NetworkInterface;
+import com.brcsrc.yaws.model.wireguard.NetworkPeer;
 import com.brcsrc.yaws.model.wireguard.PeerConfig;
 
 import java.io.IOException;
 import java.nio.file.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class WireguardConfigReaderUtils {
@@ -41,6 +44,13 @@ public class WireguardConfigReaderUtils {
         int listenPort = -1;
         String privateKey = null;
 
+        // peers are collected so the config can be rewritten without the parsed document
+        // losing entries. a peer is complete once it has both a PublicKey and AllowedIPs
+        List<NetworkPeer> peers = new ArrayList<>();
+        boolean inPeerSection = false;
+        String peerPublicKey = null;
+        String peerAllowedIps = null;
+
         try (Scanner scanner = new Scanner(Files.newInputStream(filePath))) {
             while (scanner.hasNextLine()) {
                 String nextLine = scanner.nextLine().trim();
@@ -50,9 +60,42 @@ public class WireguardConfigReaderUtils {
                 //    PrivateKey = dummyPrivateKey
                 //    Address = 10.0.0.1
                 //    ListenPort = 51820
+                //
+                //    [Peer] # 10.0.0.2/32
+                //    PublicKey = dummyPublicKey
+                //    AllowedIPs = 10.0.0.2/32
 
                 if (nextLine.startsWith("[Interface]")) {
                     hasInterface = true;
+                    inPeerSection = false;
+                } else if (nextLine.startsWith("[Peer]")) {
+                    // a new [Peer] header closes out the previous entry
+                    if (peerPublicKey != null && peerAllowedIps != null) {
+                        peers.add(new NetworkPeer(peerPublicKey, peerAllowedIps));
+                    }
+                    inPeerSection = true;
+                    peerPublicKey = null;
+                    peerAllowedIps = null;
+                } else if (inPeerSection) {
+                    String[] parts = nextLine.split("=", 2);
+                    if (parts.length == 2) {
+                        String key = parts[0].trim();
+                        String value = parts[1].trim();
+
+                        switch (key) {
+                            case "PublicKey":
+                                peerPublicKey = value;
+                                break;
+                            case "AllowedIPs":
+                                if (!IPUtils.isValidIpv4Cidr(value)) {
+                                    throw new WireguardConfigFileReadException(String.format("invalid peer AllowedIPs in file '%s'", absFilePath));
+                                }
+                                peerAllowedIps = value;
+                                break;
+                            default:
+                                break;
+                        }
+                    }
                 } else if (hasInterface) {
                     String[] parts = nextLine.split("=", 2);
                     if (parts.length == 2) {
@@ -78,7 +121,6 @@ public class WireguardConfigReaderUtils {
                                 // TODO validate key pattern
                                 privateKey = value;
                                 break;
-                            // valid peer fields can be skipped
                             default:
                                 break;
                         }
@@ -87,6 +129,11 @@ public class WireguardConfigReaderUtils {
             }
         } catch (IOException e) {
             throw new WireguardConfigFileReadException(String.format("unexpected IOException in reading file '%s'", absFilePath));
+        }
+
+        // the final peer in the file has no following header to close it out
+        if (peerPublicKey != null && peerAllowedIps != null) {
+            peers.add(new NetworkPeer(peerPublicKey, peerAllowedIps));
         }
 
         if (!hasInterface || address == null || listenPort == -1 || privateKey == null) {
@@ -98,7 +145,8 @@ public class WireguardConfigReaderUtils {
                         address,
                         listenPort,
                         privateKey
-                )
+                ),
+                peers
         );
     }
 

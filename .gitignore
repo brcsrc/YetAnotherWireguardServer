@@ -42,6 +42,7 @@ coverage-report/
 # Scratch Files and  VSCode
 .vscode/
 scratch/
+.scratch
 
 # node modules
 **/node_modules

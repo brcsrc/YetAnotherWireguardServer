@@ -30,6 +30,8 @@ import com.brcsrc.yaws.model.NetworkStatus;
 import com.brcsrc.yaws.model.requests.ListNetworksRequest;
 import com.brcsrc.yaws.model.requests.ListNetworksResponse;
 import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
+import com.brcsrc.yaws.model.wireguard.NetworkConfig;
+import com.brcsrc.yaws.model.wireguard.NetworkInterface;
 import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.persistence.NetworkClientRepository;
 import com.brcsrc.yaws.shell.ExecutionResult;
@@ -42,11 +44,15 @@ public class NetworkService {
 
     private final NetworkRepository networkRepository;
     private final NetworkClientRepository networkClientRepository;
+    private final WireguardService wireguardService;
     private static final Logger logger = LoggerFactory.getLogger(NetworkService.class);
 
-    public NetworkService(NetworkRepository networkRepository, NetworkClientRepository networkClientRepository) {
+    public NetworkService(NetworkRepository networkRepository,
+                          NetworkClientRepository networkClientRepository,
+                          WireguardService wireguardService) {
         this.networkRepository = networkRepository;
         this.networkClientRepository = networkClientRepository;
+        this.wireguardService = wireguardService;
     }
 
     public List<Network> getAllNetworks() {
@@ -133,7 +139,6 @@ public class NetworkService {
         final String NETWORK_DIR_PATH = FilepathUtils.getNetworkDirectoryPath(network.getNetworkName());
         final String NETWORK_KEYS_PATH = FilepathUtils.getNetworkKeysDirectoryPath(network.getNetworkName());
         final String NETWORK_CLIENTS_PATH = FilepathUtils.getNetworkClientsDirectoryPath(network.getNetworkName());
-        final String NETWORK_CONFIG_PATH = FilepathUtils.getNetworkConfigPath(network.getNetworkName());
         final String NETWORK_PRIV_KEY_PATH = FilepathUtils.getNetworkKeyPath(network.getNetworkName(), network.getNetworkPrivateKeyName());
         final String NETWORK_PUB_KEY_PATH = FilepathUtils.getNetworkKeyPath(network.getNetworkName(), network.getNetworkPublicKeyName());
 
@@ -156,18 +161,16 @@ public class NetworkService {
 
         // create the wireguard key pair
         logger.info(String.format("creating key pair: '%s', '%s'", NETWORK_PRIV_KEY_PATH, NETWORK_PUB_KEY_PATH));
-        final String createKeyPairCommand = String.join(" ",
-                "./create-key-pair ",
-                "--private-key-name", NETWORK_PRIV_KEY_PATH,
-                "--public-key-name", NETWORK_PUB_KEY_PATH
-        );
-        ExecutionResult createKeyPairExecResult = Executor.runCommand(createKeyPairCommand);
-        if (createKeyPairExecResult.getExitCode() != 0) {
-            logger.error(String.format(
-                    "command: '%s' exited %s with reason: %s",
-                    createKeyPairCommand,
-                    createKeyPairExecResult.getExitCode(),
-                    createKeyPairExecResult.getStderr()));
+        final String networkPrivateKeyValue;
+        try {
+            String publicKeyValue = this.wireguardService.createKeyPair(
+                    NETWORK_PRIV_KEY_PATH,
+                    NETWORK_PUB_KEY_PATH);
+            network.setNetworkPublicKeyValue(publicKeyValue);
+            networkPrivateKeyValue = Files.readString(Path.of(NETWORK_PRIV_KEY_PATH)).trim();
+        } catch (IOException | RuntimeException e) {
+            logger.error("failed to create key pair for network '{}': {}",
+                    network.getNetworkName(), e.getMessage());
             // mark the network for removal
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.networkRepository.save(network);
@@ -176,37 +179,19 @@ public class NetworkService {
             throw new InternalServerException("failed to create network");
         }
 
-        // read the public key value from the file
-        try {
-            String publicKeyValue = Files.readString(Path.of(NETWORK_PUB_KEY_PATH)).trim();
-            network.setNetworkPublicKeyValue(publicKeyValue);
-        } catch (IOException e) {
-            String errMsg = String.format("error reading public key file: %s", e.getMessage());
-            logger.error(errMsg);
-            network.setNetworkStatus(NetworkStatus.INACTIVE);
-            this.networkRepository.save(network);
-            CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
-            throw new InternalServerException("failed to create network");
-        }
-
         logger.info(String.format(
                 "creating wireguard network config: CIDR = %s, listen port = %s",
                 network.getNetworkCidr(),
                 network.getNetworkListenPort()));
-        final String createNetworkConfigCommand = String.join(" ",
-                "./create-network-config",
-                "--config-name", NETWORK_CONFIG_PATH,
-                "--network-cidr", network.getNetworkCidr(),
-                "--network-listen-port", String.valueOf(network.getNetworkListenPort()),
-                "--network-private-key-name", NETWORK_PRIV_KEY_PATH
-        );
-        ExecutionResult createNetConfigExecResult = Executor.runCommand(createNetworkConfigCommand);
-        if (createNetConfigExecResult.getExitCode() != 0) {
-            logger.error(String.format(
-                    "command: '%s' exited %s with reason: %s",
-                    createNetworkConfigCommand,
-                    createNetConfigExecResult.getExitCode(),
-                    createNetConfigExecResult.getStderr()));
+        try {
+            NetworkConfig networkConfig = new NetworkConfig(new NetworkInterface(
+                    network.getNetworkCidr(),
+                    network.getNetworkListenPort(),
+                    networkPrivateKeyValue));
+            this.wireguardService.writeNetworkConfig(network.getNetworkName(), networkConfig);
+        } catch (RuntimeException e) {
+            logger.error("failed to write network config for '{}': {}",
+                    network.getNetworkName(), e.getMessage());
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.networkRepository.save(network);
             CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
@@ -235,14 +220,11 @@ public class NetworkService {
 
         // since this network is newly created we need bring it up in wireguard
         logger.info("bringing up the wireguard interface");
-        final String wgUpCommand = String.format("wg-quick up %s", network.getNetworkName());
-        ExecutionResult wgUpExecResult = Executor.runCommand(wgUpCommand);
-        if (wgUpExecResult.getExitCode() != 0) {
-            logger.error(String.format(
-                    "command: '%s' exited %s with reason: %s",
-                    wgUpCommand,
-                    wgUpExecResult.getExitCode(),
-                    wgUpExecResult.getStderr()));
+        try {
+            this.wireguardService.interfaceUp(network.getNetworkName());
+        } catch (RuntimeException e) {
+            logger.error("failed to bring up interface for network '{}': {}",
+                    network.getNetworkName(), e.getMessage());
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.networkRepository.save(network);
             CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
@@ -262,20 +244,15 @@ public class NetworkService {
             logger.info("asyncRemoveNetworkFromSystem called on thread: " + Thread.currentThread().getName());
             logger.info(String.format("bringing down the wireguard interface '%s'", network.getNetworkName()));
 
-            final String checkWgIFaceExistsCmd = String.format("wg show %s", network.getNetworkName());
-            ExecutionResult checkWgIFaceExistsCmdResult = Executor.runCommand(checkWgIFaceExistsCmd);
-            boolean wgIFaceExists = (checkWgIFaceExistsCmdResult.getExitCode() == 0);
+            boolean wgIFaceExists = this.wireguardService.interfaceExists(network.getNetworkName());
 
             if (wgIFaceExists) {
-                final String wgDownCommand = String.format("wg-quick down %s", network.getNetworkName());
-                ExecutionResult wgDownExecResult = Executor.runCommand(wgDownCommand);
-                if (wgDownExecResult.getExitCode() != 0) {
+                try {
+                    this.wireguardService.interfaceDown(network.getNetworkName());
+                } catch (RuntimeException e) {
                     errorsOnRemoval = true;
-                    logger.error(String.format(
-                            "command: '%s' exited %s with reason: %s",
-                            wgDownCommand,
-                            wgDownExecResult.getExitCode(),
-                            wgDownExecResult.getStderr()));
+                    logger.error("failed to bring down interface '{}': {}",
+                            network.getNetworkName(), e.getMessage());
                 }
             } else {
                 logger.info(String.format("wireguard interface '%s' does not exist", network.getNetworkName()));
@@ -488,14 +465,7 @@ public class NetworkService {
         logger.info("Deactivating network '{}'", network.getNetworkName());
 
         // Run wg-quick down <NetworkName>
-        final String wgDownCommand = String.format("wg-quick down %s", network.getNetworkName());
-        ExecutionResult wgDownResult = Executor.runCommand(wgDownCommand);
-        if (wgDownResult.getExitCode() != 0) {
-            String errMsg = String.format("Failed to bring down WireGuard interface for network '%s': %s",
-                    network.getNetworkName(), wgDownResult.getStderr());
-            logger.error(errMsg);
-            throw new InternalServerException(errMsg);
-        }
+        this.wireguardService.interfaceDown(network.getNetworkName());
 
         logger.info("Successfully deactivated network '{}'", network.getNetworkName());
     }
@@ -513,14 +483,7 @@ public class NetworkService {
         logger.info("Activating network '{}'", network.getNetworkName());
 
         // Run wg-quick up <NetworkName>
-        final String wgUpCommand = String.format("wg-quick up %s", network.getNetworkName());
-        ExecutionResult wgUpResult = Executor.runCommand(wgUpCommand);
-        if (wgUpResult.getExitCode() != 0) {
-            String errMsg = String.format("Failed to bring up WireGuard interface for network '%s': %s",
-                    network.getNetworkName(), wgUpResult.getStderr());
-            logger.error(errMsg);
-            throw new InternalServerException(errMsg);
-        }
+        this.wireguardService.interfaceUp(network.getNetworkName());
 
         logger.info("Successfully activated network '{}'", network.getNetworkName());
     }

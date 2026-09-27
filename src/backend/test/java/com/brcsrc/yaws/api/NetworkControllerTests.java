@@ -12,12 +12,16 @@ import com.brcsrc.yaws.persistence.UserRepository;
 import com.brcsrc.yaws.service.NetworkService;
 import com.brcsrc.yaws.service.UserService;
 import com.brcsrc.yaws.utility.FilepathUtils;
+import com.brcsrc.yaws.utility.PeerIsolationUtils;
 import com.brcsrc.yaws.utility.WireguardConfigReaderUtils;
+import com.brcsrc.yaws.shell.ExecutionResult;
+import com.brcsrc.yaws.shell.Executor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -55,6 +59,9 @@ public class NetworkControllerTests {
     private String baseUrl;
     private final String testNetworkName = "Network1";
     private final String testNetworkCidr = "10.100.0.1/24";
+    // iptables normalizes a source/destination to the network address, so rules written from
+    // the interface address above are reported against this
+    private final String testNetworkAddress = "10.100.0.0/24";
     private final String testNetworkTag = "network_1_tag";
     private final int testNetworkListenPort = 51820;
 
@@ -175,6 +182,99 @@ public class NetworkControllerTests {
 
         NetworkConfig networkConfig = WireguardConfigReaderUtils.readNetworkConfig(String.format("%s.conf", readNetworkFromDb.getNetworkName()));
         assertEquals(networkConfig.networkInterface.address, "10.100.0.1/24");
+
+        // the interface hooks must be present in the config file
+        String configOnDisk = Files.readString(Path.of(
+                FilepathUtils.getNetworkConfigPath(readNetworkFromDb.getNetworkName())));
+        String chainName = PeerIsolationUtils.getIsolationChainName(readNetworkFromDb.getNetworkName());
+        assertTrue(configOnDisk.contains(String.format("PostUp = iptables -N %s", chainName)));
+        assertTrue(configOnDisk.contains("-j MASQUERADE"),
+                "network config must carry the NAT rule in its hooks");
+
+        // the plumbing rules must have been installed by wg-quick. these used to be applied out
+        // of band by the configure-iptables script
+        ExecutionResult inputRuleResult = Executor.runCommand(List.of(
+                "iptables", "-C", "INPUT", "-s", testNetworkAddress, "-j", "ACCEPT"));
+        assertEquals(0, inputRuleResult.getExitCode(),
+                String.format("INPUT accept rule was not installed: %s", inputRuleResult.getStderr()));
+
+        // iptables normalizes the source to the network address, so a rule written from the
+        // interface address 10.100.0.1/24 is reported as 10.100.0.0/24
+        ExecutionResult natRuleResult = Executor.runCommand(
+                List.of("iptables", "-t", "nat", "-S", "POSTROUTING"));
+        assertTrue(natRuleResult.getStdout().contains(testNetworkAddress),
+                String.format("MASQUERADE rule for %s was not installed: %s",
+                        testNetworkAddress, natRuleResult.getStdout()));
+        assertTrue(natRuleResult.getStdout().contains("-j MASQUERADE"));
+
+        // and wg-quick must have actually run them. wg-quick runs hooks under 'set -e' so a
+        // malformed hook line would have failed the bring up, but the network could still report
+        // ACTIVE if the failure were swallowed, so assert against real kernel state
+        ExecutionResult chainExistsResult = Executor.runCommand(
+                List.of("iptables", "-n", "-L", chainName));
+        assertEquals(0, chainExistsResult.getExitCode(),
+                String.format("isolation chain '%s' was not created by the PostUp hooks: %s",
+                        chainName, chainExistsResult.getStderr()));
+
+        // the chain must be reachable from the peer to peer match in FORWARD
+        ExecutionResult forwardJumpResult = Executor.runCommand(List.of(
+                "iptables", "-C", "FORWARD",
+                "-i", readNetworkFromDb.getNetworkName(),
+                "-o", readNetworkFromDb.getNetworkName(),
+                "-j", chainName));
+        assertEquals(0, forwardJumpResult.getExitCode(),
+                String.format("FORWARD is not jumping to isolation chain '%s': %s",
+                        chainName, forwardJumpResult.getStderr()));
+
+        // the chain must be created empty, policy is applied at runtime from the database
+        ExecutionResult chainRulesResult = Executor.runCommand(
+                List.of("iptables", "-S", chainName));
+        assertEquals(
+                String.format("-N %s%n", chainName),
+                chainRulesResult.getStdout(),
+                "isolation chain should contain no rules when created");
+    }
+
+    @Test
+    public void testDeactivateNetworkRemovesIsolationChain() {
+        Network network = new Network();
+        network.setNetworkName(testNetworkName);
+        network.setNetworkCidr(testNetworkCidr);
+        network.setNetworkListenPort(testNetworkListenPort);
+        network.setNetworkTag(testNetworkTag);
+        networkService.createNetwork(network);
+
+        String chainName = PeerIsolationUtils.getIsolationChainName(testNetworkName);
+
+        // the chain exists while the interface is up
+        assertEquals(0, Executor.runCommand(List.of("iptables", "-n", "-L", chainName)).getExitCode(),
+                String.format("isolation chain '%s' should exist while the network is active", chainName));
+
+        UpdateNetworkRequest deactivateRequest = new UpdateNetworkRequest();
+        deactivateRequest.setNetworkStatus(NetworkStatus.INACTIVE);
+
+        ResponseEntity<Network> response = restClient.patch()
+                .uri(String.format("%s/%s", baseUrl, testNetworkName))
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(deactivateRequest)
+                .retrieve()
+                .toEntity(Network.class);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        // PostDown must unlink and delete the chain so it is not left orphaned
+        assertNotEquals(0, Executor.runCommand(List.of("iptables", "-n", "-L", chainName)).getExitCode(),
+                String.format("isolation chain '%s' was left behind after deactivation", chainName));
+
+        // and must remove the plumbing rules, otherwise they accumulate across interface cycles
+        assertNotEquals(0, Executor.runCommand(List.of(
+                        "iptables", "-C", "INPUT", "-s", testNetworkAddress, "-j", "ACCEPT")).getExitCode(),
+                "INPUT accept rule was left behind after deactivation");
+
+        ExecutionResult natRulesAfterDown = Executor.runCommand(
+                List.of("iptables", "-t", "nat", "-S", "POSTROUTING"));
+        assertTrue(!natRulesAfterDown.getStdout().contains(testNetworkAddress),
+                String.format("MASQUERADE rule for %s was left behind after deactivation: %s",
+                        testNetworkAddress, natRulesAfterDown.getStdout()));
     }
 
     @Test

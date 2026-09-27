@@ -18,7 +18,6 @@ COPY build.gradle settings.gradle ./
 # this is to reduce build time as much as we can
 COPY gradle gradle
 COPY gradlew gradlew
-COPY src/shell/* .
 COPY src/backend/ src/backend/
 COPY lib/ lib/
 COPY --from=build-frontend /app/build/frontend /opt/src/backend/main/resources/static
@@ -37,7 +36,6 @@ RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub  https://apk.corretto.aws/amazo
 
 RUN apk add --no-cache openrc wireguard-tools iproute2 sqlite iptables
 COPY --from=build-spring /opt/build/backend/yaws-0.0.1-SNAPSHOT.jar .
-COPY src/shell/* .
 COPY docker/prod/entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["entrypoint.sh"]

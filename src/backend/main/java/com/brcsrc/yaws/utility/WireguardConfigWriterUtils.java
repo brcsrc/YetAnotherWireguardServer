@@ -12,6 +12,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -28,6 +29,54 @@ public class WireguardConfigWriterUtils {
             PosixFilePermissions.fromString("rw-------");
 
     /**
+     * builds the PostUp/PostDown lines for a network.
+     *
+     * these carry every iptables rule the interface needs, so bringing the interface up installs
+     * them and bringing it down removes them. nothing applies interface level rules out of band,
+     * which means there is no saved ruleset to restore and no state that can drift from the
+     * config file. the config file is the persistence.
+     *
+     * two groups of rules are written:
+     *
+     * the plumbing rules, which let traffic reach the network and NAT it out to the internet.
+     * the egress interface is resolved from the default route at hook time rather than assumed
+     * to be eth0, so the rules follow whatever interface actually carries traffic off the host.
+     *
+     * the peer isolation chain, created empty and linked from the peer to peer match in FORWARD.
+     * policy rules are inserted into it at runtime from the database, never written here, so
+     * isolation can be toggled with a live iptables call instead of rewriting this file and
+     * cycling the interface, which would drop every client on the network.
+     */
+    public static String buildNetworkHookLines(String networkName, String networkCidr) {
+        String chainName = PeerIsolationUtils.getIsolationChainName(networkName);
+        // $(...) is evaluated by the shell wg-quick runs the hook in, so the egress interface is
+        // resolved when the interface comes up rather than baked into the file
+        String egressInterface = "$(ip route show default | awk '/default/ {print $5; exit}')";
+
+        return String.join("\n", List.of(
+                // allow traffic to and from the network
+                String.format("PostUp = iptables -I INPUT -s %s -j ACCEPT", networkCidr),
+                String.format("PostUp = iptables -I OUTPUT -d %s -j ACCEPT", networkCidr),
+                // NAT client traffic out to the internet
+                String.format("PostUp = iptables -t nat -A POSTROUTING -s %s -o %s -j MASQUERADE",
+                        networkCidr, egressInterface),
+                // peer isolation chain, reachable only from the peer to peer match
+                String.format("PostUp = iptables -N %s", chainName),
+                String.format("PostUp = iptables -I FORWARD -i %%i -o %%i -j %s", chainName),
+
+                // teardown mirrors the above in reverse. a chain cannot be deleted while it is
+                // still referenced, so the FORWARD jump goes first
+                String.format("PostDown = iptables -D FORWARD -i %%i -o %%i -j %s", chainName),
+                String.format("PostDown = iptables -F %s", chainName),
+                String.format("PostDown = iptables -X %s", chainName),
+                String.format("PostDown = iptables -t nat -D POSTROUTING -s %s -o %s -j MASQUERADE",
+                        networkCidr, egressInterface),
+                String.format("PostDown = iptables -D OUTPUT -d %s -j ACCEPT", networkCidr),
+                String.format("PostDown = iptables -D INPUT -s %s -j ACCEPT", networkCidr)
+        ));
+    }
+
+    /**
      * renders a network (server side) config. PostUp/PostDown lines are not written here,
      * see {@link #renderNetworkConfig(NetworkConfig, String)}.
      */
@@ -38,7 +87,8 @@ public class WireguardConfigWriterUtils {
     /**
      * renders a network (server side) config, optionally including hook lines placed in the
      * [Interface] section. hookLines is written verbatim and must already be newline separated
-     * PostUp/PostDown entries.
+     * PostUp/PostDown entries, as produced by
+     * {@link #buildNetworkHookLines(String, String)}.
      */
     public static String renderNetworkConfig(NetworkConfig networkConfig, String hookLines) {
         StringBuilder config = new StringBuilder();

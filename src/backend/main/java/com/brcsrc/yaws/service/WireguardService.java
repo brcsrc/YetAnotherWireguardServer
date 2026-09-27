@@ -85,10 +85,21 @@ public class WireguardService {
         return pubKeyResult.getStdout().trim();
     }
 
+    /**
+     * writes a network config, always including the interface hook lines. every write goes
+     * through here so a peer add or remove cannot silently drop the hooks from the file.
+     *
+     * the network CIDR the hooks need is taken from the config's own interface address, so the
+     * rules can never disagree with the interface they are written alongside.
+     */
     public void writeNetworkConfig(String networkName, NetworkConfig networkConfig) {
+        String hookLines = WireguardConfigWriterUtils.buildNetworkHookLines(
+                networkName,
+                networkConfig.getNetworkInterface().getAddress());
         WireguardConfigWriterUtils.writeNetworkConfig(
                 FilepathUtils.getNetworkConfigPath(networkName),
-                networkConfig);
+                networkConfig,
+                hookLines);
     }
 
     public void writeClientConfig(String networkName, String clientName, ClientConfig clientConfig) {

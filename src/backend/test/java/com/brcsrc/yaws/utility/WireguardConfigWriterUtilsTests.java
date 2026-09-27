@@ -93,6 +93,84 @@ public class WireguardConfigWriterUtilsTests {
     }
 
     @Test
+    void testBuildNetworkHookLinesInstallsPlumbingRules() {
+        String hooks = WireguardConfigWriterUtils.buildNetworkHookLines("Network1", "10.100.0.1/24");
+
+        // traffic must be able to reach the network and be NAT'd out to the internet. these were
+        // previously applied out of band by the configure-iptables script
+        assertTrue(hooks.contains("PostUp = iptables -I INPUT -s 10.100.0.1/24 -j ACCEPT"));
+        assertTrue(hooks.contains("PostUp = iptables -I OUTPUT -d 10.100.0.1/24 -j ACCEPT"));
+        assertTrue(hooks.contains("PostUp = iptables -t nat -A POSTROUTING -s 10.100.0.1/24"));
+        assertTrue(hooks.contains("-j MASQUERADE"));
+    }
+
+    @Test
+    void testBuildNetworkHookLinesResolvesEgressInterfaceFromDefaultRoute() {
+        String hooks = WireguardConfigWriterUtils.buildNetworkHookLines("Network1", "10.100.0.1/24");
+
+        // the egress interface must not be hardcoded to eth0. it is resolved by the shell when
+        // the hook runs so the rules follow whatever interface carries traffic off the host
+        assertTrue(hooks.contains("$(ip route show default"));
+        assertTrue(!hooks.contains("-o eth0"), "egress interface must not be hardcoded to eth0");
+    }
+
+    @Test
+    void testBuildNetworkHookLinesCreatesAndLinksIsolationChain() {
+        String hooks = WireguardConfigWriterUtils.buildNetworkHookLines("Network1", "10.100.0.1/24");
+
+        assertTrue(hooks.contains("PostUp = iptables -N YAWS-ISO-Network1"));
+        // the chain must be reachable only from the peer to peer match, so rules in it cannot
+        // affect a client reaching the internet or the server itself
+        assertTrue(hooks.contains("PostUp = iptables -I FORWARD -i %i -o %i -j YAWS-ISO-Network1"));
+    }
+
+    @Test
+    void testBuildNetworkHookLinesContainNoIsolationPolicy() {
+        String hooks = WireguardConfigWriterUtils.buildNetworkHookLines("Network1", "10.100.0.1/24");
+
+        // the isolation chain is created empty. policy is applied at runtime from the database so
+        // isolation can be toggled without rewriting this file and cycling the interface
+        assertTrue(!hooks.contains("-j DROP"), "hooks must not contain isolation policy rules");
+        assertTrue(!hooks.contains(String.format("-A %s", "YAWS-ISO-Network1")),
+                "hooks must not append rules into the isolation chain");
+    }
+
+    @Test
+    void testBuildNetworkHookLinesTeardownMirrorsSetup() {
+        String hooks = WireguardConfigWriterUtils.buildNetworkHookLines("Network1", "10.100.0.1/24");
+
+        // every rule installed on the way up must be removed on the way down, otherwise rules
+        // accumulate across interface cycles
+        assertTrue(hooks.contains("PostDown = iptables -D INPUT -s 10.100.0.1/24 -j ACCEPT"));
+        assertTrue(hooks.contains("PostDown = iptables -D OUTPUT -d 10.100.0.1/24 -j ACCEPT"));
+        assertTrue(hooks.contains("PostDown = iptables -t nat -D POSTROUTING -s 10.100.0.1/24"));
+        assertTrue(hooks.contains("PostDown = iptables -X YAWS-ISO-Network1"));
+    }
+
+    @Test
+    void testBuildNetworkHookLinesUnlinkChainBeforeDeleting() {
+        String hooks = WireguardConfigWriterUtils.buildNetworkHookLines("Network1", "10.100.0.1/24");
+        String[] lines = hooks.split("\n");
+
+        int unlinkIndex = -1;
+        int deleteIndex = -1;
+        for (int i = 0; i < lines.length; i++) {
+            if (lines[i].startsWith("PostDown") && lines[i].contains("-D FORWARD")) {
+                unlinkIndex = i;
+            }
+            if (lines[i].startsWith("PostDown") && lines[i].contains("-X ")) {
+                deleteIndex = i;
+            }
+        }
+
+        assertTrue(unlinkIndex >= 0, "expected a PostDown line unlinking the chain from FORWARD");
+        assertTrue(deleteIndex >= 0, "expected a PostDown line deleting the chain");
+        // iptables refuses to delete a chain that is still referenced
+        assertTrue(unlinkIndex < deleteIndex,
+                "chain must be unlinked from FORWARD before it can be deleted");
+    }
+
+    @Test
     void testWriteConfigFileIsOwnerReadWriteOnly(@TempDir Path tempDir) throws IOException {
         Path configPath = tempDir.resolve("owner-only.conf");
 

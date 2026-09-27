@@ -22,7 +22,6 @@ src/
   backend/    Java/Spring Boot backend source
   frontend/   React frontend (Vite)
   client/     TypeScript API client (generated from OpenAPI spec)
-  shell/      WireGuard shell scripts copied into the container
 build/
   backend/    Gradle internals (classes, resources, tmp)
   backend/yaws-0.0.1-SNAPSHOT.jar  Fat JAR

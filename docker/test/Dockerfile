@@ -3,7 +3,6 @@ WORKDIR /opt
 COPY build.gradle settings.gradle ./
 COPY gradle gradle
 COPY gradlew gradlew
-COPY src/shell/* .
 COPY src/backend/ src/backend/
 COPY lib/ lib/
 RUN apk update && \

@@ -34,7 +34,6 @@ import com.brcsrc.yaws.model.wireguard.NetworkConfig;
 import com.brcsrc.yaws.model.wireguard.NetworkInterface;
 import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.persistence.NetworkClientRepository;
-import com.brcsrc.yaws.shell.ExecutionResult;
 import com.brcsrc.yaws.shell.Executor;
 import com.brcsrc.yaws.utility.FilepathUtils;
 import com.brcsrc.yaws.utility.IPUtils;
@@ -198,25 +197,8 @@ public class NetworkService {
             throw new InternalServerException("failed to create network");
         }
 
-        // add rules to iptables to allow traffic to network
-        logger.info("creating iptable rules for network");
-        final String configureIptablesCommand = String.join(" ",
-                "./configure-iptables",
-                "--operation", "add-network",
-                "--network-cidr", network.getNetworkCidr()
-        );
-        ExecutionResult configureIptablesExecResult = Executor.runCommand(configureIptablesCommand);
-        if (configureIptablesExecResult.getExitCode() != 0) {
-            logger.error(String.format(
-                    "command: '%s' exited %s with reason: %s",
-                    configureIptablesCommand,
-                    configureIptablesExecResult.getExitCode(),
-                    configureIptablesExecResult.getStderr()));
-            network.setNetworkStatus(NetworkStatus.INACTIVE);
-            this.networkRepository.save(network);
-            CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
-            throw new InternalServerException("failed to create network");
-        }
+        // iptables rules for the network are carried in the config's PostUp/PostDown hooks, so
+        // they are installed by the wg-quick up below and removed by the corresponding down
 
         // since this network is newly created we need bring it up in wireguard
         logger.info("bringing up the wireguard interface");
@@ -258,22 +240,8 @@ public class NetworkService {
                 logger.info(String.format("wireguard interface '%s' does not exist", network.getNetworkName()));
             }
 
-            // add rules to iptables to allow traffic to network
-            logger.info(String.format("removing iptable rules for network %s", network.getNetworkName()));
-            final String configureIptablesCommand = String.join(" ",
-                    "./configure-iptables",
-                    "--operation", "remove-network",
-                    "--network-cidr", network.getNetworkCidr()
-            );
-            ExecutionResult configureIptablesExecResult = Executor.runCommand(configureIptablesCommand);
-            if (configureIptablesExecResult.getExitCode() != 0) {
-                //errorsOnRemoval = true; // TODO this also exits non 0 if the chain does not exist which should not be an error for this operation
-                logger.error(String.format(
-                        "command: '%s' exited %s with reason: %s",
-                        configureIptablesCommand,
-                        configureIptablesExecResult.getExitCode(),
-                        configureIptablesExecResult.getStderr()));
-            }
+            // iptables rules are removed by the config's PostDown hooks, which ran as part of
+            // the wg-quick down above. an interface that was not up never had them installed
 
             // remove the files. not needed for wireguard but keeps disk space down
             final String NETWORK_DIR_PATH = FilepathUtils.getNetworkDirectoryPath(network.getNetworkName());

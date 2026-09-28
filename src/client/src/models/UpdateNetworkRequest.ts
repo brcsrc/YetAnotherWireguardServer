@@ -20,17 +20,29 @@ import { mapValues } from '../runtime';
  */
 export interface UpdateNetworkRequest {
     /**
-     * 
+     * name of the network to update
+     * @type {string}
+     * @memberof UpdateNetworkRequest
+     */
+    networkName: string;
+    /**
+     * optional free form tag for the network
      * @type {string}
      * @memberof UpdateNetworkRequest
      */
     networkTag?: string;
     /**
-     * 
+     * ACTIVE brings the interface up, INACTIVE brings it down
      * @type {string}
      * @memberof UpdateNetworkRequest
      */
     networkStatus?: UpdateNetworkRequestNetworkStatusEnum;
+    /**
+     * when true, no peer on this network can reach any other peer on it
+     * @type {boolean}
+     * @memberof UpdateNetworkRequest
+     */
+    peerIsolationEnabled?: boolean;
 }
 
 
@@ -50,6 +62,7 @@ export type UpdateNetworkRequestNetworkStatusEnum = typeof UpdateNetworkRequestN
  * Check if a given object implements the UpdateNetworkRequest interface.
  */
 export function instanceOfUpdateNetworkRequest(value: object): value is UpdateNetworkRequest {
+    if (!('networkName' in value) || value['networkName'] === undefined) return false;
     return true;
 }
 
@@ -63,8 +76,10 @@ export function UpdateNetworkRequestFromJSONTyped(json: any, ignoreDiscriminator
     }
     return {
         
+        'networkName': json['networkName'],
         'networkTag': json['networkTag'] == null ? undefined : json['networkTag'],
         'networkStatus': json['networkStatus'] == null ? undefined : json['networkStatus'],
+        'peerIsolationEnabled': json['peerIsolationEnabled'] == null ? undefined : json['peerIsolationEnabled'],
     };
 }
 
@@ -79,8 +94,10 @@ export function UpdateNetworkRequestToJSONTyped(value?: UpdateNetworkRequest | n
 
     return {
         
+        'networkName': value['networkName'],
         'networkTag': value['networkTag'],
         'networkStatus': value['networkStatus'],
+        'peerIsolationEnabled': value['peerIsolationEnabled'],
     };
 }
 

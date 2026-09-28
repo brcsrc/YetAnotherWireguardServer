@@ -7,6 +7,7 @@ import {
   Input,
   ColumnLayout,
   KeyValuePairs,
+  Toggle,
 } from "@cloudscape-design/components";
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -77,6 +78,7 @@ const CreateNetwork = () => {
   const [networkSubnetMask, setNetworkSubnetMask] = useState("/24");
   const [networkListenPort, setNetworkListenPort] = useState("");
   const [networkTag, setNetworkTag] = useState("");
+  const [peerIsolationEnabled, setPeerIsolationEnabled] = useState(false);
 
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [showErrorText, setShowErrorText] = useState(false);
@@ -115,11 +117,12 @@ const CreateNetwork = () => {
     try {
       const networkCidr = `${networkIp}${networkSubnetMask}`;
       await networkClient.createNetwork({
-        network: {
+        createNetworkRequest: {
           networkName,
           networkCidr,
           networkListenPort: parseInt(networkListenPort),
           networkTag: networkTag || undefined,
+          peerIsolationEnabled,
         },
       });
       addFlashbarItem({
@@ -280,6 +283,18 @@ const CreateNetwork = () => {
                     invalid={isNetworkTagInvalid}
                   />
                 </FormField>
+
+                <FormField
+                  label="Peer isolation"
+                  description="When enabled, clients on this network cannot reach each other. Clients can still reach the internet and the server. This can be changed at any time without disconnecting clients."
+                >
+                  <Toggle
+                    checked={peerIsolationEnabled}
+                    onChange={({ detail }) => setPeerIsolationEnabled(detail.checked)}
+                  >
+                    Prevent clients from reaching each other
+                  </Toggle>
+                </FormField>
               </SpaceBetween>
             </Container>
           ),
@@ -317,6 +332,10 @@ const CreateNetwork = () => {
                       {
                         label: "Network tag",
                         value: networkTag || "-",
+                      },
+                      {
+                        label: "Peer isolation",
+                        value: peerIsolationEnabled ? "Enabled" : "Disabled",
                       },
                     ]}
                   />

@@ -62,6 +62,12 @@ export interface Network {
      */
     networkTag?: string;
     /**
+     * when true, no peer on this network can reach any other peer on it
+     * @type {boolean}
+     * @memberof Network
+     */
+    peerIsolationEnabled?: boolean;
+    /**
      * 
      * @type {string}
      * @memberof Network
@@ -109,6 +115,7 @@ export function NetworkFromJSONTyped(json: any, ignoreDiscriminator: boolean): N
         'networkPublicKeyName': json['networkPublicKeyName'] == null ? undefined : json['networkPublicKeyName'],
         'networkPublicKeyValue': json['networkPublicKeyValue'] == null ? undefined : json['networkPublicKeyValue'],
         'networkTag': json['networkTag'] == null ? undefined : json['networkTag'],
+        'peerIsolationEnabled': json['peerIsolationEnabled'] == null ? undefined : json['peerIsolationEnabled'],
         'networkStatus': json['networkStatus'] == null ? undefined : json['networkStatus'],
     };
 }
@@ -131,6 +138,7 @@ export function NetworkToJSONTyped(value?: Network | null, ignoreDiscriminator: 
         'networkPublicKeyName': value['networkPublicKeyName'],
         'networkPublicKeyValue': value['networkPublicKeyValue'],
         'networkTag': value['networkTag'],
+        'peerIsolationEnabled': value['peerIsolationEnabled'],
         'networkStatus': value['networkStatus'],
     };
 }

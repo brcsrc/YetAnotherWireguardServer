@@ -27,6 +27,7 @@ import com.brcsrc.yaws.exceptions.InternalServerException;
 import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkStatus;
+import com.brcsrc.yaws.model.requests.CreateNetworkRequest;
 import com.brcsrc.yaws.model.requests.ListNetworksRequest;
 import com.brcsrc.yaws.model.requests.ListNetworksResponse;
 import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
@@ -44,14 +45,17 @@ public class NetworkService {
     private final NetworkRepository networkRepository;
     private final NetworkClientRepository networkClientRepository;
     private final WireguardService wireguardService;
+    private final PeerIsolationService peerIsolationService;
     private static final Logger logger = LoggerFactory.getLogger(NetworkService.class);
 
     public NetworkService(NetworkRepository networkRepository,
                           NetworkClientRepository networkClientRepository,
-                          WireguardService wireguardService) {
+                          WireguardService wireguardService,
+                          PeerIsolationService peerIsolationService) {
         this.networkRepository = networkRepository;
         this.networkClientRepository = networkClientRepository;
         this.wireguardService = wireguardService;
+        this.peerIsolationService = peerIsolationService;
     }
 
     public List<Network> getAllNetworks() {
@@ -85,8 +89,19 @@ public class NetworkService {
         return existingNetwork.get();
     }
 
+    public Network createNetwork(CreateNetworkRequest request) {
+        Network network = new Network();
+        network.setNetworkName(request.getNetworkName());
+        network.setNetworkCidr(request.getNetworkCidr());
+        network.setNetworkListenPort(request.getNetworkListenPort());
+        network.setNetworkTag(request.getNetworkTag());
+        network.setPeerIsolationEnabled(request.isPeerIsolationEnabled());
+        return createNetwork(network);
+    }
+
     public Network createNetwork(Network network) {
-        if (!network.getNetworkName().matches(Constants.CHAR_15_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
+        if (network.getNetworkName() == null
+                || !network.getNetworkName().matches(Constants.CHAR_15_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "networkName must be alphanumeric without spaces and no more than 15 characters";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
@@ -213,6 +228,19 @@ public class NetworkService {
             throw new InternalServerException("failed to create network");
         }
 
+        // the isolation chain is created by the PostUp hooks above, so policy can only be
+        // applied once the interface is up
+        try {
+            this.peerIsolationService.applyNetworkPolicy(network);
+        } catch (RuntimeException e) {
+            logger.error("failed to apply peer isolation policy for network '{}': {}",
+                    network.getNetworkName(), e.getMessage());
+            network.setNetworkStatus(NetworkStatus.INACTIVE);
+            this.networkRepository.save(network);
+            CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
+            throw new InternalServerException("failed to create network");
+        }
+
         network.setNetworkStatus(NetworkStatus.ACTIVE);
         savedNetwork = this.networkRepository.save(network);
         logger.info("CreateNetwork operation complete");
@@ -314,12 +342,13 @@ public class NetworkService {
         }
     }
 
-    public Network updateNetwork(String networkName, UpdateNetworkRequest updateNetworkRequest) {
-        logger.info("Starting updateNetwork for networkName: {}", networkName);
-        logger.debug("UpdateNetworkRequest received: {}", updateNetworkRequest);
-
+    public Network updateNetwork(UpdateNetworkRequest updateNetworkRequest) {
         // Validate the UpdateNetworkRequest
         validateUpdateRequest(updateNetworkRequest);
+
+        String networkName = updateNetworkRequest.getNetworkName();
+        logger.info("Starting updateNetwork for networkName: {}", networkName);
+        logger.debug("UpdateNetworkRequest received: {}", updateNetworkRequest);
 
         // Retrieve the existing network from DB or throw an exception if it doesn't exist
         // TODO: Maybe include system level check through wg show <networkName> ?
@@ -343,6 +372,12 @@ public class NetworkService {
             updateNetworkStatus(network, updateNetworkRequest.getNetworkStatus());
         }
 
+        // Update peer isolation if provided. this is applied to the running interface as a live
+        // iptables change, never by rewriting the config, so no client is disconnected by it
+        if (updateNetworkRequest.getPeerIsolationEnabled() != null) {
+            updatePeerIsolation(network, updateNetworkRequest.getPeerIsolationEnabled());
+        }
+
         // Save the updated network using a helper method
         return saveUpdatedNetwork(networkName, network);
     }
@@ -355,8 +390,17 @@ public class NetworkService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
 
-        if (updateNetworkRequest.getNetworkTag() == null && updateNetworkRequest.getNetworkStatus() == null) {
-            String errMsg = "At least one field (networkTag or networkStatus) must be provided for update";
+        if (updateNetworkRequest.getNetworkName() == null
+                || updateNetworkRequest.getNetworkName().isBlank()) {
+            String errMsg = "networkName must be provided";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        if (updateNetworkRequest.getNetworkTag() == null
+                && updateNetworkRequest.getNetworkStatus() == null
+                && updateNetworkRequest.getPeerIsolationEnabled() == null) {
+            String errMsg = "At least one field (networkTag, networkStatus or peerIsolationEnabled) must be provided for update";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
@@ -388,6 +432,27 @@ public class NetworkService {
     }
 
     // Helper method to update the networkStatus
+    /**
+     * sets peer isolation on a network.
+     *
+     * the database is the source of truth, so the entity is always updated. the live rule is only
+     * touched when the interface is up: an inactive network has no isolation chain, and the policy
+     * will be applied from the database when it is next activated.
+     */
+    private void updatePeerIsolation(Network network, boolean enabled) {
+        logger.info("setting peer isolation for network '{}' to {}",
+                network.getNetworkName(), enabled);
+
+        if (network.getNetworkStatus() == NetworkStatus.ACTIVE) {
+            this.peerIsolationService.setNetworkWideIsolation(network.getNetworkName(), enabled);
+        } else {
+            logger.info("network '{}' is not active, peer isolation will be applied on activation",
+                    network.getNetworkName());
+        }
+
+        network.setPeerIsolationEnabled(enabled);
+    }
+
     private void updateNetworkStatus(Network network, NetworkStatus newStatus) {
         logger.debug("Updating networkStatus for network '{}': {}", network.getNetworkName(), newStatus);
 
@@ -452,6 +517,10 @@ public class NetworkService {
 
         // Run wg-quick up <NetworkName>
         this.wireguardService.interfaceUp(network.getNetworkName());
+
+        // the isolation chain is recreated empty on every bring up, so policy must be reasserted
+        // from the database rather than assumed to have survived
+        this.peerIsolationService.applyNetworkPolicy(network);
 
         logger.info("Successfully activated network '{}'", network.getNetworkName());
     }

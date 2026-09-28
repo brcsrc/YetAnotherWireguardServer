@@ -15,12 +15,19 @@
 
 import * as runtime from '../runtime';
 import type {
+  CreateNetworkRequest,
+  CreateNetworkResponse,
   ListNetworksRequest,
   ListNetworksResponse,
   Network,
   UpdateNetworkRequest,
+  UpdateNetworkResponse,
 } from '../models/index';
 import {
+    CreateNetworkRequestFromJSON,
+    CreateNetworkRequestToJSON,
+    CreateNetworkResponseFromJSON,
+    CreateNetworkResponseToJSON,
     ListNetworksRequestFromJSON,
     ListNetworksRequestToJSON,
     ListNetworksResponseFromJSON,
@@ -29,10 +36,12 @@ import {
     NetworkToJSON,
     UpdateNetworkRequestFromJSON,
     UpdateNetworkRequestToJSON,
+    UpdateNetworkResponseFromJSON,
+    UpdateNetworkResponseToJSON,
 } from '../models/index';
 
-export interface CreateNetworkRequest {
-    network: Network;
+export interface CreateNetworkOperationRequest {
+    createNetworkRequest: CreateNetworkRequest;
 }
 
 export interface DeleteNetworkRequest {
@@ -48,7 +57,6 @@ export interface ListNetworksOperationRequest {
 }
 
 export interface UpdateNetworkOperationRequest {
-    networkName: string;
     updateNetworkRequest: UpdateNetworkRequest;
 }
 
@@ -61,11 +69,11 @@ export class NetworkControllerApi extends runtime.BaseAPI {
      * create a network
      * Create Network
      */
-    async createNetworkRaw(requestParameters: CreateNetworkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Network>> {
-        if (requestParameters['network'] == null) {
+    async createNetworkRaw(requestParameters: CreateNetworkOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateNetworkResponse>> {
+        if (requestParameters['createNetworkRequest'] == null) {
             throw new runtime.RequiredError(
-                'network',
-                'Required parameter "network" was null or undefined when calling createNetwork().'
+                'createNetworkRequest',
+                'Required parameter "createNetworkRequest" was null or undefined when calling createNetwork().'
             );
         }
 
@@ -76,21 +84,21 @@ export class NetworkControllerApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/api/v1/networks`,
+            path: `/api/v1/networks/create-network`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-            body: NetworkToJSON(requestParameters['network']),
+            body: CreateNetworkRequestToJSON(requestParameters['createNetworkRequest']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => NetworkFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreateNetworkResponseFromJSON(jsonValue));
     }
 
     /**
      * create a network
      * Create Network
      */
-    async createNetwork(requestParameters: CreateNetworkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Network> {
+    async createNetwork(requestParameters: CreateNetworkOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateNetworkResponse> {
         const response = await this.createNetworkRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -204,17 +212,10 @@ export class NetworkControllerApi extends runtime.BaseAPI {
     }
 
     /**
-     * update the tag or status of a network
+     * update the tag, status or peer isolation of a network
      * Update Network
      */
-    async updateNetworkRaw(requestParameters: UpdateNetworkOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Network>> {
-        if (requestParameters['networkName'] == null) {
-            throw new runtime.RequiredError(
-                'networkName',
-                'Required parameter "networkName" was null or undefined when calling updateNetwork().'
-            );
-        }
-
+    async updateNetworkRaw(requestParameters: UpdateNetworkOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UpdateNetworkResponse>> {
         if (requestParameters['updateNetworkRequest'] == null) {
             throw new runtime.RequiredError(
                 'updateNetworkRequest',
@@ -229,21 +230,21 @@ export class NetworkControllerApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/api/v1/networks/{networkName}`.replace(`{${"networkName"}}`, encodeURIComponent(String(requestParameters['networkName']))),
-            method: 'PATCH',
+            path: `/api/v1/networks/update-network`,
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: UpdateNetworkRequestToJSON(requestParameters['updateNetworkRequest']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => NetworkFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => UpdateNetworkResponseFromJSON(jsonValue));
     }
 
     /**
-     * update the tag or status of a network
+     * update the tag, status or peer isolation of a network
      * Update Network
      */
-    async updateNetwork(requestParameters: UpdateNetworkOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Network> {
+    async updateNetwork(requestParameters: UpdateNetworkOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UpdateNetworkResponse> {
         const response = await this.updateNetworkRaw(requestParameters, initOverrides);
         return await response.value();
     }

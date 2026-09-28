@@ -8,6 +8,7 @@ import {
   Select,
   ColumnLayout,
   KeyValuePairs,
+  Toggle,
 } from "@cloudscape-design/components";
 import { useState } from "react";
 import { useNavigate, useLocation, useParams } from "react-router";
@@ -25,6 +26,9 @@ const UpdateNetwork = () => {
 
   const [networkTag, setNetworkTag] = useState(network?.networkTag || "");
   const [networkStatus, setNetworkStatus] = useState(network?.networkStatus);
+  const [peerIsolationEnabled, setPeerIsolationEnabled] = useState(
+    network?.peerIsolationEnabled ?? false
+  );
 
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -33,10 +37,11 @@ const UpdateNetwork = () => {
     setLoading(true);
     try {
       await networkClient.updateNetwork({
-        networkName: networkName,
         updateNetworkRequest: {
+          networkName: networkName,
           networkTag: networkTag || undefined,
           networkStatus: networkStatus,
+          peerIsolationEnabled,
         },
       });
       addFlashbarItem({
@@ -121,6 +126,18 @@ const UpdateNetwork = () => {
                     options={statusOptions}
                   />
                 </FormField>
+
+                <FormField
+                  label="Peer isolation"
+                  description="When enabled, clients on this network cannot reach each other. Clients can still reach the internet and the server. Changing this does not disconnect any client."
+                >
+                  <Toggle
+                    checked={peerIsolationEnabled}
+                    onChange={({ detail }) => setPeerIsolationEnabled(detail.checked)}
+                  >
+                    Prevent clients from reaching each other
+                  </Toggle>
+                </FormField>
               </SpaceBetween>
             </Container>
           ),
@@ -158,6 +175,10 @@ const UpdateNetwork = () => {
                       {
                         label: "Network status",
                         value: networkStatus || "-",
+                      },
+                      {
+                        label: "Peer isolation",
+                        value: peerIsolationEnabled ? "Enabled" : "Disabled",
                       },
                     ]}
                   />

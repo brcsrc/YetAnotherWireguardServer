@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,9 +15,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.brcsrc.yaws.model.Network;
+import com.brcsrc.yaws.model.requests.CreateNetworkRequest;
+import com.brcsrc.yaws.model.requests.CreateNetworkResponse;
 import com.brcsrc.yaws.model.requests.ListNetworksRequest;
 import com.brcsrc.yaws.model.requests.ListNetworksResponse;
 import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
+import com.brcsrc.yaws.model.requests.UpdateNetworkResponse;
 import com.brcsrc.yaws.service.NetworkService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -50,10 +52,10 @@ public class NetworkController {
     }
 
     @Operation(summary = "Create Network", description = "create a network")
-    @PostMapping
-    public Network createNetwork(@RequestBody Network network) {
-        logger.info("received CreateNetwork request: {}", network);
-        return this.networkService.createNetwork(network);
+    @PostMapping("/create-network")
+    public CreateNetworkResponse createNetwork(@RequestBody CreateNetworkRequest request) {
+        logger.info("received CreateNetwork request: {}", request);
+        return new CreateNetworkResponse(this.networkService.createNetwork(request));
     }
 
     @Operation(summary = "Delete Network", description = "delete a network")
@@ -63,10 +65,10 @@ public class NetworkController {
         return this.networkService.deleteNetwork(networkName);
     }
 
-    @Operation(summary = "Update Network", description = "update the tag or status of a network")
-    @PatchMapping("/{networkName}")
-    public Network updateNetwork(@PathVariable String networkName, @RequestBody UpdateNetworkRequest updateNetworkRequest) {
-        logger.info("received UpdateNetworkTag request, updating network {} with new tag: {}", networkName, updateNetworkRequest);
-        return this.networkService.updateNetwork(networkName, updateNetworkRequest);
+    @Operation(summary = "Update Network", description = "update the tag, status or peer isolation of a network")
+    @PostMapping("/update-network")
+    public UpdateNetworkResponse updateNetwork(@RequestBody UpdateNetworkRequest request) {
+        logger.info("received UpdateNetwork request: {}", request);
+        return new UpdateNetworkResponse(this.networkService.updateNetwork(request));
     }
 }

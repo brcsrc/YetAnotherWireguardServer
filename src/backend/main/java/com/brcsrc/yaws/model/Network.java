@@ -45,6 +45,9 @@ public class Network {
     @Null
     private String networkTag;
 
+    @Schema(description = "when true, no peer on this network can reach any other peer on it")
+    private boolean peerIsolationEnabled;
+
     // internal use only
     @Enumerated(EnumType.STRING)
     private NetworkStatus networkStatus;
@@ -106,6 +109,14 @@ public class Network {
         this.networkTag = networkTag;
     }
 
+    public boolean isPeerIsolationEnabled() {
+        return peerIsolationEnabled;
+    }
+
+    public void setPeerIsolationEnabled(boolean peerIsolationEnabled) {
+        this.peerIsolationEnabled = peerIsolationEnabled;
+    }
+
     public NetworkStatus getNetworkStatus() {
         return networkStatus;
     }
@@ -124,6 +135,7 @@ public class Network {
                 ", networkPublicKeyName='" + networkPublicKeyName + '\'' +
                 ", networkPublicKeyValue='" + networkPublicKeyValue + '\'' +
                 ", networkTag='" + networkTag + '\'' +
+                ", peerIsolationEnabled=" + peerIsolationEnabled +
                 ", networkStatus=" + networkStatus +
                 '}';
     }

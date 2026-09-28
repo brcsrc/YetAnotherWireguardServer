@@ -3,9 +3,11 @@ package com.brcsrc.yaws.api;
 import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkStatus;
 import com.brcsrc.yaws.model.User;
+import com.brcsrc.yaws.model.requests.CreateNetworkResponse;
 import com.brcsrc.yaws.model.requests.ListNetworksRequest;
 import com.brcsrc.yaws.model.requests.ListNetworksResponse;
 import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
+import com.brcsrc.yaws.model.requests.UpdateNetworkResponse;
 import com.brcsrc.yaws.model.wireguard.NetworkConfig;
 import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.persistence.UserRepository;
@@ -57,6 +59,8 @@ public class NetworkControllerTests {
     private UserRepository userRepository;
 
     private String baseUrl;
+    private String createNetworkUrl;
+    private String updateNetworkUrl;
     private final String testNetworkName = "Network1";
     private final String testNetworkCidr = "10.100.0.1/24";
     // iptables normalizes a source/destination to the network address, so rules written from
@@ -88,6 +92,8 @@ public class NetworkControllerTests {
     @BeforeEach
     public void setup() {
         baseUrl = "http://localhost:" + port + "/api/v1/networks";
+        createNetworkUrl = baseUrl + "/create-network";
+        updateNetworkUrl = baseUrl + "/update-network";
     }
 
     @AfterEach
@@ -117,7 +123,6 @@ public class NetworkControllerTests {
         network.setNetworkListenPort(testNetworkListenPort);
         network.setNetworkTag(testNetworkTag);
 
-        String createNetworkUrl = baseUrl;
 
         ResponseEntity<String> createNetworkResponse = restClient.post()
                 .uri(createNetworkUrl)
@@ -141,17 +146,17 @@ public class NetworkControllerTests {
         network.setNetworkListenPort(testNetworkListenPort);
         network.setNetworkTag(testNetworkTag);
 
-        String createNetworkUrl = baseUrl;
 
-        ResponseEntity<Network> response = restClient.post()
+        ResponseEntity<CreateNetworkResponse> response = restClient.post()
                 .uri(createNetworkUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(network)
                 .retrieve()
-                .toEntity(Network.class);
+                .toEntity(CreateNetworkResponse.class);
 
         assertEquals(200, response.getStatusCode().value());
-        Network createdNetwork = response.getBody();
+        assert response.getBody() != null;
+        Network createdNetwork = response.getBody().getNetwork();
         assert createdNetwork != null;
 
         Optional<Network> networkFromDb = networkRepository.findByNetworkName(testNetworkName);
@@ -251,14 +256,15 @@ public class NetworkControllerTests {
                 String.format("isolation chain '%s' should exist while the network is active", chainName));
 
         UpdateNetworkRequest deactivateRequest = new UpdateNetworkRequest();
+        deactivateRequest.setNetworkName(testNetworkName);
         deactivateRequest.setNetworkStatus(NetworkStatus.INACTIVE);
 
-        ResponseEntity<Network> response = restClient.patch()
-                .uri(String.format("%s/%s", baseUrl, testNetworkName))
+        ResponseEntity<UpdateNetworkResponse> response = restClient.post()
+                .uri(updateNetworkUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(deactivateRequest)
                 .retrieve()
-                .toEntity(Network.class);
+                .toEntity(UpdateNetworkResponse.class);
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
         // PostDown must unlink and delete the chain so it is not left orphaned
@@ -293,7 +299,7 @@ public class NetworkControllerTests {
             network.setNetworkTag(testNetworkTag);
 
             ResponseEntity<String> response = restClient.post()
-                    .uri(baseUrl)
+                    .uri(createNetworkUrl)
                     .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(network)
                     .exchange((request, response2) -> {
@@ -320,7 +326,7 @@ public class NetworkControllerTests {
         network.setNetworkTag(testNetworkTag);
 
         ResponseEntity<String> response = restClient.post()
-                .uri(baseUrl)
+                .uri(createNetworkUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(network)
                 .exchange((request, response2) -> {
@@ -353,7 +359,7 @@ public class NetworkControllerTests {
             network.setNetworkTag(testNetworkTag);
 
             ResponseEntity<String> response = restClient.post()
-                    .uri(baseUrl)
+                    .uri(createNetworkUrl)
                     .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(network)
                     .exchange((request, response2) -> {
@@ -379,12 +385,12 @@ public class NetworkControllerTests {
         network.setNetworkListenPort(testNetworkListenPort);
         network.setNetworkTag(testNetworkTag);
 
-        ResponseEntity<Network> createNetworkResponse = restClient.post()
-                .uri(baseUrl)
+        ResponseEntity<CreateNetworkResponse> createNetworkResponse = restClient.post()
+                .uri(createNetworkUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(network)
                 .retrieve()
-                .toEntity(Network.class);
+                .toEntity(CreateNetworkResponse.class);
 
         assertEquals(HttpStatus.OK, createNetworkResponse.getStatusCode());
 
@@ -398,7 +404,7 @@ public class NetworkControllerTests {
         networkWithAddressAlreadyInUse.setNetworkTag("not test network tag");
 
         ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
-                .uri(baseUrl)
+                .uri(createNetworkUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(networkWithAddressAlreadyInUse)
                 .exchange((request, response) -> {
@@ -428,12 +434,12 @@ public class NetworkControllerTests {
         network.setNetworkListenPort(testNetworkListenPort);
         network.setNetworkTag(testNetworkTag);
 
-        ResponseEntity<Network> createNetworkResponse = restClient.post()
-                .uri(baseUrl)
+        ResponseEntity<CreateNetworkResponse> createNetworkResponse = restClient.post()
+                .uri(createNetworkUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(network)
                 .retrieve()
-                .toEntity(Network.class);
+                .toEntity(CreateNetworkResponse.class);
 
         assertEquals(HttpStatus.OK, createNetworkResponse.getStatusCode());
         Optional<Network> networkFromDb = networkRepository.findByNetworkName(testNetworkName);
@@ -446,7 +452,7 @@ public class NetworkControllerTests {
         networkWithListenPortAlreadyInUse.setNetworkTag("not_test_network_tag");
 
         ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
-                .uri(baseUrl)
+                .uri(createNetworkUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(networkWithListenPortAlreadyInUse)
                 .exchange((request, response) -> {
@@ -476,12 +482,12 @@ public class NetworkControllerTests {
         network.setNetworkListenPort(testNetworkListenPort);
         network.setNetworkTag(testNetworkTag);
 
-        ResponseEntity<Network> createNetworkResponse = restClient.post()
-                .uri(baseUrl)
+        ResponseEntity<CreateNetworkResponse> createNetworkResponse = restClient.post()
+                .uri(createNetworkUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(network)
                 .retrieve()
-                .toEntity(Network.class);
+                .toEntity(CreateNetworkResponse.class);
 
         assertEquals(HttpStatus.OK, createNetworkResponse.getStatusCode());
         Optional<Network> networkFromDb = networkRepository.findByNetworkName(testNetworkName);
@@ -494,7 +500,7 @@ public class NetworkControllerTests {
         networkWithNameAlreadyInUse.setNetworkTag("not_test_network_tag");
 
         ResponseEntity<String> failedCreateNetworkResponse = restClient.post()
-                .uri(baseUrl)
+                .uri(createNetworkUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(networkWithNameAlreadyInUse)
                 .exchange((request, response) -> {
@@ -660,20 +666,21 @@ public class NetworkControllerTests {
         // Step 2: Update the networkTag with valid input
         String newTag = "updated-tag";
         UpdateNetworkRequest updateRequest = new UpdateNetworkRequest();
+        updateRequest.setNetworkName(testNetworkName);
         updateRequest.setNetworkTag(newTag);
 
-        String updateNetworkUrl = String.format("%s/%s", baseUrl, testNetworkName);
 
-        ResponseEntity<Network> response = restClient.patch()
+        ResponseEntity<UpdateNetworkResponse> response = restClient.post()
                 .uri(updateNetworkUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(updateRequest)
                 .retrieve()
-                .toEntity(Network.class);
+                .toEntity(UpdateNetworkResponse.class);
 
         // Step 3: Verify the response
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        Network updatedNetwork = response.getBody();
+        assert response.getBody() != null;
+        Network updatedNetwork = response.getBody().getNetwork();
         assert updatedNetwork != null;
         assertEquals(newTag, updatedNetwork.getNetworkTag());
         assertEquals(NetworkStatus.ACTIVE, updatedNetwork.getNetworkStatus()); // Status should remain unchanged
@@ -682,15 +689,16 @@ public class NetworkControllerTests {
         String tagWithSpaces = "   trimmed-tag   ";
         updateRequest.setNetworkTag(tagWithSpaces);
 
-        response = restClient.patch()
+        response = restClient.post()
                 .uri(updateNetworkUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(updateRequest)
                 .retrieve()
-                .toEntity(Network.class);
+                .toEntity(UpdateNetworkResponse.class);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        updatedNetwork = response.getBody();
+        assert response.getBody() != null;
+        updatedNetwork = response.getBody().getNetwork();
         assert updatedNetwork != null;
         assertEquals("trimmed-tag", updatedNetwork.getNetworkTag()); // Spaces should be trimmed
 
@@ -699,12 +707,12 @@ public class NetworkControllerTests {
         updateRequest.setNetworkTag(invalidTag);
 
         HttpClientErrorException.BadRequest exception = assertThrows(HttpClientErrorException.BadRequest.class, () -> {
-            restClient.patch()
+            restClient.post()
                     .uri(updateNetworkUrl)
                     .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(updateRequest)
                     .retrieve()
-                    .toEntity(Network.class);
+                    .toEntity(UpdateNetworkResponse.class);
         });
 
         // Check if the response body contains the expected error message
@@ -725,20 +733,21 @@ public class NetworkControllerTests {
 
         // Step 2: Update the networkStatus
         UpdateNetworkRequest updateRequest = new UpdateNetworkRequest();
+        updateRequest.setNetworkName(testNetworkName);
         updateRequest.setNetworkStatus(NetworkStatus.INACTIVE);
 
-        String updateNetworkUrl = String.format("%s/%s", baseUrl, testNetworkName);
 
-        ResponseEntity<Network> response = restClient.patch()
+        ResponseEntity<UpdateNetworkResponse> response = restClient.post()
                 .uri(updateNetworkUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(updateRequest)
                 .retrieve()
-                .toEntity(Network.class);
+                .toEntity(UpdateNetworkResponse.class);
 
         // Step 3: Verify the response
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        Network updatedNetwork = response.getBody();
+        assert response.getBody() != null;
+        Network updatedNetwork = response.getBody().getNetwork();
         assert updatedNetwork != null;
         assertEquals(NetworkStatus.INACTIVE, updatedNetwork.getNetworkStatus());
         assertEquals(testNetworkTag, updatedNetwork.getNetworkTag()); // Tag should remain unchanged
@@ -757,23 +766,217 @@ public class NetworkControllerTests {
         // Step 2: Update both networkTag and networkStatus
         String newTag = "updated_tag";
         UpdateNetworkRequest updateRequest = new UpdateNetworkRequest();
+        updateRequest.setNetworkName(testNetworkName);
         updateRequest.setNetworkTag(newTag);
         updateRequest.setNetworkStatus(NetworkStatus.INACTIVE);
 
-        String updateNetworkUrl = String.format("%s/%s", baseUrl, testNetworkName);
 
-        ResponseEntity<Network> response = restClient.patch()
+        ResponseEntity<UpdateNetworkResponse> response = restClient.post()
                 .uri(updateNetworkUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(updateRequest)
                 .retrieve()
-                .toEntity(Network.class);
+                .toEntity(UpdateNetworkResponse.class);
 
         // Step 3: Verify the response
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        Network updatedNetwork = response.getBody();
+        assert response.getBody() != null;
+        Network updatedNetwork = response.getBody().getNetwork();
         assert updatedNetwork != null;
         assertEquals(newTag, updatedNetwork.getNetworkTag());
         assertEquals(NetworkStatus.INACTIVE, updatedNetwork.getNetworkStatus());
+    }
+
+    /**
+     * the rule that denies all peer to peer traffic. present in the chain exactly when network
+     * wide isolation is on.
+     */
+    private boolean isolationRulePresent(String networkName) {
+        return Executor.runCommand(List.of(
+                "iptables", "-C",
+                PeerIsolationUtils.getIsolationChainName(networkName),
+                "-j", "DROP")).getExitCode() == 0;
+    }
+
+    private Network createTestNetwork(boolean peerIsolationEnabled) {
+        Network network = new Network();
+        network.setNetworkName(testNetworkName);
+        network.setNetworkCidr(testNetworkCidr);
+        network.setNetworkListenPort(testNetworkListenPort);
+        network.setNetworkTag(testNetworkTag);
+        network.setPeerIsolationEnabled(peerIsolationEnabled);
+        return networkService.createNetwork(network);
+    }
+
+    private ResponseEntity<UpdateNetworkResponse> setPeerIsolation(boolean enabled) {
+        UpdateNetworkRequest request = new UpdateNetworkRequest();
+        request.setNetworkName(testNetworkName);
+        request.setPeerIsolationEnabled(enabled);
+        return restClient.post()
+                .uri(updateNetworkUrl)
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(request)
+                .retrieve()
+                .toEntity(UpdateNetworkResponse.class);
+    }
+
+    @Test
+    public void testCreateNetworkWithoutPeerIsolationLeavesChainEmpty() {
+        Network created = createTestNetwork(false);
+
+        assertEquals(false, created.isPeerIsolationEnabled());
+        assertTrue(!isolationRulePresent(testNetworkName),
+                "isolation rule should not be present when the feature is off");
+    }
+
+    @Test
+    public void testCreateNetworkWithPeerIsolationAppliesRule() {
+        Network created = createTestNetwork(true);
+
+        assertTrue(created.isPeerIsolationEnabled());
+        assertTrue(isolationRulePresent(testNetworkName),
+                "isolation rule should be applied at creation when requested");
+    }
+
+    @Test
+    public void testUpdateNetworkTogglesPeerIsolationOnLiveInterface() {
+        createTestNetwork(false);
+        assertTrue(!isolationRulePresent(testNetworkName));
+
+        // enabling must take effect on the running interface, not just in the database
+        ResponseEntity<UpdateNetworkResponse> enableResponse = setPeerIsolation(true);
+        assertEquals(HttpStatus.OK, enableResponse.getStatusCode());
+        assert enableResponse.getBody() != null;
+        assertTrue(enableResponse.getBody().getNetwork().isPeerIsolationEnabled());
+        assertTrue(isolationRulePresent(testNetworkName),
+                "isolation rule should be present after enabling");
+
+        // and the interface must stay up through the toggle, since a bounce would disconnect
+        // every client on the network
+        assertEquals(0, Executor.runCommand(List.of("wg", "show", testNetworkName)).getExitCode(),
+                "toggling isolation must not bring the interface down");
+
+        ResponseEntity<UpdateNetworkResponse> disableResponse = setPeerIsolation(false);
+        assertEquals(HttpStatus.OK, disableResponse.getStatusCode());
+        assert disableResponse.getBody() != null;
+        assertEquals(false, disableResponse.getBody().getNetwork().isPeerIsolationEnabled());
+        assertTrue(!isolationRulePresent(testNetworkName),
+                "isolation rule should be gone after disabling");
+    }
+
+    @Test
+    public void testEnablingPeerIsolationTwiceDoesNotStackRules() {
+        createTestNetwork(false);
+
+        setPeerIsolation(true);
+        setPeerIsolation(true);
+
+        // a second enable must be a no op rather than appending a duplicate rule, otherwise one
+        // disable would leave the network still isolated
+        ExecutionResult chainRules = Executor.runCommand(List.of(
+                "iptables", "-S", PeerIsolationUtils.getIsolationChainName(testNetworkName)));
+        long dropRuleCount = chainRules.getStdout().lines()
+                .filter(line -> line.contains("-j DROP"))
+                .count();
+        assertEquals(1, dropRuleCount, "isolation rule should appear exactly once");
+
+        setPeerIsolation(false);
+        assertTrue(!isolationRulePresent(testNetworkName),
+                "a single disable should fully remove isolation");
+    }
+
+    @Test
+    public void testDisablingPeerIsolationWhenNotEnabledSucceeds() {
+        createTestNetwork(false);
+
+        // deleting a rule that is not there would fail, so this must be a no op
+        ResponseEntity<UpdateNetworkResponse> response = setPeerIsolation(false);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    @Test
+    public void testPeerIsolationIsReappliedAfterDeactivateAndActivate() {
+        createTestNetwork(true);
+        assertTrue(isolationRulePresent(testNetworkName));
+
+        UpdateNetworkRequest deactivate = new UpdateNetworkRequest();
+        deactivate.setNetworkName(testNetworkName);
+        deactivate.setNetworkStatus(NetworkStatus.INACTIVE);
+        restClient.post()
+                .uri(updateNetworkUrl)
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(deactivate)
+                .retrieve()
+                .toEntity(UpdateNetworkResponse.class);
+
+        // the chain itself is gone with the interface
+        assertTrue(!isolationRulePresent(testNetworkName));
+
+        UpdateNetworkRequest activate = new UpdateNetworkRequest();
+        activate.setNetworkName(testNetworkName);
+        activate.setNetworkStatus(NetworkStatus.ACTIVE);
+        restClient.post()
+                .uri(updateNetworkUrl)
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(activate)
+                .retrieve()
+                .toEntity(UpdateNetworkResponse.class);
+
+        // the chain comes back empty, so policy has to be reapplied from the database. without
+        // that, isolation would silently turn itself off on every interface cycle
+        assertTrue(isolationRulePresent(testNetworkName),
+                "isolation must be reapplied from the database after reactivation");
+    }
+
+    @Test
+    public void testSettingPeerIsolationOnInactiveNetworkAppliesOnActivation() {
+        createTestNetwork(false);
+
+        UpdateNetworkRequest deactivate = new UpdateNetworkRequest();
+        deactivate.setNetworkName(testNetworkName);
+        deactivate.setNetworkStatus(NetworkStatus.INACTIVE);
+        restClient.post()
+                .uri(updateNetworkUrl)
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(deactivate)
+                .retrieve()
+                .toEntity(UpdateNetworkResponse.class);
+
+        // there is no chain to write to while the network is down, so this records intent only
+        ResponseEntity<UpdateNetworkResponse> isolateResponse = setPeerIsolation(true);
+        assertEquals(HttpStatus.OK, isolateResponse.getStatusCode());
+        assert isolateResponse.getBody() != null;
+        assertTrue(isolateResponse.getBody().getNetwork().isPeerIsolationEnabled());
+
+        UpdateNetworkRequest activate = new UpdateNetworkRequest();
+        activate.setNetworkName(testNetworkName);
+        activate.setNetworkStatus(NetworkStatus.ACTIVE);
+        restClient.post()
+                .uri(updateNetworkUrl)
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(activate)
+                .retrieve()
+                .toEntity(UpdateNetworkResponse.class);
+
+        assertTrue(isolationRulePresent(testNetworkName),
+                "isolation recorded while inactive must be applied on activation");
+    }
+
+    @Test
+    public void testUpdateNetworkRejectsRequestWithNoFields() {
+        createTestNetwork(false);
+
+        UpdateNetworkRequest emptyRequest = new UpdateNetworkRequest();
+        emptyRequest.setNetworkName(testNetworkName);
+
+        HttpClientErrorException exception = assertThrows(HttpClientErrorException.class, () -> {
+            restClient.post()
+                    .uri(updateNetworkUrl)
+                    .header("Cookie", String.format("accessToken=%s", jwt))
+                    .body(emptyRequest)
+                    .retrieve()
+                    .toEntity(UpdateNetworkResponse.class);
+        });
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 }

@@ -7,9 +7,9 @@ import com.brcsrc.yaws.model.User;
 import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.persistence.UserRepository;
+import com.brcsrc.yaws.service.PeerIsolationService;
 import com.brcsrc.yaws.service.UserService;
-import com.brcsrc.yaws.shell.ExecutionResult;
-import com.brcsrc.yaws.shell.Executor;
+import com.brcsrc.yaws.service.WireguardService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,13 +23,21 @@ public class StartupTasks {
     private final NetworkRepository networkRepository;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final WireguardService wireguardService;
+    private final PeerIsolationService peerIsolationService;
     private static final Logger logger = LoggerFactory.getLogger(StartupTasks.class);
 
     @Autowired
-    public StartupTasks(NetworkRepository networkRepository, UserRepository userRepository, UserService userService) {
+    public StartupTasks(NetworkRepository networkRepository,
+                        UserRepository userRepository,
+                        UserService userService,
+                        WireguardService wireguardService,
+                        PeerIsolationService peerIsolationService) {
         this.networkRepository = networkRepository;
         this.userRepository = userRepository;
         this.userService = userService;
+        this.wireguardService = wireguardService;
+        this.peerIsolationService = peerIsolationService;
     }
 
     public void registerAdminUserFromEnv() {
@@ -63,15 +71,16 @@ public class StartupTasks {
 
         for (Network network : activeNetworks) {
             logger.info(String.format("activating existing network '%s'", network.getNetworkName()));
-            final String activateNetworkInterfaceCommand = String.format("wg-quick up %s", network.getNetworkName());
-            ExecutionResult activateResult = Executor.runCommand(activateNetworkInterfaceCommand);
-            if (activateResult.getExitCode() != 0) {
+            try {
+                this.wireguardService.interfaceUp(network.getNetworkName());
+                // the isolation chain is created empty by the interface hooks, so policy has to be
+                // reapplied from the database here too. without this, isolation would silently
+                // turn itself off across a container restart
+                this.peerIsolationService.applyNetworkPolicy(network);
+            } catch (RuntimeException e) {
                 errorsOnActivate = true;
-                logger.error(String.format(
-                        "command: '%s' exited %s with reason: %s",
-                        activateNetworkInterfaceCommand,
-                        activateResult.getExitCode(),
-                        activateResult.getStderr()));
+                logger.error("failed to restart network '{}': {}",
+                        network.getNetworkName(), e.getMessage());
             }
         }
         if (errorsOnActivate) {

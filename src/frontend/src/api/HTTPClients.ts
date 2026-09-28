@@ -47,7 +47,11 @@ const errorMiddleware: Middleware = {
 };
 
 const config = new Configuration({
-  basePath: window.location.origin, // use relative urls
+  // the api and the spa are colocated: the spa is served from / by the same application that
+  // serves /api/v1, so requests go to whatever host and port the page was loaded from. this also
+  // means the generated client's BASE_PATH is never used, and its value (derived from the
+  // servers block of the openapi spec) does not matter
+  basePath: window.location.origin,
   credentials: "include", // Include cookies in all requests
   middleware: [errorMiddleware],
 });

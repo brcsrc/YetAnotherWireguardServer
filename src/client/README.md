@@ -1,39 +1,48 @@
 # YAWS Typescript API Client
-this package is used to create a library node module to make the automatically generated client code from openapi consumable
 
-##### Store the API Model for YAWS API
-start the app with `DEV=true`:
+This package turns the OpenAPI spec into a node module the frontend consumes via a local package
+reference. The frontend imports it as `@yaws/yaws-ts-api-client`.
+
+## Normal usage
+
+You do not need to run anything here directly. From the repository root:
 
 ```shell
-\          
-docker build -f docker/prod/Dockerfile -t yaws . && \
-docker run \
- --privileged \
- --cap-add=NET_ADMIN \
- -e DEV="true" \
- -p 0.0.0.0:51820:51820/udp \
- -p 0.0.0.0:8080:8080/tcp \
- --name yaws \
- -d \
- yaws:latest && \
-docker exec -it yaws bash
+make build-api-spec    # generates build/openapi.json from the Spring app
+make build-api-client  # regenerates this client from that spec, then compiles it
 ```
 
-Then go to the path `/path/to/your/YetAnotherWireguardServer/yaws-ts-api-client/` and download the schema
-```shell
-curl http://localhost:8080/v3/api-docs -o ./openapi.json
-```
+`make build` runs both in order, along with the backend and frontend builds. Any change to a
+controller, request model or response model needs both steps, since the frontend consumes the
+compiled output rather than the Java types.
 
-##### Generate the client code from the model
-`openapi-generator-cli` is used as a dev dependency in `/path/to/your/YetAnotherWireguardServer/yaws-ts-api-client/`. from that path run
-```shell
-npx openapi-generator-cli generate \
-  -i ./openapi.json \
-  -g typescript-fetch \
-  -o ./src
-```
+## What the steps do
 
-##### Build the client into consumable node module for the frontend application
-```shell
-npm run build
-```
+**`make build-api-spec`** runs `OpenApiSpecGeneratorTest`, which loads the Spring MVC context
+without binding to a port and writes `build/openapi.json`.
+
+**`make build-api-client`** runs two npm scripts here:
+
+- `npm run generate` copies `build/openapi.json` to `./openapi.json` and runs
+  `openapi-generator-cli` over it, emitting typescript into `./src`. The spec is copied in rather
+  than read from `build/` so the generator input is versioned next to its output.
+- `npm run build` runs `tsc`, compiling `./src` into `build/client` with declarations in
+  `build/client/types`.
+
+Both the generated typescript in `./src` and the copied `./openapi.json` are committed, so a diff
+shows exactly how an API change altered the client.
+
+## Notes
+
+**tsc is incremental, and its state lives outside this directory.** The build info file is
+`build/tsconfig.tsbuildinfo`, not `src/client/`. If `build/client` is deleted without also removing
+that file, `tsc` considers everything current, reports success and emits nothing — producing a
+frontend build that fails on unresolved imports. The `build-api-client` make target removes it
+before compiling, so use the make target rather than calling `npm run build` directly.
+
+**The `servers` block in the spec is not meaningful.** Because the spec is generated from a test
+context with no bound port, it declares `http://localhost` rather than `http://localhost:8080`, and
+the generator writes that into `runtime.ts` as `BASE_PATH`. Nothing reads it: the API and the SPA
+are colocated, so `src/frontend/src/api/HTTPClients.ts` sets `basePath` to `window.location.origin`
+and requests go to whatever host and port served the page. A change to that line in a regenerated
+diff is expected and harmless.

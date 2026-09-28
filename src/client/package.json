@@ -10,6 +10,7 @@
     }
   },
   "scripts": {
+    "generate": "cp ../../build/openapi.json ./openapi.json && openapi-generator-cli generate -i ./openapi.json -g typescript-fetch -o ./src",
     "build": "tsc"
   },
   "devDependencies": {

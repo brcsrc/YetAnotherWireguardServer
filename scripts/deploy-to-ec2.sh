@@ -253,10 +253,16 @@ function print_deployment_info() {
   local public_dns=$(get_instance_public_dns "${stack_name}")
 
   if [[ -n "${public_dns}" && "${public_dns}" != "None" ]]; then
+    # the app must be reached over this DNS name, not the instance IP. the userdata allowlists
+    # "https://<public dns>" in YAWS_CORS_ALLOWED_ORIGINS, and index.html tags its bundles
+    # crossorigin, so the browser fetches them in CORS mode even same-origin. reaching the app
+    # by IP therefore fails the origin check and the js/css return 403
+    log_info "access YAWS at: https://${public_dns}/login"
     log_info "instance public DNS: ${public_dns}"
     log_info "connect via SSM: aws ssm start-session --target \$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names ${stack_name}-asg --region ${AWS_REGION} --query 'AutoScalingGroups[0].Instances[0].InstanceId' --output text) --region ${AWS_REGION}"
   else
     log_info "instance is still launching, public DNS not yet available"
+    log_info "once it is up, get the access URL with: aws ec2 describe-instances --instance-ids \$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names ${stack_name}-asg --region ${AWS_REGION} --query 'AutoScalingGroups[0].Instances[0].InstanceId' --output text) --region ${AWS_REGION} --query 'Reservations[0].Instances[0].PublicDnsName' --output text"
   fi
 }
 
@@ -311,23 +317,71 @@ function teardown() {
     --query 'Stacks[0].Outputs[?OutputKey==`ECRRepositoryName`].OutputValue' \
     --output text 2>/dev/null)
 
-  if [[ -n "${ecr_repo_name}" ]]; then
-    log_info "deleting all images from ECR repository: ${ecr_repo_name}"
+  # the repository is declared EmptyOnDelete so CloudFormation can discard whatever is left, but
+  # emptying it here first keeps the stack delete clean and reports what was removed. failures are
+  # logged rather than swallowed: silently ignoring them is what let stack deletion fail with
+  # "cannot be deleted because it still contains images"
+  if [[ -n "${ecr_repo_name}" && "${ecr_repo_name}" != "None" ]]; then
+    log_info "emptying ECR repository: ${ecr_repo_name}"
 
-    set +e
-    local image_ids=$(aws ecr list-images \
-      --repository-name "${ecr_repo_name}" \
-      --region "${AWS_REGION}" \
-      --query 'imageIds[*]' \
-      --output json 2>/dev/null)
-    set -e
+    # list-images and batch-delete-image both cap at 100 ids per call, so page through. the
+    # iteration cap is a safety net: batch-delete-image can report success while individual
+    # deletes land in failures[], which would otherwise make this loop spin forever on the same
+    # images. whatever is left over is handled by EmptyOnDelete on the repository
+    local deleted_total=0
+    local max_batches=50
+    local batch=0
+    while [[ "${batch}" -lt "${max_batches}" ]]; do
+      batch=$((batch + 1))
 
-    if [[ -n "${image_ids}" && "${image_ids}" != "[]" ]]; then
-      aws ecr batch-delete-image \
+      local image_ids
+      if ! image_ids=$(aws ecr list-images \
         --repository-name "${ecr_repo_name}" \
         --region "${AWS_REGION}" \
-        --image-ids "${image_ids}" &>/dev/null || true
+        --max-items 100 \
+        --query 'imageIds[*]' \
+        --output json 2>&1); then
+        log_info "could not list images (${image_ids}), leaving cleanup to EmptyOnDelete"
+        break
+      fi
+
+      if [[ -z "${image_ids}" || "${image_ids}" == "[]" || "${image_ids}" == "null" ]]; then
+        break
+      fi
+
+      local batch_count
+      batch_count=$(echo "${image_ids}" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))' 2>/dev/null || echo 0)
+      if [[ "${batch_count}" -eq 0 ]]; then
+        break
+      fi
+
+      local delete_output
+      if ! delete_output=$(aws ecr batch-delete-image \
+        --repository-name "${ecr_repo_name}" \
+        --region "${AWS_REGION}" \
+        --image-ids "${image_ids}" \
+        --output json 2>&1); then
+        log_info "could not delete images (${delete_output}), leaving cleanup to EmptyOnDelete"
+        break
+      fi
+
+      # a reported failure means these images will still be listed next pass, so stop instead of
+      # requesting the same deletion repeatedly
+      local failure_count
+      failure_count=$(echo "${delete_output}" | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("failures",[])))' 2>/dev/null || echo 0)
+      if [[ "${failure_count}" -gt 0 ]]; then
+        log_info "${failure_count} image(s) could not be deleted, leaving cleanup to EmptyOnDelete"
+        break
+      fi
+
+      deleted_total=$((deleted_total + batch_count))
+    done
+
+    if [[ "${batch}" -ge "${max_batches}" ]]; then
+      log_info "stopped after ${max_batches} batches, leaving any remainder to EmptyOnDelete"
     fi
+
+    log_info "removed ${deleted_total} image(s) from ${ecr_repo_name}"
   fi
 
   log_info "deleting CloudFormation stack: ${STACK_NAME}"
@@ -336,9 +390,18 @@ function teardown() {
     --region "${AWS_REGION}"
 
   log_info "waiting for stack deletion to complete"
-  aws cloudformation wait stack-delete-complete \
+  if ! aws cloudformation wait stack-delete-complete \
     --stack-name "${STACK_NAME}" \
-    --region "${AWS_REGION}"
+    --region "${AWS_REGION}"; then
+    log_error "stack deletion did not complete"
+    # name the resources that actually blocked it, otherwise the only signal is a failed wait
+    aws cloudformation describe-stack-events \
+      --stack-name "${STACK_NAME}" \
+      --region "${AWS_REGION}" \
+      --query 'StackEvents[?ResourceStatus==`DELETE_FAILED`].[LogicalResourceId,ResourceStatusReason]' \
+      --output table 2>/dev/null || true
+    return 1
+  fi
 
   log_info "stack deleted successfully"
 }

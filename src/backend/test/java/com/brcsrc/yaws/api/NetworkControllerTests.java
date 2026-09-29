@@ -979,4 +979,81 @@ public class NetworkControllerTests {
         });
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
+
+    @Test
+    public void testTogglingPeerIsolationWithUnchangedActiveStatusSucceeds() {
+        // the update form submits the whole network, so networkStatus arrives unchanged alongside
+        // the isolation change. this used to fail with 400 "already in networkStatus of ACTIVE",
+        // which made isolation impossible to toggle while the network was running
+        createTestNetwork(false);
+
+        UpdateNetworkRequest request = new UpdateNetworkRequest();
+        request.setNetworkName(testNetworkName);
+        request.setNetworkStatus(NetworkStatus.ACTIVE);
+        request.setPeerIsolationEnabled(true);
+
+        ResponseEntity<UpdateNetworkResponse> response = restClient.post()
+                .uri(updateNetworkUrl)
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(request)
+                .retrieve()
+                .toEntity(UpdateNetworkResponse.class);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assert response.getBody() != null;
+        assertTrue(response.getBody().getNetwork().isPeerIsolationEnabled());
+        assertEquals(NetworkStatus.ACTIVE, response.getBody().getNetwork().getNetworkStatus());
+        assertTrue(isolationRulePresent(testNetworkName),
+                "isolation should be applied even though networkStatus was unchanged");
+
+        // and the interface must not have been cycled by the redundant ACTIVE
+        assertEquals(0, Executor.runCommand(List.of("wg", "show", testNetworkName)).getExitCode());
+    }
+
+    @Test
+    public void testDisablingPeerIsolationWithUnchangedActiveStatusSucceeds() {
+        // the reverse direction, which is the case reported from the aws deployment
+        createTestNetwork(true);
+        assertTrue(isolationRulePresent(testNetworkName));
+
+        UpdateNetworkRequest request = new UpdateNetworkRequest();
+        request.setNetworkName(testNetworkName);
+        request.setNetworkStatus(NetworkStatus.ACTIVE);
+        request.setPeerIsolationEnabled(false);
+
+        ResponseEntity<UpdateNetworkResponse> response = restClient.post()
+                .uri(updateNetworkUrl)
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(request)
+                .retrieve()
+                .toEntity(UpdateNetworkResponse.class);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assert response.getBody() != null;
+        assertEquals(false, response.getBody().getNetwork().isPeerIsolationEnabled());
+        assertTrue(!isolationRulePresent(testNetworkName),
+                "isolation should be removed even though networkStatus was unchanged");
+    }
+
+    @Test
+    public void testUpdatingTagWithUnchangedStatusSucceeds() {
+        // same class of problem for any other field submitted with an unchanged status
+        createTestNetwork(false);
+
+        UpdateNetworkRequest request = new UpdateNetworkRequest();
+        request.setNetworkName(testNetworkName);
+        request.setNetworkStatus(NetworkStatus.ACTIVE);
+        request.setNetworkTag("still-active");
+
+        ResponseEntity<UpdateNetworkResponse> response = restClient.post()
+                .uri(updateNetworkUrl)
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(request)
+                .retrieve()
+                .toEntity(UpdateNetworkResponse.class);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assert response.getBody() != null;
+        assertEquals("still-active", response.getBody().getNetwork().getNetworkTag());
+    }
 }

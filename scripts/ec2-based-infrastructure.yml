@@ -30,8 +30,15 @@ Resources:
   # ECR Repository for Docker images
   ECRRepository:
     Type: AWS::ECR::Repository
+    # this is a disposable dev environment, so the repository is deleted with the stack and any
+    # images left in it are discarded. without EmptyOnDelete, stack deletion fails with "cannot be
+    # deleted because it still contains images" whenever an image outlives the teardown's own
+    # cleanup. the lifecycle policy below cannot cover this: lifecycle rules run asynchronously on
+    # a schedule and never reduce a repository to zero images
+    DeletionPolicy: Delete
     Properties:
       RepositoryName: !Sub '${EnvironmentName}'
+      EmptyOnDelete: true
       ImageScanningConfiguration:
         ScanOnPush: false
       LifecyclePolicy:
@@ -225,15 +232,6 @@ Resources:
       AutoScalingReplacingUpdate:
         WillReplace: true
 
-  # Elastic IP for consistent public addressing
-  ElasticIP:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: Name
-          Value: !Sub '${EnvironmentName}-eip'
-
 Outputs:
   ECRRepositoryUri:
     Description: ECR Repository URI
@@ -258,12 +256,6 @@ Outputs:
     Value: !Ref AutoScalingGroup
     Export:
       Name: !Sub '${EnvironmentName}-asg-name'
-
-  ElasticIPAddress:
-    Description: Elastic IP Address
-    Value: !Ref ElasticIP
-    Export:
-      Name: !Sub '${EnvironmentName}-eip'
 
   InstanceRole:
     Description: IAM Role for EC2 Instance

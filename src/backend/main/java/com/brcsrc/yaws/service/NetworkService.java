@@ -462,6 +462,15 @@ public class NetworkService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
 
+        // a status that already matches is a no op, not an error. clients submit the whole network
+        // form, so an unchanged networkStatus arrives alongside whatever field actually changed.
+        // failing here would make every other field unupdatable while the status is as requested
+        if (newStatus == network.getNetworkStatus()) {
+            logger.info("Network '{}' is already {}, leaving interface state alone",
+                    network.getNetworkName(), newStatus);
+            return;
+        }
+
         // Handle status change
         if (newStatus == NetworkStatus.INACTIVE) {
             deactivateNetwork(network); // NEW: Call helper method to deactivate the network

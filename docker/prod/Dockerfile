@@ -13,7 +13,6 @@ RUN npm install && npm run build
 FROM gradle:8.9.0-jdk21-alpine AS build-spring
 WORKDIR /opt
 COPY build.gradle settings.gradle ./
-COPY src/shell/* .
 COPY src/backend/ src/backend/
 COPY --from=build-frontend /app/build/frontend /opt/src/backend/main/resources/static
 RUN gradle wrapper
@@ -41,7 +40,6 @@ COPY --from=build-jre /opt/jre /opt/jre
 ENV PATH="/opt/jre/bin:$PATH"
 RUN apk add --no-cache openrc wireguard-tools iproute2 sqlite iptables
 COPY --from=build-spring /opt/build/backend/yaws-0.0.1-SNAPSHOT.jar .
-COPY src/shell/* .
 COPY docker/prod/entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["entrypoint.sh"]

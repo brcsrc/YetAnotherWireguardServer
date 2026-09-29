@@ -40,7 +40,7 @@ build-api-spec:
 	$(call run,build-api-spec,./gradlew test --tests com.brcsrc.yaws.OpenApiSpecGeneratorTest --no-daemon)
 
 build-api-client:
-	$(call run,build-api-client,cd src/client && npm install && npm run build)
+	$(call run,build-api-client,cd src/client && npm install && npm run generate && rm -f ../../build/tsconfig.tsbuildinfo && npm run build)
 
 build-frontend:
 	$(call run,build-frontend,cd src/frontend && npm install && npm run build)

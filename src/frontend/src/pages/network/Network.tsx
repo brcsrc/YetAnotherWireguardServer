@@ -166,6 +166,14 @@ const Network = () => {
                   "-"
                 ),
               },
+              {
+                label: "Peer Isolation",
+                value: (
+                  <Badge color={network?.peerIsolationEnabled ? "blue" : "grey"}>
+                    {network?.peerIsolationEnabled ? "ENABLED" : "DISABLED"}
+                  </Badge>
+                ),
+              },
             ]}
           />
         </ColumnLayout>

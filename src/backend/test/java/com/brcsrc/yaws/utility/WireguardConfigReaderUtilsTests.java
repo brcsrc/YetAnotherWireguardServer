@@ -409,6 +409,124 @@ public class WireguardConfigReaderUtilsTests {
         assertTrue(exception.getMessage().contains("missing peer fields"));
     }
 
+    @Test
+    public void testReadNetworkConfigParsesPeers() throws IOException {
+        String fileName = "validConfig.conf";
+        String filePath = BASE_PATH + fileName;
+        String content = """
+                [Interface]
+                Address = 10.100.0.1/24
+                ListenPort = 51820
+                PrivateKey = ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890=
+
+                [Peer] # 10.100.0.2/32
+                PublicKey = peerOneKeyABCDEFGHIJKLMNOPQRSTUVWXYZ12=
+                AllowedIPs = 10.100.0.2/32
+
+                [Peer] # 10.100.0.3/32
+                PublicKey = peerTwoKeyABCDEFGHIJKLMNOPQRSTUVWXYZ12=
+                AllowedIPs = 10.100.0.3/32
+                """;
+        createFile(filePath, content);
+
+        NetworkConfig config = WireguardConfigReaderUtils.readNetworkConfig(fileName);
+
+        assertEquals(2, config.getPeers().size());
+        assertEquals("peerOneKeyABCDEFGHIJKLMNOPQRSTUVWXYZ12=", config.getPeers().get(0).getPublicKey());
+        assertEquals("10.100.0.2/32", config.getPeers().get(0).getAllowedIps());
+        assertEquals("peerTwoKeyABCDEFGHIJKLMNOPQRSTUVWXYZ12=", config.getPeers().get(1).getPublicKey());
+        assertEquals("10.100.0.3/32", config.getPeers().get(1).getAllowedIps());
+        // peer AllowedIPs must not be mistaken for the interface Address
+        assertEquals("10.100.0.1/24", config.getNetworkInterface().getAddress());
+    }
+
+    @Test
+    public void testReadNetworkConfigWithNoPeersReturnsEmptyPeerList() throws IOException {
+        String fileName = "validConfig.conf";
+        String filePath = BASE_PATH + fileName;
+        String content = """
+                [Interface]
+                Address = 10.100.0.1/24
+                ListenPort = 51820
+                PrivateKey = ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890=
+                """;
+        createFile(filePath, content);
+
+        NetworkConfig config = WireguardConfigReaderUtils.readNetworkConfig(fileName);
+
+        assertTrue(config.getPeers().isEmpty());
+    }
+
+    @Test
+    public void testNetworkConfigRoundTripsThroughWriterAndReader() throws IOException {
+        // peer removal depends on the writer producing a file the reader can parse back into
+        // the same document, so a round trip is the contract between the two
+        String networkName = "roundTripNet";
+        String fileName = String.format("%s.conf", networkName);
+        String filePath = BASE_PATH + fileName;
+
+        NetworkConfig original = new NetworkConfig(
+                new com.brcsrc.yaws.model.wireguard.NetworkInterface(
+                        "10.100.0.1/24", 51820, "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890="),
+                java.util.List.of(
+                        new com.brcsrc.yaws.model.wireguard.NetworkPeer(
+                                "peerOneKeyABCDEFGHIJKLMNOPQRSTUVWXYZ12=", "10.100.0.2/32"),
+                        new com.brcsrc.yaws.model.wireguard.NetworkPeer(
+                                "peerTwoKeyABCDEFGHIJKLMNOPQRSTUVWXYZ12=", "10.100.0.3/32")));
+
+        try {
+            WireguardConfigWriterUtils.writeNetworkConfig(filePath, original);
+            NetworkConfig readBack = WireguardConfigReaderUtils.readNetworkConfig(fileName);
+
+            assertEquals(original.getNetworkInterface().getAddress(), readBack.getNetworkInterface().getAddress());
+            assertEquals(original.getNetworkInterface().getListenPort(), readBack.getNetworkInterface().getListenPort());
+            assertEquals(original.getNetworkInterface().getPrivateKey(), readBack.getNetworkInterface().getPrivateKey());
+            assertEquals(2, readBack.getPeers().size());
+
+            // removing a peer and writing again must drop only that entry
+            assertTrue(readBack.removePeerByAllowedIps("10.100.0.2/32"));
+            WireguardConfigWriterUtils.writeNetworkConfig(filePath, readBack);
+
+            NetworkConfig afterRemoval = WireguardConfigReaderUtils.readNetworkConfig(fileName);
+            assertEquals(1, afterRemoval.getPeers().size());
+            assertEquals("10.100.0.3/32", afterRemoval.getPeers().get(0).getAllowedIps());
+            assertEquals("peerTwoKeyABCDEFGHIJKLMNOPQRSTUVWXYZ12=", afterRemoval.getPeers().get(0).getPublicKey());
+        } finally {
+            Files.deleteIfExists(Paths.get(filePath));
+        }
+    }
+
+    @Test
+    public void testNetworkConfigRoundTripPreservesHookLines() throws IOException {
+        // hooks are written into the [Interface] section and must not be parsed as peer fields
+        String networkName = "hookNet";
+        String fileName = String.format("%s.conf", networkName);
+        String filePath = BASE_PATH + fileName;
+
+        NetworkConfig original = new NetworkConfig(
+                new com.brcsrc.yaws.model.wireguard.NetworkInterface(
+                        "10.100.0.1/24", 51820, "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890="),
+                java.util.List.of(
+                        new com.brcsrc.yaws.model.wireguard.NetworkPeer(
+                                "peerOneKeyABCDEFGHIJKLMNOPQRSTUVWXYZ12=", "10.100.0.2/32")));
+        String hooks = "PostUp = iptables -N YAWS-ISO-hookNet\nPostDown = iptables -X YAWS-ISO-hookNet";
+
+        try {
+            WireguardConfigWriterUtils.writeNetworkConfig(filePath, original, hooks);
+            NetworkConfig readBack = WireguardConfigReaderUtils.readNetworkConfig(fileName);
+
+            assertEquals("10.100.0.1/24", readBack.getNetworkInterface().getAddress());
+            assertEquals(1, readBack.getPeers().size());
+            assertEquals("10.100.0.2/32", readBack.getPeers().get(0).getAllowedIps());
+
+            String onDisk = Files.readString(Paths.get(filePath));
+            assertTrue(onDisk.contains("PostUp = iptables -N YAWS-ISO-hookNet"));
+            assertTrue(onDisk.contains("PostDown = iptables -X YAWS-ISO-hookNet"));
+        } finally {
+            Files.deleteIfExists(Paths.get(filePath));
+        }
+    }
+
 }
 
 

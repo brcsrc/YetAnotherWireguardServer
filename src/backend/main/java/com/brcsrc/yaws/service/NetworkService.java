@@ -27,12 +27,14 @@ import com.brcsrc.yaws.exceptions.InternalServerException;
 import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkStatus;
+import com.brcsrc.yaws.model.requests.CreateNetworkRequest;
 import com.brcsrc.yaws.model.requests.ListNetworksRequest;
 import com.brcsrc.yaws.model.requests.ListNetworksResponse;
 import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
+import com.brcsrc.yaws.model.wireguard.NetworkConfig;
+import com.brcsrc.yaws.model.wireguard.NetworkInterface;
 import com.brcsrc.yaws.persistence.NetworkRepository;
 import com.brcsrc.yaws.persistence.NetworkClientRepository;
-import com.brcsrc.yaws.shell.ExecutionResult;
 import com.brcsrc.yaws.shell.Executor;
 import com.brcsrc.yaws.utility.FilepathUtils;
 import com.brcsrc.yaws.utility.IPUtils;
@@ -42,11 +44,18 @@ public class NetworkService {
 
     private final NetworkRepository networkRepository;
     private final NetworkClientRepository networkClientRepository;
+    private final WireguardService wireguardService;
+    private final PeerIsolationService peerIsolationService;
     private static final Logger logger = LoggerFactory.getLogger(NetworkService.class);
 
-    public NetworkService(NetworkRepository networkRepository, NetworkClientRepository networkClientRepository) {
+    public NetworkService(NetworkRepository networkRepository,
+                          NetworkClientRepository networkClientRepository,
+                          WireguardService wireguardService,
+                          PeerIsolationService peerIsolationService) {
         this.networkRepository = networkRepository;
         this.networkClientRepository = networkClientRepository;
+        this.wireguardService = wireguardService;
+        this.peerIsolationService = peerIsolationService;
     }
 
     public List<Network> getAllNetworks() {
@@ -80,8 +89,19 @@ public class NetworkService {
         return existingNetwork.get();
     }
 
+    public Network createNetwork(CreateNetworkRequest request) {
+        Network network = new Network();
+        network.setNetworkName(request.getNetworkName());
+        network.setNetworkCidr(request.getNetworkCidr());
+        network.setNetworkListenPort(request.getNetworkListenPort());
+        network.setNetworkTag(request.getNetworkTag());
+        network.setPeerIsolationEnabled(request.isPeerIsolationEnabled());
+        return createNetwork(network);
+    }
+
     public Network createNetwork(Network network) {
-        if (!network.getNetworkName().matches(Constants.CHAR_15_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
+        if (network.getNetworkName() == null
+                || !network.getNetworkName().matches(Constants.CHAR_15_ALPHANUMERIC_DASHES_UNDERSC_REGEXP)) {
             String errMsg = "networkName must be alphanumeric without spaces and no more than 15 characters";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
@@ -133,7 +153,6 @@ public class NetworkService {
         final String NETWORK_DIR_PATH = FilepathUtils.getNetworkDirectoryPath(network.getNetworkName());
         final String NETWORK_KEYS_PATH = FilepathUtils.getNetworkKeysDirectoryPath(network.getNetworkName());
         final String NETWORK_CLIENTS_PATH = FilepathUtils.getNetworkClientsDirectoryPath(network.getNetworkName());
-        final String NETWORK_CONFIG_PATH = FilepathUtils.getNetworkConfigPath(network.getNetworkName());
         final String NETWORK_PRIV_KEY_PATH = FilepathUtils.getNetworkKeyPath(network.getNetworkName(), network.getNetworkPrivateKeyName());
         final String NETWORK_PUB_KEY_PATH = FilepathUtils.getNetworkKeyPath(network.getNetworkName(), network.getNetworkPublicKeyName());
 
@@ -156,18 +175,16 @@ public class NetworkService {
 
         // create the wireguard key pair
         logger.info(String.format("creating key pair: '%s', '%s'", NETWORK_PRIV_KEY_PATH, NETWORK_PUB_KEY_PATH));
-        final String createKeyPairCommand = String.join(" ",
-                "./create-key-pair ",
-                "--private-key-name", NETWORK_PRIV_KEY_PATH,
-                "--public-key-name", NETWORK_PUB_KEY_PATH
-        );
-        ExecutionResult createKeyPairExecResult = Executor.runCommand(createKeyPairCommand);
-        if (createKeyPairExecResult.getExitCode() != 0) {
-            logger.error(String.format(
-                    "command: '%s' exited %s with reason: %s",
-                    createKeyPairCommand,
-                    createKeyPairExecResult.getExitCode(),
-                    createKeyPairExecResult.getStderr()));
+        final String networkPrivateKeyValue;
+        try {
+            String publicKeyValue = this.wireguardService.createKeyPair(
+                    NETWORK_PRIV_KEY_PATH,
+                    NETWORK_PUB_KEY_PATH);
+            network.setNetworkPublicKeyValue(publicKeyValue);
+            networkPrivateKeyValue = Files.readString(Path.of(NETWORK_PRIV_KEY_PATH)).trim();
+        } catch (IOException | RuntimeException e) {
+            logger.error("failed to create key pair for network '{}': {}",
+                    network.getNetworkName(), e.getMessage());
             // mark the network for removal
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.networkRepository.save(network);
@@ -176,73 +193,48 @@ public class NetworkService {
             throw new InternalServerException("failed to create network");
         }
 
-        // read the public key value from the file
-        try {
-            String publicKeyValue = Files.readString(Path.of(NETWORK_PUB_KEY_PATH)).trim();
-            network.setNetworkPublicKeyValue(publicKeyValue);
-        } catch (IOException e) {
-            String errMsg = String.format("error reading public key file: %s", e.getMessage());
-            logger.error(errMsg);
-            network.setNetworkStatus(NetworkStatus.INACTIVE);
-            this.networkRepository.save(network);
-            CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
-            throw new InternalServerException("failed to create network");
-        }
-
         logger.info(String.format(
                 "creating wireguard network config: CIDR = %s, listen port = %s",
                 network.getNetworkCidr(),
                 network.getNetworkListenPort()));
-        final String createNetworkConfigCommand = String.join(" ",
-                "./create-network-config",
-                "--config-name", NETWORK_CONFIG_PATH,
-                "--network-cidr", network.getNetworkCidr(),
-                "--network-listen-port", String.valueOf(network.getNetworkListenPort()),
-                "--network-private-key-name", NETWORK_PRIV_KEY_PATH
-        );
-        ExecutionResult createNetConfigExecResult = Executor.runCommand(createNetworkConfigCommand);
-        if (createNetConfigExecResult.getExitCode() != 0) {
-            logger.error(String.format(
-                    "command: '%s' exited %s with reason: %s",
-                    createNetworkConfigCommand,
-                    createNetConfigExecResult.getExitCode(),
-                    createNetConfigExecResult.getStderr()));
+        try {
+            NetworkConfig networkConfig = new NetworkConfig(new NetworkInterface(
+                    network.getNetworkCidr(),
+                    network.getNetworkListenPort(),
+                    networkPrivateKeyValue));
+            this.wireguardService.writeNetworkConfig(network.getNetworkName(), networkConfig);
+        } catch (RuntimeException e) {
+            logger.error("failed to write network config for '{}': {}",
+                    network.getNetworkName(), e.getMessage());
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.networkRepository.save(network);
             CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
             throw new InternalServerException("failed to create network");
         }
 
-        // add rules to iptables to allow traffic to network
-        logger.info("creating iptable rules for network");
-        final String configureIptablesCommand = String.join(" ",
-                "./configure-iptables",
-                "--operation", "add-network",
-                "--network-cidr", network.getNetworkCidr()
-        );
-        ExecutionResult configureIptablesExecResult = Executor.runCommand(configureIptablesCommand);
-        if (configureIptablesExecResult.getExitCode() != 0) {
-            logger.error(String.format(
-                    "command: '%s' exited %s with reason: %s",
-                    configureIptablesCommand,
-                    configureIptablesExecResult.getExitCode(),
-                    configureIptablesExecResult.getStderr()));
-            network.setNetworkStatus(NetworkStatus.INACTIVE);
-            this.networkRepository.save(network);
-            CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
-            throw new InternalServerException("failed to create network");
-        }
+        // iptables rules for the network are carried in the config's PostUp/PostDown hooks, so
+        // they are installed by the wg-quick up below and removed by the corresponding down
 
         // since this network is newly created we need bring it up in wireguard
         logger.info("bringing up the wireguard interface");
-        final String wgUpCommand = String.format("wg-quick up %s", network.getNetworkName());
-        ExecutionResult wgUpExecResult = Executor.runCommand(wgUpCommand);
-        if (wgUpExecResult.getExitCode() != 0) {
-            logger.error(String.format(
-                    "command: '%s' exited %s with reason: %s",
-                    wgUpCommand,
-                    wgUpExecResult.getExitCode(),
-                    wgUpExecResult.getStderr()));
+        try {
+            this.wireguardService.interfaceUp(network.getNetworkName());
+        } catch (RuntimeException e) {
+            logger.error("failed to bring up interface for network '{}': {}",
+                    network.getNetworkName(), e.getMessage());
+            network.setNetworkStatus(NetworkStatus.INACTIVE);
+            this.networkRepository.save(network);
+            CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
+            throw new InternalServerException("failed to create network");
+        }
+
+        // the isolation chain is created by the PostUp hooks above, so policy can only be
+        // applied once the interface is up
+        try {
+            this.peerIsolationService.applyNetworkPolicy(network);
+        } catch (RuntimeException e) {
+            logger.error("failed to apply peer isolation policy for network '{}': {}",
+                    network.getNetworkName(), e.getMessage());
             network.setNetworkStatus(NetworkStatus.INACTIVE);
             this.networkRepository.save(network);
             CompletableFuture<Network> deletedNetworkFuture = asyncRemoveNetworkFromSystem(network);
@@ -262,41 +254,22 @@ public class NetworkService {
             logger.info("asyncRemoveNetworkFromSystem called on thread: " + Thread.currentThread().getName());
             logger.info(String.format("bringing down the wireguard interface '%s'", network.getNetworkName()));
 
-            final String checkWgIFaceExistsCmd = String.format("wg show %s", network.getNetworkName());
-            ExecutionResult checkWgIFaceExistsCmdResult = Executor.runCommand(checkWgIFaceExistsCmd);
-            boolean wgIFaceExists = (checkWgIFaceExistsCmdResult.getExitCode() == 0);
+            boolean wgIFaceExists = this.wireguardService.interfaceExists(network.getNetworkName());
 
             if (wgIFaceExists) {
-                final String wgDownCommand = String.format("wg-quick down %s", network.getNetworkName());
-                ExecutionResult wgDownExecResult = Executor.runCommand(wgDownCommand);
-                if (wgDownExecResult.getExitCode() != 0) {
+                try {
+                    this.wireguardService.interfaceDown(network.getNetworkName());
+                } catch (RuntimeException e) {
                     errorsOnRemoval = true;
-                    logger.error(String.format(
-                            "command: '%s' exited %s with reason: %s",
-                            wgDownCommand,
-                            wgDownExecResult.getExitCode(),
-                            wgDownExecResult.getStderr()));
+                    logger.error("failed to bring down interface '{}': {}",
+                            network.getNetworkName(), e.getMessage());
                 }
             } else {
                 logger.info(String.format("wireguard interface '%s' does not exist", network.getNetworkName()));
             }
 
-            // add rules to iptables to allow traffic to network
-            logger.info(String.format("removing iptable rules for network %s", network.getNetworkName()));
-            final String configureIptablesCommand = String.join(" ",
-                    "./configure-iptables",
-                    "--operation", "remove-network",
-                    "--network-cidr", network.getNetworkCidr()
-            );
-            ExecutionResult configureIptablesExecResult = Executor.runCommand(configureIptablesCommand);
-            if (configureIptablesExecResult.getExitCode() != 0) {
-                //errorsOnRemoval = true; // TODO this also exits non 0 if the chain does not exist which should not be an error for this operation
-                logger.error(String.format(
-                        "command: '%s' exited %s with reason: %s",
-                        configureIptablesCommand,
-                        configureIptablesExecResult.getExitCode(),
-                        configureIptablesExecResult.getStderr()));
-            }
+            // iptables rules are removed by the config's PostDown hooks, which ran as part of
+            // the wg-quick down above. an interface that was not up never had them installed
 
             // remove the files. not needed for wireguard but keeps disk space down
             final String NETWORK_DIR_PATH = FilepathUtils.getNetworkDirectoryPath(network.getNetworkName());
@@ -369,12 +342,13 @@ public class NetworkService {
         }
     }
 
-    public Network updateNetwork(String networkName, UpdateNetworkRequest updateNetworkRequest) {
-        logger.info("Starting updateNetwork for networkName: {}", networkName);
-        logger.debug("UpdateNetworkRequest received: {}", updateNetworkRequest);
-
+    public Network updateNetwork(UpdateNetworkRequest updateNetworkRequest) {
         // Validate the UpdateNetworkRequest
         validateUpdateRequest(updateNetworkRequest);
+
+        String networkName = updateNetworkRequest.getNetworkName();
+        logger.info("Starting updateNetwork for networkName: {}", networkName);
+        logger.debug("UpdateNetworkRequest received: {}", updateNetworkRequest);
 
         // Retrieve the existing network from DB or throw an exception if it doesn't exist
         // TODO: Maybe include system level check through wg show <networkName> ?
@@ -398,6 +372,12 @@ public class NetworkService {
             updateNetworkStatus(network, updateNetworkRequest.getNetworkStatus());
         }
 
+        // Update peer isolation if provided. this is applied to the running interface as a live
+        // iptables change, never by rewriting the config, so no client is disconnected by it
+        if (updateNetworkRequest.getPeerIsolationEnabled() != null) {
+            updatePeerIsolation(network, updateNetworkRequest.getPeerIsolationEnabled());
+        }
+
         // Save the updated network using a helper method
         return saveUpdatedNetwork(networkName, network);
     }
@@ -410,8 +390,17 @@ public class NetworkService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
 
-        if (updateNetworkRequest.getNetworkTag() == null && updateNetworkRequest.getNetworkStatus() == null) {
-            String errMsg = "At least one field (networkTag or networkStatus) must be provided for update";
+        if (updateNetworkRequest.getNetworkName() == null
+                || updateNetworkRequest.getNetworkName().isBlank()) {
+            String errMsg = "networkName must be provided";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        if (updateNetworkRequest.getNetworkTag() == null
+                && updateNetworkRequest.getNetworkStatus() == null
+                && updateNetworkRequest.getPeerIsolationEnabled() == null) {
+            String errMsg = "At least one field (networkTag, networkStatus or peerIsolationEnabled) must be provided for update";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
@@ -443,6 +432,27 @@ public class NetworkService {
     }
 
     // Helper method to update the networkStatus
+    /**
+     * sets peer isolation on a network.
+     *
+     * the database is the source of truth, so the entity is always updated. the live rule is only
+     * touched when the interface is up: an inactive network has no isolation chain, and the policy
+     * will be applied from the database when it is next activated.
+     */
+    private void updatePeerIsolation(Network network, boolean enabled) {
+        logger.info("setting peer isolation for network '{}' to {}",
+                network.getNetworkName(), enabled);
+
+        if (network.getNetworkStatus() == NetworkStatus.ACTIVE) {
+            this.peerIsolationService.setNetworkWideIsolation(network.getNetworkName(), enabled);
+        } else {
+            logger.info("network '{}' is not active, peer isolation will be applied on activation",
+                    network.getNetworkName());
+        }
+
+        network.setPeerIsolationEnabled(enabled);
+    }
+
     private void updateNetworkStatus(Network network, NetworkStatus newStatus) {
         logger.debug("Updating networkStatus for network '{}': {}", network.getNetworkName(), newStatus);
 
@@ -450,6 +460,15 @@ public class NetworkService {
             String errMsg = String.format("Invalid networkStatus: '%s' is not a valid status", newStatus);
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        // a status that already matches is a no op, not an error. clients submit the whole network
+        // form, so an unchanged networkStatus arrives alongside whatever field actually changed.
+        // failing here would make every other field unupdatable while the status is as requested
+        if (newStatus == network.getNetworkStatus()) {
+            logger.info("Network '{}' is already {}, leaving interface state alone",
+                    network.getNetworkName(), newStatus);
+            return;
         }
 
         // Handle status change
@@ -488,14 +507,7 @@ public class NetworkService {
         logger.info("Deactivating network '{}'", network.getNetworkName());
 
         // Run wg-quick down <NetworkName>
-        final String wgDownCommand = String.format("wg-quick down %s", network.getNetworkName());
-        ExecutionResult wgDownResult = Executor.runCommand(wgDownCommand);
-        if (wgDownResult.getExitCode() != 0) {
-            String errMsg = String.format("Failed to bring down WireGuard interface for network '%s': %s",
-                    network.getNetworkName(), wgDownResult.getStderr());
-            logger.error(errMsg);
-            throw new InternalServerException(errMsg);
-        }
+        this.wireguardService.interfaceDown(network.getNetworkName());
 
         logger.info("Successfully deactivated network '{}'", network.getNetworkName());
     }
@@ -513,14 +525,11 @@ public class NetworkService {
         logger.info("Activating network '{}'", network.getNetworkName());
 
         // Run wg-quick up <NetworkName>
-        final String wgUpCommand = String.format("wg-quick up %s", network.getNetworkName());
-        ExecutionResult wgUpResult = Executor.runCommand(wgUpCommand);
-        if (wgUpResult.getExitCode() != 0) {
-            String errMsg = String.format("Failed to bring up WireGuard interface for network '%s': %s",
-                    network.getNetworkName(), wgUpResult.getStderr());
-            logger.error(errMsg);
-            throw new InternalServerException(errMsg);
-        }
+        this.wireguardService.interfaceUp(network.getNetworkName());
+
+        // the isolation chain is recreated empty on every bring up, so policy must be reasserted
+        // from the database rather than assumed to have survived
+        this.peerIsolationService.applyNetworkPolicy(network);
 
         logger.info("Successfully activated network '{}'", network.getNetworkName());
     }

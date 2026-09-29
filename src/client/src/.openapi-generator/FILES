@@ -7,6 +7,8 @@ apis/index.ts
 index.ts
 models/Client.ts
 models/CreateNetworkClientRequest.ts
+models/CreateNetworkRequest.ts
+models/CreateNetworkResponse.ts
 models/GetNextAvailableClientAddressResponse.ts
 models/GetPublicIpResponse.ts
 models/ListNetworkClientsRequest.ts
@@ -19,6 +21,7 @@ models/SseEmitter.ts
 models/StreamClientConnectionInfoRequest.ts
 models/StreamNetworkConnectionInfoRequest.ts
 models/UpdateNetworkRequest.ts
+models/UpdateNetworkResponse.ts
 models/User.ts
 models/WhoamiResponse.ts
 models/index.ts

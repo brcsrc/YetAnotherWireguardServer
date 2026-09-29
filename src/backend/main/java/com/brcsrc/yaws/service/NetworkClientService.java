@@ -39,8 +39,10 @@ import com.brcsrc.yaws.model.requests.ListNetworkClientsResponse;
 import com.brcsrc.yaws.persistence.ClientRepository;
 import com.brcsrc.yaws.persistence.NetworkClientRepository;
 import com.brcsrc.yaws.persistence.NetworkRepository;
-import com.brcsrc.yaws.shell.ExecutionResult;
-import com.brcsrc.yaws.shell.Executor;
+import com.brcsrc.yaws.model.wireguard.ClientConfig;
+import com.brcsrc.yaws.model.wireguard.NetworkInterface;
+import com.brcsrc.yaws.model.wireguard.NetworkPeer;
+import com.brcsrc.yaws.model.wireguard.PeerConfig;
 import com.brcsrc.yaws.utility.IPUtils;
 
 @Service
@@ -49,6 +51,7 @@ public class NetworkClientService {
     private final NetworkClientRepository netClientRepository;
     private final NetworkRepository networkRepository;
     private final ClientRepository clientRepository;
+    private final WireguardService wireguardService;
 
     private static final Logger logger = LoggerFactory.getLogger(NetworkClientService.class);
 
@@ -56,11 +59,13 @@ public class NetworkClientService {
     public NetworkClientService(
             NetworkClientRepository netClientRepository,
             NetworkRepository networkRepository,
-            ClientRepository clientRepository
+            ClientRepository clientRepository,
+            WireguardService wireguardService
     ) {
         this.netClientRepository = netClientRepository;
         this.networkRepository = networkRepository;
         this.clientRepository = clientRepository;
+        this.wireguardService = wireguardService;
     }
 
     private Network checkNetworkExists(String networkName) {
@@ -174,79 +179,50 @@ public class NetworkClientService {
         final String CLIENT_PUB_KEY_PATH = FilepathUtils.getClientKeyPath(existingNetwork.getNetworkName(), client.getClientPublicKeyName());
         final String CLIENT_CONFIG_PATH = FilepathUtils.getClientConfigPath(existingNetwork.getNetworkName(), client.getClientName());
         final String NETWORK_PUB_KEY_PATH = FilepathUtils.getNetworkKeyPath(existingNetwork.getNetworkName(), existingNetwork.getNetworkPublicKeyName());
-        final String NETWORK_CONFIG_PATH = FilepathUtils.getNetworkConfigPath(existingNetwork.getNetworkName());
 
         // build client key pair
         logger.info(String.format("creating key pair: '%s', '%s'", CLIENT_PRIV_KEY_PATH, CLIENT_PUB_KEY_PATH));
-        final String createKeyPairCommand = String.join(" ",
-                "./create-key-pair",
-                "--private-key-name", CLIENT_PRIV_KEY_PATH,
-                "--public-key-name", CLIENT_PUB_KEY_PATH
-        );
-        ExecutionResult createKeyPairExecResult = Executor.runCommand(createKeyPairCommand);
-        if (createKeyPairExecResult.getExitCode() != 0) {
-            logger.error(String.format(
-                    "command: '%s' exited %s with reason: %s",
-                    createKeyPairCommand,
-                    createKeyPairExecResult.getExitCode(),
-                    createKeyPairExecResult.getStderr()));
-            throw new InternalServerException("failed to create key pair");
-        }
+        final String clientPublicKeyValue = this.wireguardService.createKeyPair(
+                CLIENT_PRIV_KEY_PATH,
+                CLIENT_PUB_KEY_PATH);
+        client.setClientPublicKeyValue(clientPublicKeyValue);
+        logger.info(String.format("read public key value for client '%s'", client.getClientName()));
 
-        // read the public key value from the file
-        try {
-            String publicKeyValue = Files.readString(java.nio.file.Path.of(CLIENT_PUB_KEY_PATH)).trim();
-            client.setClientPublicKeyValue(publicKeyValue);
-            logger.info(String.format("read public key value for client '%s'", client.getClientName()));
-        } catch (IOException e) {
-            String errMsg = String.format("error reading public key file: %s", e.getMessage());
-            logger.error(errMsg);
-            throw new InternalServerException("failed to create client");
-        }
-
-        // generate the client config
+        // generate the client config. this file is handed to the end user
         logger.info(String.format("creating client configuration '%s'", CLIENT_CONFIG_PATH));
-        final String createClientConfigCommand = String.join(" ",
-                "./create-client-config",
-                "--config-name", CLIENT_CONFIG_PATH,
-                "--client-private-key-name", CLIENT_PRIV_KEY_PATH,
-                "--client-cidr", client.getClientCidr(),
-                "--client-dns", client.getClientDns(),
-                "--network-public-key-name", NETWORK_PUB_KEY_PATH,
-                "--network-endpoint", client.getNetworkEndpoint(),
-                "--network-listen-port", String.valueOf(client.getNetworkListenPort()),
-                "--allowed-ips", client.getAllowedIps()
-        );
-        ExecutionResult createClientConfigExecResult = Executor.runCommand(createClientConfigCommand);
-        if (createClientConfigExecResult.getExitCode() != 0) {
-            logger.error(String.format(
-                    "command: '%s' exited %s with reason: %s",
-                    createClientConfigCommand,
-                    createClientConfigExecResult.getExitCode(),
-                    createClientConfigExecResult.getStderr()));
+        final String clientPrivateKeyValue;
+        final String networkPublicKeyValue;
+        try {
+            clientPrivateKeyValue = Files.readString(java.nio.file.Path.of(CLIENT_PRIV_KEY_PATH)).trim();
+            networkPublicKeyValue = Files.readString(java.nio.file.Path.of(NETWORK_PUB_KEY_PATH)).trim();
+        } catch (IOException e) {
+            logger.error("error reading key files for client '{}': {}",
+                    client.getClientName(), e.getMessage());
             throw new InternalServerException("failed to create client configuration in system");
         }
+
+        ClientConfig clientConfig = new ClientConfig(
+                new NetworkInterface(
+                        client.getClientCidr(),
+                        client.getNetworkListenPort(),
+                        clientPrivateKeyValue),
+                new PeerConfig(
+                        networkPublicKeyValue,
+                        String.format("%s:%s", client.getNetworkEndpoint(), client.getNetworkListenPort()),
+                        client.getAllowedIps()),
+                client.getClientDns());
+        this.wireguardService.writeClientConfig(
+                existingNetwork.getNetworkName(),
+                client.getClientName(),
+                clientConfig);
 
         // add client to network in specified network config
         logger.info(String.format("adding peer '%s' to network config '%s'", client.getClientName(), existingNetwork.getNetworkName()));
         // the subnet that is added to network config needs to explicitly end in 32
         final String networkConfigFormatClientCidr = String.format("%s/32", client.getClientCidr().split("/")[0]);
-        final String addPeerToNetworkCommand = String.join(" ",
-                "./add-peer-to-network",
-                "--config-name", NETWORK_CONFIG_PATH,
-                "--interface-name", existingNetwork.getNetworkName(),
-                "--client-cidr", networkConfigFormatClientCidr,
-                "--client-public-key-name", CLIENT_PUB_KEY_PATH
-        );
-        ExecutionResult addPeerToNetExecResult = Executor.runCommand(addPeerToNetworkCommand);
-        if (addPeerToNetExecResult.getExitCode() != 0) {
-            logger.error(String.format(
-                    "command: '%s' exited %s with reason: %s",
-                    addPeerToNetworkCommand,
-                    addPeerToNetExecResult.getExitCode(),
-                    addPeerToNetExecResult.getStderr()));
-            throw new InternalServerException("failed to add client to network config");
-        }
+        this.wireguardService.addPeerToNetwork(
+                existingNetwork.getNetworkName(),
+                new NetworkPeer(clientPublicKeyValue, networkConfigFormatClientCidr));
 
         // save entities to database
         Client savedClient = this.clientRepository.save(client);
@@ -276,7 +252,6 @@ public class NetworkClientService {
                 networkClient.getNetwork().getNetworkName(),
                 networkClient.getClient().getClientName()
         );
-        final String NETWORK_CONFIG_PATH = FilepathUtils.getNetworkConfigPath(networkClient.getNetwork().getNetworkName());
 
         try {
             // remove peer from network
@@ -285,21 +260,16 @@ public class NetworkClientService {
                     networkClient.getClient().getClientName(),
                     networkClient.getNetwork().getNetworkName()));
             String networkConfigFormatClientCidr = String.format("%s/32", networkClient.getClient().getClientCidr().split("/")[0]);
-            final String removeClientFromNetworkCmd = String.join(" ",
-                    "./remove-peer-from-network",
-                    "--config-name", NETWORK_CONFIG_PATH,
-                    "--interface-name", networkClient.getNetwork().getNetworkName(),
-                    "--client-cidr", networkConfigFormatClientCidr,
-                    "--client-public-key-name", CLIENT_PUB_KEY_PATH
-            );
-            ExecutionResult removePeerFromNetworkExecRes = Executor.runCommand(removeClientFromNetworkCmd);
-            if (removePeerFromNetworkExecRes.getExitCode() != 0) {
+            try {
+                this.wireguardService.removePeerFromNetwork(
+                        networkClient.getNetwork().getNetworkName(),
+                        networkConfigFormatClientCidr);
+            } catch (RuntimeException e) {
                 errorsOnRemoval = true;
-                logger.error(String.format(
-                        "command: '%s' exited %s with reason: %s",
-                        removeClientFromNetworkCmd,
-                        removePeerFromNetworkExecRes.getExitCode(),
-                        removePeerFromNetworkExecRes.getStderr()));
+                logger.error("failed to remove peer '{}' from network '{}': {}",
+                        networkConfigFormatClientCidr,
+                        networkClient.getNetwork().getNetworkName(),
+                        e.getMessage());
             }
 
             // check if client config exists

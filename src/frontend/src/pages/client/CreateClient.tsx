@@ -7,6 +7,7 @@ import {
   Input,
   ColumnLayout,
   KeyValuePairs,
+  Toggle,
   Popover,
   Icon,
 } from "@cloudscape-design/components";
@@ -27,6 +28,8 @@ const CreateClient = () => {
   const [allowedIps, setAllowedIps] = useState("0.0.0.0/0");
   const [networkEndpoint, setNetworkEndpoint] = useState("");
 
+  const [peerIsolationEnabled, setPeerIsolationEnabled] = useState(false);
+
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [showErrorText, setShowErrorText] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,6 +46,7 @@ const CreateClient = () => {
           allowedIps,
           networkName,
           networkEndpoint,
+          peerIsolationEnabled,
         },
       });
       addFlashbarItem({
@@ -245,6 +249,18 @@ const CreateClient = () => {
                     placeholder="e.g., 127.0.0.1"
                   />
                 </FormField>
+
+                <FormField
+                  label="Peer isolation"
+                  description="When enabled, this client cannot reach any other client on the network, and no other client can reach it. Its traffic still routes through the server to the internet."
+                >
+                  <Toggle
+                    checked={peerIsolationEnabled}
+                    onChange={({ detail }) => setPeerIsolationEnabled(detail.checked)}
+                  >
+                    Isolate this client from other peers
+                  </Toggle>
+                </FormField>
               </SpaceBetween>
             </Container>
           ),
@@ -286,6 +302,10 @@ const CreateClient = () => {
                       {
                         label: "Allowed IPs",
                         value: allowedIps || "-",
+                      },
+                      {
+                        label: "Peer isolation",
+                        value: peerIsolationEnabled ? "Enabled" : "Disabled",
                       },
                       {
                         label: "Network endpoint",

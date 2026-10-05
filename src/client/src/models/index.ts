@@ -2,6 +2,7 @@
 /* eslint-disable */
 export * from './Client';
 export * from './CreateNetworkClientRequest';
+export * from './CreateNetworkClientResponse';
 export * from './CreateNetworkRequest';
 export * from './CreateNetworkResponse';
 export * from './GetNextAvailableClientAddressResponse';
@@ -15,6 +16,8 @@ export * from './NetworkClient';
 export * from './SseEmitter';
 export * from './StreamClientConnectionInfoRequest';
 export * from './StreamNetworkConnectionInfoRequest';
+export * from './UpdateNetworkClientRequest';
+export * from './UpdateNetworkClientResponse';
 export * from './UpdateNetworkRequest';
 export * from './UpdateNetworkResponse';
 export * from './User';

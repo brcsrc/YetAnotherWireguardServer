@@ -7,7 +7,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.brcsrc.yaws.exceptions.InternalServerException;
+import com.brcsrc.yaws.model.Client;
 import com.brcsrc.yaws.model.Network;
+import com.brcsrc.yaws.model.NetworkClient;
+import com.brcsrc.yaws.persistence.NetworkClientRepository;
 import com.brcsrc.yaws.shell.CommandExecutor;
 import com.brcsrc.yaws.shell.ExecutionResult;
 import com.brcsrc.yaws.utility.PeerIsolationUtils;
@@ -29,10 +32,28 @@ import com.brcsrc.yaws.utility.PeerIsolationUtils;
 public class PeerIsolationService {
 
     private final CommandExecutor commandExecutor;
+    private final NetworkClientRepository networkClientRepository;
     private static final Logger logger = LoggerFactory.getLogger(PeerIsolationService.class);
 
-    public PeerIsolationService(CommandExecutor commandExecutor) {
+    public PeerIsolationService(CommandExecutor commandExecutor,
+                                NetworkClientRepository networkClientRepository) {
         this.commandExecutor = commandExecutor;
+        this.networkClientRepository = networkClientRepository;
+    }
+
+    /**
+     * applies all peer isolation policy for a network, loading its clients from the database.
+     *
+     * this is what the interface bring up paths call. keeping the client lookup here means those
+     * call sites do not need to know that per client rules exist at all.
+     */
+    public void applyNetworkPolicy(Network network) {
+        List<Client> clients = this.networkClientRepository
+                .findAllByNetwork_NetworkName(network.getNetworkName())
+                .stream()
+                .map(NetworkClient::getClient)
+                .toList();
+        applyNetworkPolicy(network, clients);
     }
 
     /**
@@ -44,13 +65,22 @@ public class PeerIsolationService {
      * shaped as "apply this network's policy" rather than "apply network isolation" so per client
      * rules can be added here later without revisiting the call sites that bring interfaces up.
      */
-    public void applyNetworkPolicy(Network network) {
+    public void applyNetworkPolicy(Network network, List<Client> clients) {
         if (network.isPeerIsolationEnabled()) {
             logger.info("applying network wide peer isolation for network '{}'",
                     network.getNetworkName());
             addNetworkWideIsolationRule(network.getNetworkName());
         }
-        // per client isolation rules are applied here once that feature lands
+
+        if (clients != null) {
+            for (Client client : clients) {
+                if (client.isPeerIsolationEnabled()) {
+                    logger.info("applying peer isolation for client '{}' on network '{}'",
+                            client.getClientName(), network.getNetworkName());
+                    addClientIsolationRules(network.getNetworkName(), client.getClientCidr());
+                }
+            }
+        }
     }
 
     /**
@@ -120,5 +150,90 @@ public class PeerIsolationService {
         ExecutionResult result = this.commandExecutor.runCommand(
                 networkWideIsolationRule(networkName, "-C"));
         return result.getExitCode() == 0;
+    }
+
+    /**
+     * enables or disables isolation for a single client on a live interface.
+     *
+     * a no op when the requested state already matches the chain, so repeated calls cannot stack
+     * duplicate rules or fail deleting rules that are not there.
+     */
+    public void setClientIsolation(String networkName, String clientCidr, boolean enabled) {
+        boolean currentlyIsolated = isClientIsolationRulePresent(networkName, clientCidr);
+        if (enabled == currentlyIsolated) {
+            logger.info("isolation for client {} on network '{}' is already {}, nothing to do",
+                    clientCidr, networkName, enabled ? "enabled" : "disabled");
+            return;
+        }
+
+        if (enabled) {
+            addClientIsolationRules(networkName, clientCidr);
+        } else {
+            removeClientIsolationRules(networkName, clientCidr);
+        }
+    }
+
+    /**
+     * the rules isolating one client, which are a pair.
+     *
+     * isolation is bidirectional: the source rule stops the isolated client reaching any other
+     * peer, and the destination rule stops any other peer reaching it. a source rule alone would
+     * leave the client reachable by everyone else, which is not isolation.
+     *
+     * both live in the network's isolation chain, which is only reached from the peer to peer
+     * match in FORWARD, so neither affects the client's route through the server to the internet.
+     */
+    private List<String> clientIsolationRule(
+            String networkName, String clientCidr, String direction, String operation) {
+        return List.of(
+                "iptables", operation,
+                PeerIsolationUtils.getIsolationChainName(networkName),
+                direction, toHostAddress(clientCidr),
+                "-j", "DROP");
+    }
+
+    /**
+     * a client's address as a single host /32.
+     *
+     * clientCidr is stored as the user supplied it, which may carry any prefix length, but an
+     * isolation rule must match exactly one peer. iptables would otherwise widen the rule to a
+     * whole subnet and isolate clients that were never asked to be isolated.
+     */
+    private String toHostAddress(String clientCidr) {
+        return String.format("%s/32", clientCidr.split("/")[0]);
+    }
+
+    private void addClientIsolationRules(String networkName, String clientCidr) {
+        runClientIsolationRule(networkName, clientCidr, "-s", "-A", "enable");
+        runClientIsolationRule(networkName, clientCidr, "-d", "-A", "enable");
+    }
+
+    private void removeClientIsolationRules(String networkName, String clientCidr) {
+        runClientIsolationRule(networkName, clientCidr, "-s", "-D", "disable");
+        runClientIsolationRule(networkName, clientCidr, "-d", "-D", "disable");
+    }
+
+    private void runClientIsolationRule(
+            String networkName, String clientCidr, String direction, String operation, String verb) {
+        ExecutionResult result = this.commandExecutor.runCommand(
+                clientIsolationRule(networkName, clientCidr, direction, operation));
+        if (result.getExitCode() != 0) {
+            logger.error("failed to {} isolation for client {} on network '{}': {}",
+                    verb, clientCidr, networkName, result.getStderr());
+            throw new InternalServerException(String.format(
+                    "failed to %s peer isolation for client %s", verb, clientCidr));
+        }
+    }
+
+    /**
+     * whether a client is isolated in the live chain. both rules of the pair must be present, so a
+     * half applied state reads as not isolated and gets corrected by the next apply.
+     */
+    public boolean isClientIsolationRulePresent(String networkName, String clientCidr) {
+        boolean sourceRule = this.commandExecutor.runCommand(
+                clientIsolationRule(networkName, clientCidr, "-s", "-C")).getExitCode() == 0;
+        boolean destinationRule = this.commandExecutor.runCommand(
+                clientIsolationRule(networkName, clientCidr, "-d", "-C")).getExitCode() == 0;
+        return sourceRule && destinationRule;
     }
 }

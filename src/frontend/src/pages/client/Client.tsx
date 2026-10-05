@@ -142,6 +142,16 @@ const Client = () => {
               <Button variant="primary" iconName="download" onClick={handleDownloadClientClick}>
                 Download Client Config
               </Button>
+              <Button
+                variant="normal"
+                onClick={() =>
+                  navigate(`/networks/${networkName}/clients/${clientName}/update`, {
+                    state: client,
+                  })
+                }
+              >
+                Update Client
+              </Button>
               <Button variant="normal" onClick={() => setShowDeleteModal(true)} disabled={deleting}>
                 Delete Client
               </Button>

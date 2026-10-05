@@ -85,6 +85,12 @@ export interface Client {
      * @memberof Client
      */
     clientTag?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof Client
+     */
+    peerIsolationEnabled?: boolean;
 }
 
 /**
@@ -115,6 +121,7 @@ export function ClientFromJSONTyped(json: any, ignoreDiscriminator: boolean): Cl
         'networkEndpoint': json['networkEndpoint'] == null ? undefined : json['networkEndpoint'],
         'networkListenPort': json['networkListenPort'] == null ? undefined : json['networkListenPort'],
         'clientTag': json['clientTag'] == null ? undefined : json['clientTag'],
+        'peerIsolationEnabled': json['peerIsolationEnabled'] == null ? undefined : json['peerIsolationEnabled'],
     };
 }
 
@@ -140,6 +147,7 @@ export function ClientToJSONTyped(value?: Client | null, ignoreDiscriminator: bo
         'networkEndpoint': value['networkEndpoint'],
         'networkListenPort': value['networkListenPort'],
         'clientTag': value['clientTag'],
+        'peerIsolationEnabled': value['peerIsolationEnabled'],
     };
 }
 

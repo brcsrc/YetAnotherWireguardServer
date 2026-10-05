@@ -5,7 +5,14 @@ import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkClient;
 import com.brcsrc.yaws.model.User;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
+import com.brcsrc.yaws.model.requests.CreateNetworkClientResponse;
+import com.brcsrc.yaws.model.requests.UpdateNetworkClientRequest;
+import com.brcsrc.yaws.model.requests.UpdateNetworkClientResponse;
+import com.brcsrc.yaws.model.NetworkStatus;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
+import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
+import com.brcsrc.yaws.shell.Executor;
+import com.brcsrc.yaws.utility.PeerIsolationUtils;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsResponse;
 import com.brcsrc.yaws.model.wireguard.ClientConfig;
 import com.brcsrc.yaws.persistence.NetworkClientRepository;
@@ -24,8 +31,11 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.*;
+import org.springframework.web.client.HttpClientErrorException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -69,6 +79,8 @@ public class NetworkClientControllerTests {
     private static final Logger logger = LoggerFactory.getLogger(NetworkClientControllerTests.class);
 
     private String baseUrl;
+    private String createClientUrl;
+    private String updateClientUrl;
 
     private final String testNetworkName = "Network1";
     private final String testNetworkCidr = "10.100.0.1/24";
@@ -104,6 +116,8 @@ public class NetworkClientControllerTests {
     @BeforeEach
     public void setup() {
         baseUrl = "http://localhost:" + port + "/api/v1/clients";
+        createClientUrl = baseUrl + "/create-client";
+        updateClientUrl = baseUrl + "/update-client";
 
         Optional<Network> networkFromDb = networkRepository.findByNetworkName(testNetworkName);
         if (networkFromDb.isEmpty()) {
@@ -154,12 +168,12 @@ public class NetworkClientControllerTests {
         createNetworkClientRequest.setNetworkEndpoint(testNetworkEndpoint);
         createNetworkClientRequest.setClientTag(testClientTag);
 
-        ResponseEntity<NetworkClient> createNetworkClientResponse = restClient.post()
-                .uri(baseUrl)
+        ResponseEntity<CreateNetworkClientResponse> createNetworkClientResponse = restClient.post()
+                .uri(createClientUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(createNetworkClientRequest)
                 .retrieve()
-                .toEntity(NetworkClient.class);
+                .toEntity(CreateNetworkClientResponse.class);
 
         // assert the response status is 200
         assertEquals(HttpStatus.OK, createNetworkClientResponse.getStatusCode());
@@ -235,7 +249,7 @@ public class NetworkClientControllerTests {
         badCidrsAndAddresses.forEach((cidr, exceptionMsg) -> {
             createNetworkClientRequest.setClientCidr(cidr);
             ResponseEntity<String> responseEntity = restClient.post()
-                    .uri(baseUrl)
+                    .uri(createClientUrl)
                     .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(createNetworkClientRequest)
                     .exchange((request, response) -> {
@@ -263,7 +277,7 @@ public class NetworkClientControllerTests {
         for (String dns : invalidDnsAddresses) {
             createNetworkClientRequest.setClientDns(dns);
             ResponseEntity<String> responseEntity = restClient.post()
-                    .uri(baseUrl)
+                    .uri(createClientUrl)
                     .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(createNetworkClientRequest)
                     .exchange((request, response) -> {
@@ -291,7 +305,7 @@ public class NetworkClientControllerTests {
         for (String allowedIp : invalidAllowedIps) {
             createNetworkClientRequest.setAllowedIps(allowedIp);
             ResponseEntity<String> responseEntity = restClient.post()
-                    .uri(baseUrl)
+                    .uri(createClientUrl)
                     .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(createNetworkClientRequest)
                     .exchange((request, response) -> {
@@ -319,7 +333,7 @@ public class NetworkClientControllerTests {
         for (String endpoint : invalidEndpoints) {
             createNetworkClientRequest.setNetworkEndpoint(endpoint);
             ResponseEntity<String> responseEntity = restClient.post()
-                    .uri(baseUrl)
+                    .uri(createClientUrl)
                     .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(createNetworkClientRequest)
                     .exchange((request, response) -> {
@@ -344,11 +358,11 @@ public class NetworkClientControllerTests {
         createNetworkClientRequest.setClientTag(testClientTag);
 
         restClient.post()
-                .uri(baseUrl)
+                .uri(createClientUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(createNetworkClientRequest)
                 .retrieve()
-                .toEntity(NetworkClient.class);
+                .toEntity(CreateNetworkClientResponse.class);
 
         CreateNetworkClientRequest duplicateRequest = new CreateNetworkClientRequest();
         duplicateRequest.setNetworkName(testNetworkName);
@@ -360,7 +374,7 @@ public class NetworkClientControllerTests {
         duplicateRequest.setClientTag("test client 2 tag");
 
         ResponseEntity<String> responseEntity = restClient.post()
-                .uri(baseUrl)
+                .uri(createClientUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(duplicateRequest)
                 .exchange((request, response) -> {
@@ -388,11 +402,11 @@ public class NetworkClientControllerTests {
         createNetworkClientRequest.setClientTag(testClientTag);
 
         restClient.post()
-                .uri(baseUrl)
+                .uri(createClientUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(createNetworkClientRequest)
                 .retrieve()
-                .toEntity(NetworkClient.class);
+                .toEntity(CreateNetworkClientResponse.class);
 
         CreateNetworkClientRequest duplicateRequest = new CreateNetworkClientRequest();
         duplicateRequest.setNetworkName(testNetworkName);
@@ -404,7 +418,7 @@ public class NetworkClientControllerTests {
         duplicateRequest.setClientTag("test client 2 tag");
 
         ResponseEntity<String> responseEntity = restClient.post()
-                .uri(baseUrl)
+                .uri(createClientUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(duplicateRequest)
                 .exchange((request, response) -> {
@@ -442,11 +456,11 @@ public class NetworkClientControllerTests {
             createNetworkClientRequest.setNetworkEndpoint(testNetworkEndpoint);
 
             restClient.post()
-                    .uri(baseUrl)
+                    .uri(createClientUrl)
                     .header("Cookie", String.format("accessToken=%s", jwt))
                     .body(createNetworkClientRequest)
                     .retrieve()
-                    .toEntity(NetworkClient.class);
+                    .toEntity(CreateNetworkClientResponse.class);
         });
 
         ListNetworkClientsRequest listNetworkClientsRequest = new ListNetworkClientsRequest();
@@ -484,11 +498,11 @@ public class NetworkClientControllerTests {
         createClient1.setClientTag("client1 tag");
         
         restClient.post()
-                .uri(baseUrl)
+                .uri(createClientUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(createClient1)
                 .retrieve()
-                .toEntity(NetworkClient.class);
+                .toEntity(CreateNetworkClientResponse.class);
 
         // Create second client
         CreateNetworkClientRequest createClient2 = new CreateNetworkClientRequest();
@@ -501,11 +515,11 @@ public class NetworkClientControllerTests {
         createClient2.setClientTag("client2 tag");
         
         restClient.post()
-                .uri(baseUrl)
+                .uri(createClientUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .body(createClient2)
                 .retrieve()
-                .toEntity(NetworkClient.class);
+                .toEntity(CreateNetworkClientResponse.class);
 
         // Test first page with maxItems: 1
         ListNetworkClientsRequest request = new ListNetworkClientsRequest();
@@ -548,13 +562,13 @@ public class NetworkClientControllerTests {
         request.setNetworkEndpoint(testNetworkEndpoint);
         request.setClientTag(testClientTag);
 
-        ResponseEntity<NetworkClient> createNetworkClientResponse = restClient.post()
-                .uri(baseUrl)
+        ResponseEntity<CreateNetworkClientResponse> createNetworkClientResponse = restClient.post()
+                .uri(createClientUrl)
                 .header("Cookie", String.format("accessToken=%s", jwt))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .retrieve()
-                .toEntity(NetworkClient.class);
+                .toEntity(CreateNetworkClientResponse.class);
 
         // Assert the response status is 200
         assertEquals(HttpStatus.OK, createNetworkClientResponse.getStatusCode());
@@ -574,5 +588,230 @@ public class NetworkClientControllerTests {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
 
+    }
+
+    // ---- peer level isolation ----
+
+    private String isolationChain() {
+        return PeerIsolationUtils.getIsolationChainName(testNetworkName);
+    }
+
+    /** a client is isolated only when both directions of the rule pair are present */
+    private boolean clientIsolated(String clientCidr) {
+        String host = String.format("%s/32", clientCidr.split("/")[0]);
+        boolean src = Executor.runCommand(List.of(
+                "iptables", "-C", isolationChain(), "-s", host, "-j", "DROP")).getExitCode() == 0;
+        boolean dst = Executor.runCommand(List.of(
+                "iptables", "-C", isolationChain(), "-d", host, "-j", "DROP")).getExitCode() == 0;
+        return src && dst;
+    }
+
+    private boolean networkWideIsolated() {
+        return Executor.runCommand(List.of(
+                "iptables", "-C", isolationChain(), "-j", "DROP")).getExitCode() == 0;
+    }
+
+    private CreateNetworkClientRequest clientRequest(String name, String cidr, boolean isolated) {
+        CreateNetworkClientRequest r = new CreateNetworkClientRequest();
+        r.setNetworkName(testNetworkName);
+        r.setClientName(name);
+        r.setClientCidr(cidr);
+        r.setClientDns(testClientDns);
+        r.setAllowedIps(testAllowedIps);
+        r.setNetworkEndpoint(testNetworkEndpoint);
+        r.setClientTag("tag");
+        r.setPeerIsolationEnabled(isolated);
+        return r;
+    }
+
+    private void createClient(CreateNetworkClientRequest request) {
+        restClient.post()
+                .uri(createClientUrl)
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(request)
+                .retrieve()
+                .toEntity(CreateNetworkClientResponse.class);
+    }
+
+    private ResponseEntity<UpdateNetworkClientResponse> setClientIsolation(String name, boolean enabled) {
+        UpdateNetworkClientRequest r = new UpdateNetworkClientRequest();
+        r.setNetworkName(testNetworkName);
+        r.setClientName(name);
+        r.setPeerIsolationEnabled(enabled);
+        return restClient.post()
+                .uri(updateClientUrl)
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(r)
+                .retrieve()
+                .toEntity(UpdateNetworkClientResponse.class);
+    }
+
+    @Test
+    public void testCreateClientWithIsolationAppliesBothDirections() {
+        createClient(clientRequest("IsoClient", "10.100.0.5/24", true));
+
+        // isolation is bidirectional: a source rule alone would leave the client reachable
+        assertTrue(clientIsolated("10.100.0.5/24"),
+                "both source and destination rules should be present");
+    }
+
+    @Test
+    public void testCreateClientWithoutIsolationAddsNoRules() {
+        createClient(clientRequest("OpenClient", "10.100.0.6/24", false));
+
+        assertFalse(clientIsolated("10.100.0.6/24"));
+    }
+
+    @Test
+    public void testUpdateClientTogglesIsolationOnLiveInterface() {
+        createClient(clientRequest("ToggleClient", "10.100.0.7/24", false));
+        assertFalse(clientIsolated("10.100.0.7/24"));
+
+        ResponseEntity<UpdateNetworkClientResponse> on = setClientIsolation("ToggleClient", true);
+        assertEquals(HttpStatus.OK, on.getStatusCode());
+        assertTrue(clientIsolated("10.100.0.7/24"));
+
+        // the interface must not be cycled, that would disconnect every client on the network
+        assertEquals(0, Executor.runCommand(List.of("wg", "show", testNetworkName)).getExitCode());
+
+        ResponseEntity<UpdateNetworkClientResponse> off = setClientIsolation("ToggleClient", false);
+        assertEquals(HttpStatus.OK, off.getStatusCode());
+        assertFalse(clientIsolated("10.100.0.7/24"));
+    }
+
+    @Test
+    public void testIsolatingOneClientLeavesOthersAlone() {
+        createClient(clientRequest("ClientA", "10.100.0.8/24", false));
+        createClient(clientRequest("ClientB", "10.100.0.9/24", false));
+
+        setClientIsolation("ClientA", true);
+
+        assertTrue(clientIsolated("10.100.0.8/24"));
+        assertFalse(clientIsolated("10.100.0.9/24"),
+                "isolating one client must not affect another");
+    }
+
+    @Test
+    public void testClientIsolationAndNetworkIsolationDoNotInterfere() {
+        // the two features are independent. this is the security group model: a specific deny and
+        // a catch all deny coexist, and removing the catch all leaves the specific deny in place
+        createClient(clientRequest("IndepClient", "10.100.0.10/24", true));
+        assertTrue(clientIsolated("10.100.0.10/24"));
+
+        // enable network wide isolation on top
+        Network network = networkRepository.findByNetworkName(testNetworkName).orElseThrow();
+        UpdateNetworkRequest netReq = new UpdateNetworkRequest();
+        netReq.setNetworkName(testNetworkName);
+        netReq.setPeerIsolationEnabled(true);
+        networkService.updateNetwork(netReq);
+
+        assertTrue(networkWideIsolated());
+        assertTrue(clientIsolated("10.100.0.10/24"),
+                "enabling network wide isolation must not disturb per client rules");
+
+        // remove the catch all, the per client rules must survive
+        netReq.setPeerIsolationEnabled(false);
+        networkService.updateNetwork(netReq);
+
+        assertFalse(networkWideIsolated());
+        assertTrue(clientIsolated("10.100.0.10/24"),
+                "removing network wide isolation must leave per client isolation in place");
+    }
+
+    @Test
+    public void testDisablingClientIsolationLeavesNetworkIsolationIntact() {
+        // the reverse direction of non interference
+        createClient(clientRequest("ReverseClient", "10.100.0.11/24", true));
+
+        UpdateNetworkRequest netReq = new UpdateNetworkRequest();
+        netReq.setNetworkName(testNetworkName);
+        netReq.setPeerIsolationEnabled(true);
+        networkService.updateNetwork(netReq);
+        assertTrue(networkWideIsolated());
+
+        setClientIsolation("ReverseClient", false);
+
+        assertFalse(clientIsolated("10.100.0.11/24"));
+        assertTrue(networkWideIsolated(),
+                "disabling client isolation must not remove the network wide rule");
+    }
+
+    @Test
+    public void testClientIsolationIsReappliedAfterNetworkCycle() {
+        createClient(clientRequest("CycleClient", "10.100.0.12/24", true));
+        assertTrue(clientIsolated("10.100.0.12/24"));
+
+        UpdateNetworkRequest deactivate = new UpdateNetworkRequest();
+        deactivate.setNetworkName(testNetworkName);
+        deactivate.setNetworkStatus(NetworkStatus.INACTIVE);
+        networkService.updateNetwork(deactivate);
+
+        UpdateNetworkRequest activate = new UpdateNetworkRequest();
+        activate.setNetworkName(testNetworkName);
+        activate.setNetworkStatus(NetworkStatus.ACTIVE);
+        networkService.updateNetwork(activate);
+
+        // the chain comes back empty, so per client policy must be reapplied from the database
+        assertTrue(clientIsolated("10.100.0.12/24"),
+                "client isolation must be reapplied after an interface cycle");
+    }
+
+    @Test
+    public void testEnablingClientIsolationTwiceDoesNotStackRules() {
+        createClient(clientRequest("StackClient", "10.100.0.13/24", false));
+
+        setClientIsolation("StackClient", true);
+        setClientIsolation("StackClient", true);
+
+        String rules = Executor.runCommand(List.of("iptables", "-S", isolationChain())).getStdout();
+        long srcCount = rules.lines().filter(l -> l.contains("-s 10.100.0.13/32")).count();
+        long dstCount = rules.lines().filter(l -> l.contains("-d 10.100.0.13/32")).count();
+        assertEquals(1, srcCount, "source rule should appear exactly once");
+        assertEquals(1, dstCount, "destination rule should appear exactly once");
+
+        setClientIsolation("StackClient", false);
+        assertFalse(clientIsolated("10.100.0.13/24"),
+                "a single disable should fully remove isolation");
+    }
+
+    @Test
+    public void testDeletingIsolatedClientRemovesItsRules() {
+        createClient(clientRequest("DeleteClient", "10.100.0.14/24", true));
+        assertTrue(clientIsolated("10.100.0.14/24"));
+
+        networkClientService.deleteNetworkClient(testNetworkName, "DeleteClient");
+
+        // rules are keyed on address, so leaving them behind would isolate whoever gets that
+        // address next
+        assertFalse(clientIsolated("10.100.0.14/24"),
+                "deleting an isolated client must remove its isolation rules");
+    }
+
+    @Test
+    public void testUpdateClientRejectsUnknownClient() {
+
+        HttpClientErrorException exception = assertThrows(HttpClientErrorException.class, () -> {
+            setClientIsolation("NoSuchClient", true);
+        });
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+    }
+
+    @Test
+    public void testUpdateClientRejectsRequestWithNoFields() {
+        createClient(clientRequest("NoFieldClient", "10.100.0.15/24", false));
+
+        UpdateNetworkClientRequest empty = new UpdateNetworkClientRequest();
+        empty.setNetworkName(testNetworkName);
+        empty.setClientName("NoFieldClient");
+
+        HttpClientErrorException exception = assertThrows(HttpClientErrorException.class, () -> {
+            restClient.post()
+                    .uri(updateClientUrl)
+                    .header("Cookie", String.format("accessToken=%s", jwt))
+                    .body(empty)
+                    .retrieve()
+                    .toEntity(UpdateNetworkClientResponse.class);
+        });
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 }

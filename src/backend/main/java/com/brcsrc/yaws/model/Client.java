@@ -22,6 +22,18 @@ public class Client {
     private int networkListenPort;
     private String clientTag;
 
+    // when true this client can neither reach nor be reached by any other peer on its network.
+    // its traffic still routes through the server to the internet
+    private boolean peerIsolationEnabled;
+
+    public boolean isPeerIsolationEnabled() {
+        return peerIsolationEnabled;
+    }
+
+    public void setPeerIsolationEnabled(boolean peerIsolationEnabled) {
+        this.peerIsolationEnabled = peerIsolationEnabled;
+    }
+
     public String getClientName() {
         return clientName;
     }
@@ -124,6 +136,7 @@ public class Client {
                 ", networkEndpoint='" + networkEndpoint + '\'' +
                 ", networkListenPort='" + networkListenPort + '\'' +
                 ", clientTag='" + clientTag + '\'' +
+                ", peerIsolationEnabled=" + peerIsolationEnabled +
                 '}';
     }
 }

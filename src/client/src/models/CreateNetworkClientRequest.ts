@@ -61,6 +61,12 @@ export interface CreateNetworkClientRequest {
      * @memberof CreateNetworkClientRequest
      */
     clientTag?: string;
+    /**
+     * when true this client can neither reach nor be reached by any other peer on the network. its traffic still routes through the server to the internet
+     * @type {boolean}
+     * @memberof CreateNetworkClientRequest
+     */
+    peerIsolationEnabled?: boolean;
 }
 
 /**
@@ -89,6 +95,7 @@ export function CreateNetworkClientRequestFromJSONTyped(json: any, ignoreDiscrim
         'networkName': json['networkName'],
         'networkEndpoint': json['networkEndpoint'] == null ? undefined : json['networkEndpoint'],
         'clientTag': json['clientTag'] == null ? undefined : json['clientTag'],
+        'peerIsolationEnabled': json['peerIsolationEnabled'] == null ? undefined : json['peerIsolationEnabled'],
     };
 }
 
@@ -110,6 +117,7 @@ export function CreateNetworkClientRequestToJSONTyped(value?: CreateNetworkClien
         'networkName': value['networkName'],
         'networkEndpoint': value['networkEndpoint'],
         'clientTag': value['clientTag'],
+        'peerIsolationEnabled': value['peerIsolationEnabled'],
     };
 }
 

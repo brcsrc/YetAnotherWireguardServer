@@ -35,6 +35,7 @@ import jakarta.transaction.Transactional;
 import com.brcsrc.yaws.exceptions.InternalServerException;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
+import com.brcsrc.yaws.model.requests.UpdateNetworkClientRequest;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsResponse;
 import com.brcsrc.yaws.persistence.ClientRepository;
 import com.brcsrc.yaws.persistence.NetworkClientRepository;
@@ -52,6 +53,7 @@ public class NetworkClientService {
     private final NetworkRepository networkRepository;
     private final ClientRepository clientRepository;
     private final WireguardService wireguardService;
+    private final PeerIsolationService peerIsolationService;
 
     private static final Logger logger = LoggerFactory.getLogger(NetworkClientService.class);
 
@@ -60,12 +62,14 @@ public class NetworkClientService {
             NetworkClientRepository netClientRepository,
             NetworkRepository networkRepository,
             ClientRepository clientRepository,
-            WireguardService wireguardService
+            WireguardService wireguardService,
+            PeerIsolationService peerIsolationService
     ) {
         this.netClientRepository = netClientRepository;
         this.networkRepository = networkRepository;
         this.clientRepository = clientRepository;
         this.wireguardService = wireguardService;
+        this.peerIsolationService = peerIsolationService;
     }
 
     private Network checkNetworkExists(String networkName) {
@@ -165,6 +169,7 @@ public class NetworkClientService {
         client.setAllowedIps(request.getAllowedIps());
         client.setNetworkEndpoint(request.getNetworkEndpoint());
         client.setClientTag(request.getClientTag());
+        client.setPeerIsolationEnabled(request.isPeerIsolationEnabled());
 
         // get these from existing network
         client.setNetworkListenPort(existingNetwork.getNetworkListenPort());
@@ -224,6 +229,13 @@ public class NetworkClientService {
                 existingNetwork.getNetworkName(),
                 new NetworkPeer(clientPublicKeyValue, networkConfigFormatClientCidr));
 
+        // apply isolation for this client if requested. the network is ACTIVE here, checked
+        // above, so the isolation chain exists and the rules can go straight in
+        if (client.isPeerIsolationEnabled()) {
+            this.peerIsolationService.setClientIsolation(
+                    existingNetwork.getNetworkName(), client.getClientCidr(), true);
+        }
+
         // save entities to database
         Client savedClient = this.clientRepository.save(client);
         NetworkClient networkClient = new NetworkClient();
@@ -254,6 +266,22 @@ public class NetworkClientService {
         );
 
         try {
+            // remove this client's isolation rules before the peer goes away. they are keyed on
+            // the client address, so leaving them behind would silently isolate whoever is
+            // assigned that address next
+            if (networkClient.getClient().isPeerIsolationEnabled()) {
+                try {
+                    this.peerIsolationService.setClientIsolation(
+                            networkClient.getNetwork().getNetworkName(),
+                            networkClient.getClient().getClientCidr(),
+                            false);
+                } catch (RuntimeException e) {
+                    errorsOnRemoval = true;
+                    logger.error("failed to remove isolation rules for client '{}': {}",
+                            networkClient.getClient().getClientName(), e.getMessage());
+                }
+            }
+
             // remove peer from network
             logger.info(String.format(
                     "removing client '%s' from network '%s'",
@@ -382,6 +410,81 @@ public class NetworkClientService {
     }
 
     // Describe a Network Client and return the Network and Client objects of that defined relationship
+    /**
+     * updates a client on a network.
+     *
+     * peer isolation is applied as a live iptables change against the network's isolation chain,
+     * never by rewriting the wireguard config, so no client on the network is disconnected by it.
+     *
+     * this does not interact with network wide isolation in any way. the two sets of rules are
+     * independent and are added and removed by exact match, so toggling one never disturbs the
+     * other. a client left isolated under a network wide deny simply has no visible effect until
+     * the network wide deny is lifted.
+     */
+    public NetworkClient updateNetworkClient(UpdateNetworkClientRequest request) {
+        if (request == null) {
+            String errMsg = "UpdateNetworkClientRequest cannot be null";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+        if (request.getNetworkName() == null || request.getNetworkName().isBlank()) {
+            String errMsg = "networkName must be provided";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+        if (request.getClientName() == null || request.getClientName().isBlank()) {
+            String errMsg = "clientName must be provided";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+        if (request.getClientTag() == null && request.getPeerIsolationEnabled() == null) {
+            String errMsg = "At least one field (clientTag or peerIsolationEnabled) must be provided for update";
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
+        }
+
+        logger.info("updating network client '{}' on network '{}'",
+                request.getClientName(), request.getNetworkName());
+
+        NetworkClient networkClient = this.netClientRepository
+                .findByNetworkClientByNetworkNameAndClientName(
+                        request.getNetworkName(), request.getClientName());
+        if (networkClient == null) {
+            String errMsg = String.format("client '%s' not found on network '%s'",
+                    request.getClientName(), request.getNetworkName());
+            logger.error(errMsg);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errMsg);
+        }
+
+        Client client = networkClient.getClient();
+        Network network = networkClient.getNetwork();
+
+        if (request.getClientTag() != null) {
+            client.setClientTag(request.getClientTag());
+        }
+
+        if (request.getPeerIsolationEnabled() != null) {
+            boolean enabled = request.getPeerIsolationEnabled();
+
+            // the database is the source of truth, so the entity is always updated. the live
+            // rules are only touched while the interface is up: an inactive network has no
+            // isolation chain, and policy is reapplied from the database on activation
+            if (network.getNetworkStatus() == NetworkStatus.ACTIVE) {
+                this.peerIsolationService.setClientIsolation(
+                        network.getNetworkName(), client.getClientCidr(), enabled);
+            } else {
+                logger.info("network '{}' is not active, client isolation will be applied on activation",
+                        network.getNetworkName());
+            }
+
+            client.setPeerIsolationEnabled(enabled);
+        }
+
+        this.clientRepository.save(client);
+        logger.info("UpdateNetworkClient operation successful");
+        return networkClient;
+    }
+
     public NetworkClient describeNetworkClient(String networkName, String clientName) {
         NetworkClient networkClient = this.netClientRepository.findByNetworkClientByNetworkNameAndClientName(networkName, clientName);
         if (networkClient == null) {

@@ -16,14 +16,19 @@
 import * as runtime from '../runtime';
 import type {
   CreateNetworkClientRequest,
+  CreateNetworkClientResponse,
   GetNextAvailableClientAddressResponse,
   ListNetworkClientsRequest,
   ListNetworkClientsResponse,
   NetworkClient,
+  UpdateNetworkClientRequest,
+  UpdateNetworkClientResponse,
 } from '../models/index';
 import {
     CreateNetworkClientRequestFromJSON,
     CreateNetworkClientRequestToJSON,
+    CreateNetworkClientResponseFromJSON,
+    CreateNetworkClientResponseToJSON,
     GetNextAvailableClientAddressResponseFromJSON,
     GetNextAvailableClientAddressResponseToJSON,
     ListNetworkClientsRequestFromJSON,
@@ -32,6 +37,10 @@ import {
     ListNetworkClientsResponseToJSON,
     NetworkClientFromJSON,
     NetworkClientToJSON,
+    UpdateNetworkClientRequestFromJSON,
+    UpdateNetworkClientRequestToJSON,
+    UpdateNetworkClientResponseFromJSON,
+    UpdateNetworkClientResponseToJSON,
 } from '../models/index';
 
 export interface CreateNetworkClientOperationRequest {
@@ -66,6 +75,10 @@ export interface ListNetworkClientsOperationRequest {
     listNetworkClientsRequest: ListNetworkClientsRequest;
 }
 
+export interface UpdateNetworkClientOperationRequest {
+    updateNetworkClientRequest: UpdateNetworkClientRequest;
+}
+
 /**
  * 
  */
@@ -75,7 +88,7 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
      * create a client for a specific network
      * Create Network Client
      */
-    async createNetworkClientRaw(requestParameters: CreateNetworkClientOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<NetworkClient>> {
+    async createNetworkClientRaw(requestParameters: CreateNetworkClientOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateNetworkClientResponse>> {
         if (requestParameters['createNetworkClientRequest'] == null) {
             throw new runtime.RequiredError(
                 'createNetworkClientRequest',
@@ -90,21 +103,21 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/api/v1/clients`,
+            path: `/api/v1/clients/create-client`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
             body: CreateNetworkClientRequestToJSON(requestParameters['createNetworkClientRequest']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => NetworkClientFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreateNetworkClientResponseFromJSON(jsonValue));
     }
 
     /**
      * create a client for a specific network
      * Create Network Client
      */
-    async createNetworkClient(requestParameters: CreateNetworkClientOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<NetworkClient> {
+    async createNetworkClient(requestParameters: CreateNetworkClientOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateNetworkClientResponse> {
         const response = await this.createNetworkClientRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -347,6 +360,44 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
      */
     async listNetworkClients(requestParameters: ListNetworkClientsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListNetworkClientsResponse> {
         const response = await this.listNetworkClientsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * update the tag or peer isolation of a client
+     * Update Network Client
+     */
+    async updateNetworkClientRaw(requestParameters: UpdateNetworkClientOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UpdateNetworkClientResponse>> {
+        if (requestParameters['updateNetworkClientRequest'] == null) {
+            throw new runtime.RequiredError(
+                'updateNetworkClientRequest',
+                'Required parameter "updateNetworkClientRequest" was null or undefined when calling updateNetworkClient().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        const response = await this.request({
+            path: `/api/v1/clients/update-client`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateNetworkClientRequestToJSON(requestParameters['updateNetworkClientRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => UpdateNetworkClientResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * update the tag or peer isolation of a client
+     * Update Network Client
+     */
+    async updateNetworkClient(requestParameters: UpdateNetworkClientOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UpdateNetworkClientResponse> {
+        const response = await this.updateNetworkClientRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

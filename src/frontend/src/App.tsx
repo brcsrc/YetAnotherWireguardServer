@@ -7,6 +7,7 @@ import CreateNetwork from "./pages/network/CreateNetwork.tsx";
 import UpdateNetwork from "./pages/network/UpdateNetwork.tsx";
 import Client from "./pages/client/Client.tsx";
 import CreateClient from "./pages/client/CreateClient.tsx";
+import UpdateClient from "./pages/client/UpdateClient.tsx";
 import { ThemeContextProvider } from "./context/ThemeContextProvider";
 import { FlashbarContextProvider } from "./context/FlashbarContextProvider";
 import { AuthContextProvider, useAuthContext } from "./context/AuthContextProvider";
@@ -34,6 +35,10 @@ const AuthenticatedRoutes = () => {
       <Route path="/networks/:networkName/update" element={<UpdateNetwork />} />
       <Route path="/networks/:networkName/clients/create" element={<CreateClient />} />
       <Route path="/networks/:networkName/clients/:clientName" element={<Client />} />
+      <Route
+        path="/networks/:networkName/clients/:clientName/update"
+        element={<UpdateClient />}
+      />
     </Routes>
   );
 };

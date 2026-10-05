@@ -1,4 +1,5 @@
 import {
+  Badge,
   Container,
   Header,
   ColumnLayout,
@@ -63,6 +64,14 @@ const ClientDetails = (props: ClientDetailsProps): JSX.Element => {
             {
               label: "Network Listen Port",
               value: client?.networkListenPort?.toString() || "-",
+            },
+            {
+              label: "Peer Isolation",
+              value: (
+                <Badge color={client?.peerIsolationEnabled ? "blue" : "grey"}>
+                  {client?.peerIsolationEnabled ? "ENABLED" : "DISABLED"}
+                </Badge>
+              ),
             },
           ]}
         />

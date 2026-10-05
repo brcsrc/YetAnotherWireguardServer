@@ -16,8 +16,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.NetworkClient;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
+import com.brcsrc.yaws.model.requests.CreateNetworkClientResponse;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsResponse;
+import com.brcsrc.yaws.model.requests.UpdateNetworkClientRequest;
+import com.brcsrc.yaws.model.requests.UpdateNetworkClientResponse;
 import com.brcsrc.yaws.service.NetworkClientService;
 import io.swagger.v3.oas.annotations.Operation;
 
@@ -34,10 +37,17 @@ public class NetworkClientController {
     }
 
     @Operation(summary = "Create Network Client", description = "create a client for a specific network")
-    @PostMapping
-    public NetworkClient createNetworkClient(@RequestBody CreateNetworkClientRequest createNetworkClientRequest) {
-        logger.info("received CreateNetworkClient request");
-        return this.networkClientService.addClientToNetwork(createNetworkClientRequest);
+    @PostMapping("/create-client")
+    public CreateNetworkClientResponse createNetworkClient(@RequestBody CreateNetworkClientRequest request) {
+        logger.info("received CreateNetworkClient request: {}", request);
+        return new CreateNetworkClientResponse(this.networkClientService.addClientToNetwork(request));
+    }
+
+    @Operation(summary = "Update Network Client", description = "update the tag or peer isolation of a client")
+    @PostMapping("/update-client")
+    public UpdateNetworkClientResponse updateNetworkClient(@RequestBody UpdateNetworkClientRequest request) {
+        logger.info("received UpdateNetworkClient request: {}", request);
+        return new UpdateNetworkClientResponse(this.networkClientService.updateNetworkClient(request));
     }
 
     @Operation(summary = "List Network Clients", description = "list clients for a specific network with pagination")

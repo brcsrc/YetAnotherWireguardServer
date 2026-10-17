@@ -1,24 +1,12 @@
 package com.brcsrc.yaws.model.requests;
 
+import lombok.Data;
+
 /**
  * A request object for streaming network WireGuard connection information.
  */
+@Data
 public class StreamNetworkConnectionInfoRequest {
 
     private String networkPublicKeyValue;
-
-    public String getNetworkPublicKeyValue() {
-        return networkPublicKeyValue;
-    }
-
-    public void setNetworkPublicKeyValue(String networkPublicKeyValue) {
-        this.networkPublicKeyValue = networkPublicKeyValue;
-    }
-
-    @Override
-    public String toString() {
-        return "StreamNetworkConnectionInfoRequest{"
-                + "networkPublicKeyValue='" + networkPublicKeyValue + '\''
-                + '}';
-    }
 }

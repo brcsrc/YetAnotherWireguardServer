@@ -1,25 +1,16 @@
 package com.brcsrc.yaws.model.wireguard;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+/**
+ * the [Peer] section of a client config, describing the server the client connects to.
+ */
+@Data
+@AllArgsConstructor
 public class PeerConfig {
+
     private final String publicKey;
     private final String endpoint;
     private final String allowedIps;
-
-    public PeerConfig(String publicKey, String endpoint, String allowedIps) {
-        this.publicKey = publicKey;
-        this.endpoint = endpoint;
-        this.allowedIps = allowedIps;
-    }
-
-    public String getPublicKey() {
-        return publicKey;
-    }
-
-    public String getEndpoint() {
-        return endpoint;
-    }
-
-    public String getAllowedIps() {
-        return allowedIps;
-    }
 }

@@ -2,6 +2,7 @@ package com.brcsrc.yaws.model.requests;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
 
 /**
  * A request object for updating a client on a network.
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.NotBlank;
  * networkName and clientName identify the client. every other field is optional and a null field
  * is left unchanged, so a caller can update one attribute without restating the others.
  */
+@Data
 public class UpdateNetworkClientRequest {
 
     @NotBlank(message = "Network name is required")
@@ -26,46 +28,4 @@ public class UpdateNetworkClientRequest {
     @Schema(description = "when true this client can neither reach nor be reached by any other "
             + "peer on the network. its traffic still routes through the server to the internet")
     private Boolean peerIsolationEnabled;
-
-    public String getNetworkName() {
-        return networkName;
-    }
-
-    public void setNetworkName(String networkName) {
-        this.networkName = networkName;
-    }
-
-    public String getClientName() {
-        return clientName;
-    }
-
-    public void setClientName(String clientName) {
-        this.clientName = clientName;
-    }
-
-    public String getClientTag() {
-        return clientTag;
-    }
-
-    public void setClientTag(String clientTag) {
-        this.clientTag = clientTag;
-    }
-
-    public Boolean getPeerIsolationEnabled() {
-        return peerIsolationEnabled;
-    }
-
-    public void setPeerIsolationEnabled(Boolean peerIsolationEnabled) {
-        this.peerIsolationEnabled = peerIsolationEnabled;
-    }
-
-    @Override
-    public String toString() {
-        return "UpdateNetworkClientRequest{"
-                + "networkName='" + networkName + '\''
-                + ", clientName='" + clientName + '\''
-                + ", clientTag='" + clientTag + '\''
-                + ", peerIsolationEnabled=" + peerIsolationEnabled
-                + '}';
-    }
 }

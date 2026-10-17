@@ -2,30 +2,17 @@ package com.brcsrc.yaws.model.requests;
 
 import com.brcsrc.yaws.model.NetworkClient;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 /**
- * A response object for updating a client on a network.
+ * A response object for Update a client on a network.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class UpdateNetworkClientResponse {
 
     private NetworkClient networkClient;
-
-    public UpdateNetworkClientResponse() {
-    }
-
-    public UpdateNetworkClientResponse(NetworkClient networkClient) {
-        this.networkClient = networkClient;
-    }
-
-    public NetworkClient getNetworkClient() {
-        return networkClient;
-    }
-
-    public void setNetworkClient(NetworkClient networkClient) {
-        this.networkClient = networkClient;
-    }
-
-    @Override
-    public String toString() {
-        return "UpdateNetworkClientResponse{networkClient=" + networkClient + '}';
-    }
 }

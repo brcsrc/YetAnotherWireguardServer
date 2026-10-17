@@ -1,26 +1,16 @@
 package com.brcsrc.yaws.model.requests;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * A response object carrying the username of the authenticated caller.
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class WhoamiResponse {
-    public String user;
 
-    public WhoamiResponse() {}
-
-    public WhoamiResponse(String user) {
-        this.user = user;
-    }
-
-    public String getUser() {
-        return user;
-    }
-
-    public void setUser(String user) {
-        this.user = user;
-    }
-
-    @Override
-    public String toString() {
-        return "WhoamiResponse{" +
-                "user='" + user + '\'' +
-                '}';
-    }
+    private String user;
 }

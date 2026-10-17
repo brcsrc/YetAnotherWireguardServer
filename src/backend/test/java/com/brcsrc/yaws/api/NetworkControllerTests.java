@@ -186,7 +186,7 @@ public class NetworkControllerTests {
         assertEquals(publicKeyFromFile, readNetworkFromDb.getNetworkPublicKeyValue());
 
         NetworkConfig networkConfig = WireguardConfigReaderUtils.readNetworkConfig(String.format("%s.conf", readNetworkFromDb.getNetworkName()));
-        assertEquals(networkConfig.networkInterface.address, "10.100.0.1/24");
+        assertEquals(networkConfig.getNetworkInterface().getAddress(), "10.100.0.1/24");
 
         // the interface hooks must be present in the config file
         String configOnDisk = Files.readString(Path.of(

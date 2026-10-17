@@ -95,9 +95,9 @@ public class WireguardConfigReaderUtilsTests {
         assertDoesNotThrow(() -> WireguardConfigReaderUtils.readNetworkConfig(fileName));
 
         NetworkConfig config = WireguardConfigReaderUtils.readNetworkConfig(fileName);
-        assertEquals(config.networkInterface.address, "10.0.0.1/24");
-        assertEquals(config.networkInterface.listenPort, 51820);
-        assertEquals(config.networkInterface.privateKey, "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890=");
+        assertEquals(config.getNetworkInterface().getAddress(), "10.0.0.1/24");
+        assertEquals(config.getNetworkInterface().getListenPort(), 51820);
+        assertEquals(config.getNetworkInterface().getPrivateKey(), "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890=");
 
         Files.delete(Paths.get(filePath));
     }

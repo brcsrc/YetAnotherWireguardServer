@@ -60,7 +60,7 @@ export class SystemControllerApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/api/v1/system/wg-show/client`,
+            path: `/api/v1/system/stream-client-connection-info`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
@@ -98,7 +98,7 @@ export class SystemControllerApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/api/v1/system/wg-show/network`,
+            path: `/api/v1/system/stream-network-connection-info`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,

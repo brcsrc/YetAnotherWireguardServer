@@ -55,7 +55,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * WireGuard public keys contain characters (=, +, /) that are problematic in URLs even with encoding.
  * Using POST with JSON body provides a cleaner, more reliable approach:
  * <pre>
- * POST /api/v1/system/wg-show/network
+ * POST /api/v1/system/stream-network-connection-info
  * {"networkPublicKeyValue": "pHIHd17qGbJlqYmKnBZcXxXJkPUeARJNfIJadpgKHG0="}
  * </pre>
  *
@@ -117,7 +117,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * <pre>
  * import { fetchEventSource } from '@microsoft/fetch-event-source';
  *
- * await fetchEventSource('/api/v1/system/wg-show/network', {
+ * await fetchEventSource('/api/v1/system/stream-network-connection-info', {
  *   method: 'POST',
  *   headers: { 'Content-Type': 'application/json' },
  *   body: JSON.stringify({ networkPublicKeyValue: 'pHI...' }),
@@ -234,7 +234,7 @@ public class SystemController {
             description = "Server-Sent Events endpoint that streams real-time WireGuard connection data for a specific network and its peers"
     )
     @PostMapping(
-            value = "/wg-show/network",
+            value = "/stream-network-connection-info",
             produces = MediaType.TEXT_EVENT_STREAM_VALUE
     )
     public SseEmitter streamNetworkConnectionInfo(@RequestBody StreamNetworkConnectionInfoRequest request) {
@@ -367,7 +367,7 @@ public class SystemController {
             description = "Server-Sent Events endpoint that streams real-time WireGuard connection data for a specific client/peer"
     )
     @PostMapping(
-            value = "/wg-show/client",
+            value = "/stream-client-connection-info",
             produces = MediaType.TEXT_EVENT_STREAM_VALUE
     )
     public SseEmitter streamClientConnectionInfo(@RequestBody StreamClientConnectionInfoRequest request) {

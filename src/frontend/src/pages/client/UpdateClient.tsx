@@ -35,10 +35,12 @@ const UpdateClient = () => {
       if (!client) {
         try {
           const response = await networkClientClient.describeNetworkClient({
-            networkName: networkName,
-            clientName: clientName,
+            describeNetworkClientRequest: {
+              networkName: networkName,
+              clientName: clientName,
+            },
           });
-          setClient(response.client);
+          setClient(response.networkClient?.client);
         } catch (error) {
           const errorMessage =
             error.response?.data?.message || error.response?.data?.error || error.message;

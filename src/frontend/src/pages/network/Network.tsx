@@ -34,8 +34,10 @@ const Network = () => {
     (async function () {
       if (!network) {
         try {
-          const response = await networkClient.describeNetwork({ networkName: networkName });
-          setNetwork(response);
+          const response = await networkClient.describeNetwork({
+            describeNetworkRequest: { networkName: networkName },
+          });
+          setNetwork(response.network);
         } catch (error) {
           const errorMessage =
             error.response?.data?.message || error.response?.data?.error || error.message;
@@ -57,7 +59,9 @@ const Network = () => {
     setDeleting(true);
     setShowDeleteModal(false);
     try {
-      await networkClient.deleteNetwork({ networkName: networkName });
+      await networkClient.deleteNetwork({
+        deleteNetworkRequest: { networkName: networkName },
+      });
       addFlashbarItem({
         type: "success",
         header: "Network Deleted",

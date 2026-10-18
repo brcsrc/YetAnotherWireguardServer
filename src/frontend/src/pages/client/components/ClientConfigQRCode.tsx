@@ -21,8 +21,10 @@ const ClientConfigQRCode = (props: ClientConfigQRCodeProps): JSX.Element => {
     (async function () {
       try {
         const response = await networkClientClient.getNetworkClientConfigFileQR({
-          networkName,
-          clientName,
+          getNetworkClientConfigFileQRRequest: {
+            networkName,
+            clientName,
+          },
         });
         // Convert blob to object URL for img src
         const blob = new Blob([response], { type: "image/png" });

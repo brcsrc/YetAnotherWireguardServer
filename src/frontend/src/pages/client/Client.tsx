@@ -25,10 +25,12 @@ const Client = () => {
       if (!client) {
         try {
           const response = await networkClientClient.describeNetworkClient({
-            networkName: networkName,
-            clientName: clientName,
+            describeNetworkClientRequest: {
+              networkName: networkName,
+              clientName: clientName,
+            },
           });
-          setClient(response.client);
+          setClient(response.networkClient?.client);
         } catch (error) {
           const errorMessage =
             error.response?.data?.message || error.response?.data?.error || error.message;
@@ -49,8 +51,10 @@ const Client = () => {
   const handleDownloadClientClick = async () => {
     try {
       const response = await networkClientClient.getNetworkClientConfigFile({
-        networkName: networkName,
-        clientName: clientName,
+        getNetworkClientConfigFileRequest: {
+          networkName: networkName,
+          clientName: clientName,
+        },
       });
 
       // Create a blob from the response (response is already a Blob)
@@ -83,8 +87,10 @@ const Client = () => {
     setShowDeleteModal(false);
     try {
       await networkClientClient.deleteNetworkClient({
-        networkName: networkName,
-        clientName: clientName,
+        deleteNetworkClientRequest: {
+          networkName: networkName,
+          clientName: clientName,
+        },
       });
       addFlashbarItem({
         type: "success",

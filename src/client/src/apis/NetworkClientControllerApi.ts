@@ -17,10 +17,16 @@ import * as runtime from '../runtime';
 import type {
   CreateNetworkClientRequest,
   CreateNetworkClientResponse,
+  DeleteNetworkClientRequest,
+  DeleteNetworkClientResponse,
+  DescribeNetworkClientRequest,
+  DescribeNetworkClientResponse,
+  GetNetworkClientConfigFileQRRequest,
+  GetNetworkClientConfigFileRequest,
+  GetNextAvailableClientAddressRequest,
   GetNextAvailableClientAddressResponse,
   ListNetworkClientsRequest,
   ListNetworkClientsResponse,
-  NetworkClient,
   UpdateNetworkClientRequest,
   UpdateNetworkClientResponse,
 } from '../models/index';
@@ -29,14 +35,26 @@ import {
     CreateNetworkClientRequestToJSON,
     CreateNetworkClientResponseFromJSON,
     CreateNetworkClientResponseToJSON,
+    DeleteNetworkClientRequestFromJSON,
+    DeleteNetworkClientRequestToJSON,
+    DeleteNetworkClientResponseFromJSON,
+    DeleteNetworkClientResponseToJSON,
+    DescribeNetworkClientRequestFromJSON,
+    DescribeNetworkClientRequestToJSON,
+    DescribeNetworkClientResponseFromJSON,
+    DescribeNetworkClientResponseToJSON,
+    GetNetworkClientConfigFileQRRequestFromJSON,
+    GetNetworkClientConfigFileQRRequestToJSON,
+    GetNetworkClientConfigFileRequestFromJSON,
+    GetNetworkClientConfigFileRequestToJSON,
+    GetNextAvailableClientAddressRequestFromJSON,
+    GetNextAvailableClientAddressRequestToJSON,
     GetNextAvailableClientAddressResponseFromJSON,
     GetNextAvailableClientAddressResponseToJSON,
     ListNetworkClientsRequestFromJSON,
     ListNetworkClientsRequestToJSON,
     ListNetworkClientsResponseFromJSON,
     ListNetworkClientsResponseToJSON,
-    NetworkClientFromJSON,
-    NetworkClientToJSON,
     UpdateNetworkClientRequestFromJSON,
     UpdateNetworkClientRequestToJSON,
     UpdateNetworkClientResponseFromJSON,
@@ -47,28 +65,24 @@ export interface CreateNetworkClientOperationRequest {
     createNetworkClientRequest: CreateNetworkClientRequest;
 }
 
-export interface DeleteNetworkClientRequest {
-    networkName: string;
-    clientName: string;
+export interface DeleteNetworkClientOperationRequest {
+    deleteNetworkClientRequest: DeleteNetworkClientRequest;
 }
 
-export interface DescribeNetworkClientRequest {
-    networkName: string;
-    clientName: string;
+export interface DescribeNetworkClientOperationRequest {
+    describeNetworkClientRequest: DescribeNetworkClientRequest;
 }
 
-export interface GetNetworkClientConfigFileRequest {
-    networkName: string;
-    clientName: string;
+export interface GetNetworkClientConfigFileOperationRequest {
+    getNetworkClientConfigFileRequest: GetNetworkClientConfigFileRequest;
 }
 
-export interface GetNetworkClientConfigFileQRRequest {
-    networkName: string;
-    clientName: string;
+export interface GetNetworkClientConfigFileQROperationRequest {
+    getNetworkClientConfigFileQRRequest: GetNetworkClientConfigFileQRRequest;
 }
 
-export interface GetNextAvailableClientAddressRequest {
-    networkName: string;
+export interface GetNextAvailableClientAddressOperationRequest {
+    getNextAvailableClientAddressRequest: GetNextAvailableClientAddressRequest;
 }
 
 export interface ListNetworkClientsOperationRequest {
@@ -103,7 +117,7 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/api/v1/clients/create-client`,
+            path: `/api/v1/client/create-client`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
@@ -126,18 +140,11 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
      * delete a specific client for a network
      * Delete Network Client
      */
-    async deleteNetworkClientRaw(requestParameters: DeleteNetworkClientRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<NetworkClient>> {
-        if (requestParameters['networkName'] == null) {
+    async deleteNetworkClientRaw(requestParameters: DeleteNetworkClientOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeleteNetworkClientResponse>> {
+        if (requestParameters['deleteNetworkClientRequest'] == null) {
             throw new runtime.RequiredError(
-                'networkName',
-                'Required parameter "networkName" was null or undefined when calling deleteNetworkClient().'
-            );
-        }
-
-        if (requestParameters['clientName'] == null) {
-            throw new runtime.RequiredError(
-                'clientName',
-                'Required parameter "clientName" was null or undefined when calling deleteNetworkClient().'
+                'deleteNetworkClientRequest',
+                'Required parameter "deleteNetworkClientRequest" was null or undefined when calling deleteNetworkClient().'
             );
         }
 
@@ -145,41 +152,37 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        headerParameters['Content-Type'] = 'application/json';
+
         const response = await this.request({
-            path: `/api/v1/clients/{networkName}/{clientName}`.replace(`{${"networkName"}}`, encodeURIComponent(String(requestParameters['networkName']))).replace(`{${"clientName"}}`, encodeURIComponent(String(requestParameters['clientName']))),
-            method: 'DELETE',
+            path: `/api/v1/client/delete-client`,
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: DeleteNetworkClientRequestToJSON(requestParameters['deleteNetworkClientRequest']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => NetworkClientFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => DeleteNetworkClientResponseFromJSON(jsonValue));
     }
 
     /**
      * delete a specific client for a network
      * Delete Network Client
      */
-    async deleteNetworkClient(requestParameters: DeleteNetworkClientRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<NetworkClient> {
+    async deleteNetworkClient(requestParameters: DeleteNetworkClientOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeleteNetworkClientResponse> {
         const response = await this.deleteNetworkClientRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
      * describe a specific client for a specific network
-     * Describe Network Clients
+     * Describe Network Client
      */
-    async describeNetworkClientRaw(requestParameters: DescribeNetworkClientRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<NetworkClient>> {
-        if (requestParameters['networkName'] == null) {
+    async describeNetworkClientRaw(requestParameters: DescribeNetworkClientOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DescribeNetworkClientResponse>> {
+        if (requestParameters['describeNetworkClientRequest'] == null) {
             throw new runtime.RequiredError(
-                'networkName',
-                'Required parameter "networkName" was null or undefined when calling describeNetworkClient().'
-            );
-        }
-
-        if (requestParameters['clientName'] == null) {
-            throw new runtime.RequiredError(
-                'clientName',
-                'Required parameter "clientName" was null or undefined when calling describeNetworkClient().'
+                'describeNetworkClientRequest',
+                'Required parameter "describeNetworkClientRequest" was null or undefined when calling describeNetworkClient().'
             );
         }
 
@@ -187,41 +190,37 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        headerParameters['Content-Type'] = 'application/json';
+
         const response = await this.request({
-            path: `/api/v1/clients/{networkName}/{clientName}`.replace(`{${"networkName"}}`, encodeURIComponent(String(requestParameters['networkName']))).replace(`{${"clientName"}}`, encodeURIComponent(String(requestParameters['clientName']))),
-            method: 'GET',
+            path: `/api/v1/client/describe-client`,
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: DescribeNetworkClientRequestToJSON(requestParameters['describeNetworkClientRequest']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => NetworkClientFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => DescribeNetworkClientResponseFromJSON(jsonValue));
     }
 
     /**
      * describe a specific client for a specific network
-     * Describe Network Clients
+     * Describe Network Client
      */
-    async describeNetworkClient(requestParameters: DescribeNetworkClientRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<NetworkClient> {
+    async describeNetworkClient(requestParameters: DescribeNetworkClientOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DescribeNetworkClientResponse> {
         const response = await this.describeNetworkClientRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
-     * get a networkclient configuration .conf file for a client on a given network to be downloadable
+     * download a client\'s wireguard .conf file. returns the file rather than JSON
      * Get Network Client Configuration File
      */
-    async getNetworkClientConfigFileRaw(requestParameters: GetNetworkClientConfigFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Blob>> {
-        if (requestParameters['networkName'] == null) {
+    async getNetworkClientConfigFileRaw(requestParameters: GetNetworkClientConfigFileOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Blob>> {
+        if (requestParameters['getNetworkClientConfigFileRequest'] == null) {
             throw new runtime.RequiredError(
-                'networkName',
-                'Required parameter "networkName" was null or undefined when calling getNetworkClientConfigFile().'
-            );
-        }
-
-        if (requestParameters['clientName'] == null) {
-            throw new runtime.RequiredError(
-                'clientName',
-                'Required parameter "clientName" was null or undefined when calling getNetworkClientConfigFile().'
+                'getNetworkClientConfigFileRequest',
+                'Required parameter "getNetworkClientConfigFileRequest" was null or undefined when calling getNetworkClientConfigFile().'
             );
         }
 
@@ -229,41 +228,37 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        headerParameters['Content-Type'] = 'application/json';
+
         const response = await this.request({
-            path: `/api/v1/clients/{networkName}/{clientName}/config`.replace(`{${"networkName"}}`, encodeURIComponent(String(requestParameters['networkName']))).replace(`{${"clientName"}}`, encodeURIComponent(String(requestParameters['clientName']))),
-            method: 'GET',
+            path: `/api/v1/client/get-client-config`,
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: GetNetworkClientConfigFileRequestToJSON(requestParameters['getNetworkClientConfigFileRequest']),
         }, initOverrides);
 
         return new runtime.BlobApiResponse(response);
     }
 
     /**
-     * get a networkclient configuration .conf file for a client on a given network to be downloadable
+     * download a client\'s wireguard .conf file. returns the file rather than JSON
      * Get Network Client Configuration File
      */
-    async getNetworkClientConfigFile(requestParameters: GetNetworkClientConfigFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
+    async getNetworkClientConfigFile(requestParameters: GetNetworkClientConfigFileOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
         const response = await this.getNetworkClientConfigFileRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
-     * get a QR code image of the client configuration for easy mobile scanning
+     * render a client\'s configuration as a QR code. returns a PNG rather than JSON
      * Get Network Client Configuration QR Code
      */
-    async getNetworkClientConfigFileQRRaw(requestParameters: GetNetworkClientConfigFileQRRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Blob>> {
-        if (requestParameters['networkName'] == null) {
+    async getNetworkClientConfigFileQRRaw(requestParameters: GetNetworkClientConfigFileQROperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Blob>> {
+        if (requestParameters['getNetworkClientConfigFileQRRequest'] == null) {
             throw new runtime.RequiredError(
-                'networkName',
-                'Required parameter "networkName" was null or undefined when calling getNetworkClientConfigFileQR().'
-            );
-        }
-
-        if (requestParameters['clientName'] == null) {
-            throw new runtime.RequiredError(
-                'clientName',
-                'Required parameter "clientName" was null or undefined when calling getNetworkClientConfigFileQR().'
+                'getNetworkClientConfigFileQRRequest',
+                'Required parameter "getNetworkClientConfigFileQRRequest" was null or undefined when calling getNetworkClientConfigFileQR().'
             );
         }
 
@@ -271,21 +266,24 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        headerParameters['Content-Type'] = 'application/json';
+
         const response = await this.request({
-            path: `/api/v1/clients/{networkName}/{clientName}/config/qr`.replace(`{${"networkName"}}`, encodeURIComponent(String(requestParameters['networkName']))).replace(`{${"clientName"}}`, encodeURIComponent(String(requestParameters['clientName']))),
-            method: 'GET',
+            path: `/api/v1/client/get-client-config-qr`,
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: GetNetworkClientConfigFileQRRequestToJSON(requestParameters['getNetworkClientConfigFileQRRequest']),
         }, initOverrides);
 
         return new runtime.BlobApiResponse(response);
     }
 
     /**
-     * get a QR code image of the client configuration for easy mobile scanning
+     * render a client\'s configuration as a QR code. returns a PNG rather than JSON
      * Get Network Client Configuration QR Code
      */
-    async getNetworkClientConfigFileQR(requestParameters: GetNetworkClientConfigFileQRRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
+    async getNetworkClientConfigFileQR(requestParameters: GetNetworkClientConfigFileQROperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
         const response = await this.getNetworkClientConfigFileQRRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -294,11 +292,11 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
      * get the next available IP address for a client on a given network
      * Get Next Available Client Address
      */
-    async getNextAvailableClientAddressRaw(requestParameters: GetNextAvailableClientAddressRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetNextAvailableClientAddressResponse>> {
-        if (requestParameters['networkName'] == null) {
+    async getNextAvailableClientAddressRaw(requestParameters: GetNextAvailableClientAddressOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetNextAvailableClientAddressResponse>> {
+        if (requestParameters['getNextAvailableClientAddressRequest'] == null) {
             throw new runtime.RequiredError(
-                'networkName',
-                'Required parameter "networkName" was null or undefined when calling getNextAvailableClientAddress().'
+                'getNextAvailableClientAddressRequest',
+                'Required parameter "getNextAvailableClientAddressRequest" was null or undefined when calling getNextAvailableClientAddress().'
             );
         }
 
@@ -306,11 +304,14 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        headerParameters['Content-Type'] = 'application/json';
+
         const response = await this.request({
-            path: `/api/v1/clients/{networkName}/next-ip`.replace(`{${"networkName"}}`, encodeURIComponent(String(requestParameters['networkName']))),
-            method: 'GET',
+            path: `/api/v1/client/get-next-available-address`,
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: GetNextAvailableClientAddressRequestToJSON(requestParameters['getNextAvailableClientAddressRequest']),
         }, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => GetNextAvailableClientAddressResponseFromJSON(jsonValue));
@@ -320,7 +321,7 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
      * get the next available IP address for a client on a given network
      * Get Next Available Client Address
      */
-    async getNextAvailableClientAddress(requestParameters: GetNextAvailableClientAddressRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetNextAvailableClientAddressResponse> {
+    async getNextAvailableClientAddress(requestParameters: GetNextAvailableClientAddressOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetNextAvailableClientAddressResponse> {
         const response = await this.getNextAvailableClientAddressRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -344,7 +345,7 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/api/v1/clients/list`,
+            path: `/api/v1/client/list-clients`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
@@ -382,7 +383,7 @@ export class NetworkClientControllerApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/api/v1/clients/update-client`,
+            path: `/api/v1/client/update-client`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,

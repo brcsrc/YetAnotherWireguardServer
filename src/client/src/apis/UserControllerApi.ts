@@ -15,22 +15,28 @@
 
 import * as runtime from '../runtime';
 import type {
-  User,
+  AuthenticateRequest,
+  CreateAdminUserRequest,
+  CreateAdminUserResponse,
   WhoamiResponse,
 } from '../models/index';
 import {
-    UserFromJSON,
-    UserToJSON,
+    AuthenticateRequestFromJSON,
+    AuthenticateRequestToJSON,
+    CreateAdminUserRequestFromJSON,
+    CreateAdminUserRequestToJSON,
+    CreateAdminUserResponseFromJSON,
+    CreateAdminUserResponseToJSON,
     WhoamiResponseFromJSON,
     WhoamiResponseToJSON,
 } from '../models/index';
 
-export interface AuthenticateAndIssueTokenRequest {
-    user: User;
+export interface AuthenticateOperationRequest {
+    authenticateRequest: AuthenticateRequest;
 }
 
-export interface CreateAdminUserRequest {
-    user: User;
+export interface CreateAdminUserOperationRequest {
+    createAdminUserRequest: CreateAdminUserRequest;
 }
 
 /**
@@ -39,14 +45,14 @@ export interface CreateAdminUserRequest {
 export class UserControllerApi extends runtime.BaseAPI {
 
     /**
-     * attempts to authenticate a user and returns an encoded JWT
-     * Authenticate user and get token
+     * attempts to authenticate a user and sets an HttpOnly auth token cookie
+     * Authenticate
      */
-    async authenticateAndIssueTokenRaw(requestParameters: AuthenticateAndIssueTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
-        if (requestParameters['user'] == null) {
+    async authenticateRaw(requestParameters: AuthenticateOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['authenticateRequest'] == null) {
             throw new runtime.RequiredError(
-                'user',
-                'Required parameter "user" was null or undefined when calling authenticateAndIssueToken().'
+                'authenticateRequest',
+                'Required parameter "authenticateRequest" was null or undefined when calling authenticate().'
             );
         }
 
@@ -61,29 +67,29 @@ export class UserControllerApi extends runtime.BaseAPI {
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-            body: UserToJSON(requestParameters['user']),
+            body: AuthenticateRequestToJSON(requestParameters['authenticateRequest']),
         }, initOverrides);
 
         return new runtime.VoidApiResponse(response);
     }
 
     /**
-     * attempts to authenticate a user and returns an encoded JWT
-     * Authenticate user and get token
+     * attempts to authenticate a user and sets an HttpOnly auth token cookie
+     * Authenticate
      */
-    async authenticateAndIssueToken(requestParameters: AuthenticateAndIssueTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.authenticateAndIssueTokenRaw(requestParameters, initOverrides);
+    async authenticate(requestParameters: AuthenticateOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.authenticateRaw(requestParameters, initOverrides);
     }
 
     /**
      * creates an admin user if one does not exist
      * Create Admin User
      */
-    async createAdminUserRaw(requestParameters: CreateAdminUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<User>> {
-        if (requestParameters['user'] == null) {
+    async createAdminUserRaw(requestParameters: CreateAdminUserOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateAdminUserResponse>> {
+        if (requestParameters['createAdminUserRequest'] == null) {
             throw new runtime.RequiredError(
-                'user',
-                'Required parameter "user" was null or undefined when calling createAdminUser().'
+                'createAdminUserRequest',
+                'Required parameter "createAdminUserRequest" was null or undefined when calling createAdminUser().'
             );
         }
 
@@ -94,28 +100,28 @@ export class UserControllerApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/api/v1/user/register`,
+            path: `/api/v1/user/create-admin-user`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-            body: UserToJSON(requestParameters['user']),
+            body: CreateAdminUserRequestToJSON(requestParameters['createAdminUserRequest']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => UserFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreateAdminUserResponseFromJSON(jsonValue));
     }
 
     /**
      * creates an admin user if one does not exist
      * Create Admin User
      */
-    async createAdminUser(requestParameters: CreateAdminUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<User> {
+    async createAdminUser(requestParameters: CreateAdminUserOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateAdminUserResponse> {
         const response = await this.createAdminUserRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
      * clears the authentication token cookie
-     * logout
+     * Logout
      */
     async logoutRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         const queryParameters: any = {};
@@ -134,7 +140,7 @@ export class UserControllerApi extends runtime.BaseAPI {
 
     /**
      * clears the authentication token cookie
-     * logout
+     * Logout
      */
     async logout(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.logoutRaw(initOverrides);
@@ -142,7 +148,7 @@ export class UserControllerApi extends runtime.BaseAPI {
 
     /**
      * returns the username of the logged in user if their token is valid
-     * whoami
+     * Whoami
      */
     async whoamiRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<WhoamiResponse>> {
         const queryParameters: any = {};
@@ -161,7 +167,7 @@ export class UserControllerApi extends runtime.BaseAPI {
 
     /**
      * returns the username of the logged in user if their token is valid
-     * whoami
+     * Whoami
      */
     async whoami(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<WhoamiResponse> {
         const response = await this.whoamiRaw(initOverrides);

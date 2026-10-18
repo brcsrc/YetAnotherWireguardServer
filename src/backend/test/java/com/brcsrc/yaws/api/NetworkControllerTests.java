@@ -4,6 +4,10 @@ import com.brcsrc.yaws.model.Network;
 import com.brcsrc.yaws.model.NetworkStatus;
 import com.brcsrc.yaws.model.User;
 import com.brcsrc.yaws.model.requests.CreateNetworkResponse;
+import com.brcsrc.yaws.model.requests.DeleteNetworkRequest;
+import com.brcsrc.yaws.model.requests.DeleteNetworkResponse;
+import com.brcsrc.yaws.model.requests.DescribeNetworkRequest;
+import com.brcsrc.yaws.model.requests.DescribeNetworkResponse;
 import com.brcsrc.yaws.model.requests.ListNetworksRequest;
 import com.brcsrc.yaws.model.requests.ListNetworksResponse;
 import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
@@ -91,7 +95,7 @@ public class NetworkControllerTests {
 
     @BeforeEach
     public void setup() {
-        baseUrl = "http://localhost:" + port + "/api/v1/networks";
+        baseUrl = "http://localhost:" + port + "/api/v1/network";
         createNetworkUrl = baseUrl + "/create-network";
         updateNetworkUrl = baseUrl + "/update-network";
     }
@@ -531,7 +535,7 @@ public class NetworkControllerTests {
         // Create request with empty body (both page and maxItems will be null)
         ListNetworksRequest request = new ListNetworksRequest();
 
-        String listNetworksUrl = baseUrl + "/list";
+        String listNetworksUrl = baseUrl + "/list-networks";
 
         ResponseEntity<ListNetworksResponse> listNetworkResponse = restClient.post()
                 .uri(listNetworksUrl)
@@ -575,7 +579,7 @@ public class NetworkControllerTests {
         request.setPage(0);
         request.setMaxItems(1);
 
-        String listNetworksUrl = baseUrl + "/list";
+        String listNetworksUrl = baseUrl + "/list-networks";
 
         ResponseEntity<ListNetworksResponse> listNetworkResponse = restClient.post()
                 .uri(listNetworksUrl)
@@ -607,16 +611,19 @@ public class NetworkControllerTests {
         network.setNetworkTag(testNetworkTag);
         networkService.createNetwork(network);
 
-        String describeNetworkUrl = String.format("%s/%s", baseUrl, testNetworkName);
+        DescribeNetworkRequest describeRequest = new DescribeNetworkRequest();
+        describeRequest.setNetworkName(testNetworkName);
 
-        ResponseEntity<Network> describeNetworkResponse = restClient.get()
-                .uri(describeNetworkUrl)
+        ResponseEntity<DescribeNetworkResponse> describeNetworkResponse = restClient.post()
+                .uri(baseUrl + "/describe-network")
                 .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(describeRequest)
                 .retrieve()
-                .toEntity(Network.class);
+                .toEntity(DescribeNetworkResponse.class);
 
         assertEquals(200, describeNetworkResponse.getStatusCode().value());
-        Network describedNetwork = describeNetworkResponse.getBody();
+        assert describeNetworkResponse.getBody() != null;
+        Network describedNetwork = describeNetworkResponse.getBody().getNetwork();
         assert describedNetwork != null;
 
         assertEquals(testNetworkName, describedNetwork.getNetworkName());
@@ -634,16 +641,19 @@ public class NetworkControllerTests {
         network.setNetworkTag(testNetworkTag);
         networkService.createNetwork(network);
 
-        String deleteNetworkUrl = String.format("%s/%s", baseUrl, testNetworkName);
+        DeleteNetworkRequest deleteRequest = new DeleteNetworkRequest();
+        deleteRequest.setNetworkName(testNetworkName);
 
-        ResponseEntity<Network> deleteNetworkResponse = restClient.delete()
-                .uri(deleteNetworkUrl)
+        ResponseEntity<DeleteNetworkResponse> deleteNetworkResponse = restClient.post()
+                .uri(baseUrl + "/delete-network")
                 .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(deleteRequest)
                 .retrieve()
-                .toEntity(Network.class);
+                .toEntity(DeleteNetworkResponse.class);
 
         assertEquals(200, deleteNetworkResponse.getStatusCode().value());
-        Network deletedNetwork = deleteNetworkResponse.getBody();
+        assert deleteNetworkResponse.getBody() != null;
+        Network deletedNetwork = deleteNetworkResponse.getBody().getNetwork();
         assert deletedNetwork != null;
 
         assertEquals(testNetworkName, deletedNetwork.getNetworkName());

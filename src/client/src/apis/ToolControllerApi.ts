@@ -37,8 +37,8 @@ export class ToolControllerApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
         const response = await this.request({
-            path: `/api/v1/tools/public-ip`,
-            method: 'GET',
+            path: `/api/v1/tool/get-public-ip`,
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
         }, initOverrides);

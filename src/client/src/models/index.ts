@@ -1,10 +1,24 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './AuthenticateRequest';
 export * from './Client';
+export * from './CreateAdminUserRequest';
+export * from './CreateAdminUserResponse';
 export * from './CreateNetworkClientRequest';
 export * from './CreateNetworkClientResponse';
 export * from './CreateNetworkRequest';
 export * from './CreateNetworkResponse';
+export * from './DeleteNetworkClientRequest';
+export * from './DeleteNetworkClientResponse';
+export * from './DeleteNetworkRequest';
+export * from './DeleteNetworkResponse';
+export * from './DescribeNetworkClientRequest';
+export * from './DescribeNetworkClientResponse';
+export * from './DescribeNetworkRequest';
+export * from './DescribeNetworkResponse';
+export * from './GetNetworkClientConfigFileQRRequest';
+export * from './GetNetworkClientConfigFileRequest';
+export * from './GetNextAvailableClientAddressRequest';
 export * from './GetNextAvailableClientAddressResponse';
 export * from './GetPublicIpResponse';
 export * from './ListNetworkClientsRequest';
@@ -20,5 +34,4 @@ export * from './UpdateNetworkClientRequest';
 export * from './UpdateNetworkClientResponse';
 export * from './UpdateNetworkRequest';
 export * from './UpdateNetworkResponse';
-export * from './User';
 export * from './WhoamiResponse';

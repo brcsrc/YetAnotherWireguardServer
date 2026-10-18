@@ -102,7 +102,8 @@ public class SecurityConfiguration {
 
                     // Allow unauthenticated access to public API endpoints
                     registry.requestMatchers(
-                            "/api/v1/user/register",            // User creation API
+                            "/api/v1/user/create-admin-user",   // admin bootstrap, must be reachable
+                                                               // before any user exists
                             "/api/v1/user/authenticate",        // User authentication API
                             "/api/v1/user/logout",              // User logout API
                             "/error"                            // Allow error page access

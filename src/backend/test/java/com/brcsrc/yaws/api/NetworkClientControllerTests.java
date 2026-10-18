@@ -9,6 +9,7 @@ import com.brcsrc.yaws.model.requests.CreateNetworkClientResponse;
 import com.brcsrc.yaws.model.requests.UpdateNetworkClientRequest;
 import com.brcsrc.yaws.model.requests.UpdateNetworkClientResponse;
 import com.brcsrc.yaws.model.NetworkStatus;
+import com.brcsrc.yaws.model.requests.GetNetworkClientConfigFileRequest;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
 import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
 import com.brcsrc.yaws.shell.Executor;
@@ -115,7 +116,7 @@ public class NetworkClientControllerTests {
 
     @BeforeEach
     public void setup() {
-        baseUrl = "http://localhost:" + port + "/api/v1/clients";
+        baseUrl = "http://localhost:" + port + "/api/v1/client";
         createClientUrl = baseUrl + "/create-client";
         updateClientUrl = baseUrl + "/update-client";
 
@@ -466,7 +467,7 @@ public class NetworkClientControllerTests {
         ListNetworkClientsRequest listNetworkClientsRequest = new ListNetworkClientsRequest();
         listNetworkClientsRequest.setNetworkName(testNetworkName);
 
-        String listClientsUrl = baseUrl + "/list";
+        String listClientsUrl = baseUrl + "/list-clients";
 
         ResponseEntity<ListNetworkClientsResponse> response = restClient.post()
                 .uri(listClientsUrl)
@@ -527,7 +528,7 @@ public class NetworkClientControllerTests {
         request.setPage(0);
         request.setMaxItems(1);
 
-        String listClientsUrl = baseUrl + "/list";
+        String listClientsUrl = baseUrl + "/list-clients";
 
         ResponseEntity<ListNetworkClientsResponse> response = restClient.post()
                 .uri(listClientsUrl)
@@ -578,10 +579,14 @@ public class NetworkClientControllerTests {
         assertTrue(Files.exists(Paths.get(clientConfigAbsPath)), "Client configuration file should exist");
 
         // Get the config file
-        String configUrl = String.format("%s/%s/%s/config", baseUrl, testNetworkName, testClientName);
-        ResponseEntity<Resource> response = restClient.get()
-                .uri(configUrl)
+        GetNetworkClientConfigFileRequest configRequest = new GetNetworkClientConfigFileRequest();
+        configRequest.setNetworkName(testNetworkName);
+        configRequest.setClientName(testClientName);
+
+        ResponseEntity<Resource> response = restClient.post()
+                .uri(baseUrl + "/get-client-config")
                 .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(configRequest)
                 .retrieve()
                 .toEntity(Resource.class);
 

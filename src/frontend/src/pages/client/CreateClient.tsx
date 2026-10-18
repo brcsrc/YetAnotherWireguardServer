@@ -115,7 +115,7 @@ const CreateClient = () => {
       }
       try {
         const response = await networkClientClient.getNextAvailableClientAddress({
-          networkName: networkName,
+          getNextAvailableClientAddressRequest: { networkName: networkName },
         });
         setClientIp(response.nextAvailableAddress);
       } catch (error) {

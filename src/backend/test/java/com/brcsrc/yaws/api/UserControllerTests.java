@@ -2,6 +2,7 @@ package com.brcsrc.yaws.api;
 
 import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.User;
+import com.brcsrc.yaws.model.requests.CreateAdminUserResponse;
 import com.brcsrc.yaws.model.requests.WhoamiResponse;
 import com.brcsrc.yaws.persistence.UserRepository;
 import com.brcsrc.yaws.security.JwtService;
@@ -21,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.client.RestClient;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -72,13 +74,13 @@ public class UserControllerTests {
         user.setUserName(testUserName);
         user.setPassword(testPassword);
 
-        String createUserUrl = baseUrl + "/register";
+        String createUserUrl = baseUrl + "/create-admin-user";
 
-        ResponseEntity<User> response = restClient.post()
+        ResponseEntity<CreateAdminUserResponse> response = restClient.post()
                 .uri(createUserUrl)
                 .body(user)
                 .retrieve()
-                .toEntity(User.class);
+                .toEntity(CreateAdminUserResponse.class);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
@@ -95,26 +97,27 @@ public class UserControllerTests {
         // slightly different. passwordEncoder.matches is good for this use case
         assertTrue(passwordEncoder.matches(testPassword, userFromDb.getPassword()));
 
-        // assert the returned values from the api are appropriate
+        // assert the returned values from the api are appropriate. the response carries the user
+        // name only: it previously returned the whole User entity, which serialized the bcrypt
+        // password hash back to the caller
         assertEquals(testUserName, response.getBody().getUserName());
-        assertTrue(passwordEncoder.matches(testPassword, response.getBody().getPassword()));
     }
 
     @Test
     public void createAdminUserThrowsExceptionWhenAlreadyExists() {
         // this application is intended to only have a single user, the 'admin' user.
         // when it already exists, further createAdminUser requests should be rejected
-        String createUserUrl = baseUrl + "/register";
+        String createUserUrl = baseUrl + "/create-admin-user";
 
         User user = new User();
         user.setUserName(testUserName);
         user.setPassword(testPassword);
 
-        ResponseEntity<User> response = restClient.post()
+        ResponseEntity<CreateAdminUserResponse> response = restClient.post()
                 .uri(createUserUrl)
                 .body(user)
                 .retrieve()
-                .toEntity(User.class);
+                .toEntity(CreateAdminUserResponse.class);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
@@ -146,7 +149,7 @@ public class UserControllerTests {
 
     @Test
     public void createAdminUserThrowsExceptionOnShortPassword() {
-        String createUserUrl = baseUrl + "/register";
+        String createUserUrl = baseUrl + "/create-admin-user";
 
         User user = new User();
         user.setUserName(testUserName);
@@ -170,7 +173,7 @@ public class UserControllerTests {
 
     @Test
     public void createAdminUserThrowsExceptionOnSimplePassword() {
-        String createUserUrl = baseUrl + "/register";
+        String createUserUrl = baseUrl + "/create-admin-user";
 
         User user = new User();
         user.setUserName(testUserName);
@@ -372,5 +375,30 @@ public class UserControllerTests {
                 });
 
         assertEquals(HttpStatus.FORBIDDEN, whoamiResponse.getStatusCode());
+    }
+
+    @Test
+    public void createAdminUserDoesNotReturnThePasswordHash() {
+        // the previous version of this endpoint returned the User entity, which serialized the
+        // bcrypt hash back to the caller. assert on the raw json so the check cannot pass just
+        // because a typed response object happens to drop the field
+        User user = new User();
+        user.setUserName(testUserName);
+        user.setPassword(testPassword);
+
+        ResponseEntity<String> response = restClient.post()
+                .uri(baseUrl + "/create-admin-user")
+                .body(user)
+                .retrieve()
+                .toEntity(String.class);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        String body = response.getBody();
+        assertNotNull(body);
+        assertTrue(body.contains(testUserName), "response should carry the user name");
+        assertFalse(body.toLowerCase().contains("password"),
+                "response must not contain a password field: " + body);
+        assertFalse(body.contains("$2a$"),
+                "response must not contain a bcrypt hash: " + body);
     }
 }

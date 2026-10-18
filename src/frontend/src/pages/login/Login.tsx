@@ -80,7 +80,7 @@ const Login = () => {
     setLoading(true);
     try {
       await userClient.createAdminUser({
-        user: {
+        createAdminUserRequest: {
           userName: usernameInput,
           password: password,
         },
@@ -95,8 +95,8 @@ const Login = () => {
 
       // Automatically log in after successful registration
       try {
-        await userClient.authenticateAndIssueToken({
-          user: {
+        await userClient.authenticate({
+          authenticateRequest: {
             userName: usernameInput,
             password: password,
           },
@@ -133,8 +133,8 @@ const Login = () => {
   const handleAuthenticateClick = async () => {
     setLoading(true);
     try {
-      await userClient.authenticateAndIssueToken({
-        user: {
+      await userClient.authenticate({
+        authenticateRequest: {
           userName: usernameInput,
           password: password,
         },

@@ -97,7 +97,7 @@ export function streamNetworkConnectionInfo(
 ): EventSource {
   const { onMessage, onError, onOpen } = options;
 
-  const url = `${window.location.origin}/api/v1/system/wg-show/network`;
+  const url = `${window.location.origin}/api/v1/system/stream-network-connection-info`;
 
   const controller = new AbortController();
 
@@ -230,7 +230,7 @@ export function streamClientConnectionInfo(
 ): EventSource {
   const { onMessage, onError, onOpen } = options;
 
-  const url = `${window.location.origin}/api/v1/system/wg-show/client`;
+  const url = `${window.location.origin}/api/v1/system/stream-client-connection-info`;
 
   const controller = new AbortController();
 

@@ -1,31 +1,49 @@
 package com.brcsrc.yaws.api;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
 import com.brcsrc.yaws.model.Constants;
-import com.brcsrc.yaws.model.NetworkClient;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientRequest;
 import com.brcsrc.yaws.model.requests.CreateNetworkClientResponse;
+import com.brcsrc.yaws.model.requests.DeleteNetworkClientRequest;
+import com.brcsrc.yaws.model.requests.DeleteNetworkClientResponse;
+import com.brcsrc.yaws.model.requests.DescribeNetworkClientRequest;
+import com.brcsrc.yaws.model.requests.DescribeNetworkClientResponse;
+import com.brcsrc.yaws.model.requests.GetNetworkClientConfigFileQRRequest;
+import com.brcsrc.yaws.model.requests.GetNetworkClientConfigFileRequest;
+import com.brcsrc.yaws.model.requests.GetNextAvailableClientAddressRequest;
+import com.brcsrc.yaws.model.requests.GetNextAvailableClientAddressResponse;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsResponse;
 import com.brcsrc.yaws.model.requests.UpdateNetworkClientRequest;
 import com.brcsrc.yaws.model.requests.UpdateNetworkClientResponse;
 import com.brcsrc.yaws.service.NetworkClientService;
-import io.swagger.v3.oas.annotations.Operation;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+
+/**
+ * every operation is POST /api/v1/client/<operation-name> and takes a <Operation>Request body.
+ *
+ * most return a matching <Operation>Response. the two config download operations are the
+ * exception: they return the file itself, a .conf or a PNG, because the payload is not JSON.
+ * their paths still follow the convention.
+ */
 @RestController
-@RequestMapping(Constants.BASE_URL + "/clients")
+@RequestMapping(Constants.BASE_URL + "/client")
 public class NetworkClientController {
 
     private final NetworkClientService networkClientService;
@@ -43,6 +61,21 @@ public class NetworkClientController {
         return new CreateNetworkClientResponse(this.networkClientService.addClientToNetwork(request));
     }
 
+    @Operation(summary = "Describe Network Client", description = "describe a specific client for a specific network")
+    @PostMapping("/describe-client")
+    public DescribeNetworkClientResponse describeNetworkClient(@RequestBody DescribeNetworkClientRequest request) {
+        logger.info("received DescribeNetworkClient request: {}", request);
+        return new DescribeNetworkClientResponse(this.networkClientService.describeNetworkClient(
+                request.getNetworkName(), request.getClientName()));
+    }
+
+    @Operation(summary = "List Network Clients", description = "list clients for a specific network with pagination")
+    @PostMapping("/list-clients")
+    public ListNetworkClientsResponse listNetworkClients(@RequestBody ListNetworkClientsRequest request) {
+        logger.info("received ListNetworkClients request: {}", request);
+        return this.networkClientService.listNetworkClients(request);
+    }
+
     @Operation(summary = "Update Network Client", description = "update the tag or peer isolation of a client")
     @PostMapping("/update-client")
     public UpdateNetworkClientResponse updateNetworkClient(@RequestBody UpdateNetworkClientRequest request) {
@@ -50,66 +83,58 @@ public class NetworkClientController {
         return new UpdateNetworkClientResponse(this.networkClientService.updateNetworkClient(request));
     }
 
-    @Operation(summary = "List Network Clients", description = "list clients for a specific network with pagination")
-    @PostMapping("/list")
-    public ListNetworkClientsResponse listNetworkClients(@RequestBody ListNetworkClientsRequest listNetworkClientsRequest) {
-        logger.info("received ListNetworkClients request: {}", listNetworkClientsRequest);
-        return this.networkClientService.listNetworkClients(listNetworkClientsRequest);
-    }
-
     @Operation(summary = "Delete Network Client", description = "delete a specific client for a network")
-    @DeleteMapping("/{networkName}/{clientName}")
-    public NetworkClient deleteNetworkClient(@PathVariable String networkName, @PathVariable String clientName) {
-        logger.info("received DeleteNetwork request");
-        return this.networkClientService.deleteNetworkClient(networkName, clientName);
+    @PostMapping("/delete-client")
+    public DeleteNetworkClientResponse deleteNetworkClient(@RequestBody DeleteNetworkClientRequest request) {
+        logger.info("received DeleteNetworkClient request: {}", request);
+        return new DeleteNetworkClientResponse(this.networkClientService.deleteNetworkClient(
+                request.getNetworkName(), request.getClientName()));
     }
 
-    @Operation(summary = "Describe Network Clients", description = "describe a specific client for a specific network")
-    @GetMapping("/{networkName}/{clientName}")
-    public NetworkClient describeNetworkClient(@PathVariable String networkName, @PathVariable String clientName) {
-        logger.info("received DescribeNetworkClient request");
-        return this.networkClientService.describeNetworkClient(networkName, clientName);
+    @Operation(summary = "Get Next Available Client Address",
+            description = "get the next available IP address for a client on a given network")
+    @PostMapping("/get-next-available-address")
+    public GetNextAvailableClientAddressResponse getNextAvailableClientAddress(
+            @RequestBody GetNextAvailableClientAddressRequest request) {
+        logger.info("received GetNextAvailableClientAddress request: {}", request);
+        return new GetNextAvailableClientAddressResponse(
+                this.networkClientService.getNextAvailableClientAddress(request.getNetworkName()));
     }
 
-    @Operation(summary = "Get Network Client Configuration File", description = "get a networkclient configuration .conf file for a client on a given network to be downloadable")
-    @GetMapping("/{networkName}/{clientName}/config")
-    public ResponseEntity<Resource> getNetworkClientConfigFile(@PathVariable String networkName, @PathVariable String clientName) {
-        logger.info("received GetNetworkClientConfigFile request");
-        java.io.File configFile = this.networkClientService.getNetworkClientConfigFile(networkName, clientName);
-        Resource configFileResource = new org.springframework.core.io.FileSystemResource(configFile);
+    @Operation(summary = "Get Network Client Configuration File",
+            description = "download a client's wireguard .conf file. returns the file rather than JSON")
+    @PostMapping("/get-client-config")
+    public ResponseEntity<Resource> getNetworkClientConfigFile(
+            @RequestBody GetNetworkClientConfigFileRequest request) {
+        logger.info("received GetNetworkClientConfigFile request: {}", request);
+        java.io.File configFile = this.networkClientService.getNetworkClientConfigFile(
+                request.getNetworkName(), request.getClientName());
+        Resource configFileResource = new FileSystemResource(configFile);
         return ResponseEntity.ok()
-                .contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
-                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + configFile.getName() + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + configFile.getName() + "\"")
                 .body(configFileResource);
     }
 
     @Operation(
         summary = "Get Network Client Configuration QR Code",
-        description = "get a QR code image of the client configuration for easy mobile scanning",
+        description = "render a client's configuration as a QR code. returns a PNG rather than JSON",
         responses = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            @ApiResponse(
                 responseCode = "200",
                 description = "QR code image",
-                content = @io.swagger.v3.oas.annotations.media.Content(
+                content = @Content(
                     mediaType = "image/png",
-                    schema = @io.swagger.v3.oas.annotations.media.Schema(type = "string", format = "binary")
+                    schema = @Schema(type = "string", format = "binary")
                 )
             )
         }
     )
-    @GetMapping(value = "/{networkName}/{clientName}/config/qr", produces = "image/png")
-    public byte[] getNetworkClientConfigFileQR(@PathVariable String networkName, @PathVariable String clientName) {
-        logger.info("received GetNetworkClientConfigFileQR request for network: {}, client: {}", networkName, clientName);
-        return this.networkClientService.getNetworkClientConfigFileQR(networkName, clientName);
+    @PostMapping(value = "/get-client-config-qr", produces = MediaType.IMAGE_PNG_VALUE)
+    public byte[] getNetworkClientConfigFileQR(@RequestBody GetNetworkClientConfigFileQRRequest request) {
+        logger.info("received GetNetworkClientConfigFileQR request: {}", request);
+        return this.networkClientService.getNetworkClientConfigFileQR(
+                request.getNetworkName(), request.getClientName());
     }
-
-    @Operation(summary = "Get Next Available Client Address", description = "get the next available IP address for a client on a given network")
-    @GetMapping("/{networkName}/next-ip")
-    public GetNextAvailableClientAddressResponse getNextAvailableClientAddress(@PathVariable String networkName) {
-        logger.info("received GetNextAvailableClientAddress request for network: {}", networkName);
-        String nextAddress = this.networkClientService.getNextAvailableClientAddress(networkName);
-        return new GetNextAvailableClientAddressResponse(nextAddress);
-    }
-
-    public record GetNextAvailableClientAddressResponse(String nextAvailableAddress) {}
 }

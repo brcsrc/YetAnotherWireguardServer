@@ -17,9 +17,12 @@ import * as runtime from '../runtime';
 import type {
   CreateNetworkRequest,
   CreateNetworkResponse,
+  DeleteNetworkRequest,
+  DeleteNetworkResponse,
+  DescribeNetworkRequest,
+  DescribeNetworkResponse,
   ListNetworksRequest,
   ListNetworksResponse,
-  Network,
   UpdateNetworkRequest,
   UpdateNetworkResponse,
 } from '../models/index';
@@ -28,12 +31,18 @@ import {
     CreateNetworkRequestToJSON,
     CreateNetworkResponseFromJSON,
     CreateNetworkResponseToJSON,
+    DeleteNetworkRequestFromJSON,
+    DeleteNetworkRequestToJSON,
+    DeleteNetworkResponseFromJSON,
+    DeleteNetworkResponseToJSON,
+    DescribeNetworkRequestFromJSON,
+    DescribeNetworkRequestToJSON,
+    DescribeNetworkResponseFromJSON,
+    DescribeNetworkResponseToJSON,
     ListNetworksRequestFromJSON,
     ListNetworksRequestToJSON,
     ListNetworksResponseFromJSON,
     ListNetworksResponseToJSON,
-    NetworkFromJSON,
-    NetworkToJSON,
     UpdateNetworkRequestFromJSON,
     UpdateNetworkRequestToJSON,
     UpdateNetworkResponseFromJSON,
@@ -44,12 +53,12 @@ export interface CreateNetworkOperationRequest {
     createNetworkRequest: CreateNetworkRequest;
 }
 
-export interface DeleteNetworkRequest {
-    networkName: string;
+export interface DeleteNetworkOperationRequest {
+    deleteNetworkRequest: DeleteNetworkRequest;
 }
 
-export interface DescribeNetworkRequest {
-    networkName: string;
+export interface DescribeNetworkOperationRequest {
+    describeNetworkRequest: DescribeNetworkRequest;
 }
 
 export interface ListNetworksOperationRequest {
@@ -84,7 +93,7 @@ export class NetworkControllerApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/api/v1/networks/create-network`,
+            path: `/api/v1/network/create-network`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
@@ -107,11 +116,11 @@ export class NetworkControllerApi extends runtime.BaseAPI {
      * delete a network
      * Delete Network
      */
-    async deleteNetworkRaw(requestParameters: DeleteNetworkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Network>> {
-        if (requestParameters['networkName'] == null) {
+    async deleteNetworkRaw(requestParameters: DeleteNetworkOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeleteNetworkResponse>> {
+        if (requestParameters['deleteNetworkRequest'] == null) {
             throw new runtime.RequiredError(
-                'networkName',
-                'Required parameter "networkName" was null or undefined when calling deleteNetwork().'
+                'deleteNetworkRequest',
+                'Required parameter "deleteNetworkRequest" was null or undefined when calling deleteNetwork().'
             );
         }
 
@@ -119,21 +128,24 @@ export class NetworkControllerApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        headerParameters['Content-Type'] = 'application/json';
+
         const response = await this.request({
-            path: `/api/v1/networks/{networkName}`.replace(`{${"networkName"}}`, encodeURIComponent(String(requestParameters['networkName']))),
-            method: 'DELETE',
+            path: `/api/v1/network/delete-network`,
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: DeleteNetworkRequestToJSON(requestParameters['deleteNetworkRequest']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => NetworkFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => DeleteNetworkResponseFromJSON(jsonValue));
     }
 
     /**
      * delete a network
      * Delete Network
      */
-    async deleteNetwork(requestParameters: DeleteNetworkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Network> {
+    async deleteNetwork(requestParameters: DeleteNetworkOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeleteNetworkResponse> {
         const response = await this.deleteNetworkRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -142,11 +154,11 @@ export class NetworkControllerApi extends runtime.BaseAPI {
      * describe a network
      * Describe Network
      */
-    async describeNetworkRaw(requestParameters: DescribeNetworkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Network>> {
-        if (requestParameters['networkName'] == null) {
+    async describeNetworkRaw(requestParameters: DescribeNetworkOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DescribeNetworkResponse>> {
+        if (requestParameters['describeNetworkRequest'] == null) {
             throw new runtime.RequiredError(
-                'networkName',
-                'Required parameter "networkName" was null or undefined when calling describeNetwork().'
+                'describeNetworkRequest',
+                'Required parameter "describeNetworkRequest" was null or undefined when calling describeNetwork().'
             );
         }
 
@@ -154,21 +166,24 @@ export class NetworkControllerApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        headerParameters['Content-Type'] = 'application/json';
+
         const response = await this.request({
-            path: `/api/v1/networks/{networkName}`.replace(`{${"networkName"}}`, encodeURIComponent(String(requestParameters['networkName']))),
-            method: 'GET',
+            path: `/api/v1/network/describe-network`,
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: DescribeNetworkRequestToJSON(requestParameters['describeNetworkRequest']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => NetworkFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => DescribeNetworkResponseFromJSON(jsonValue));
     }
 
     /**
      * describe a network
      * Describe Network
      */
-    async describeNetwork(requestParameters: DescribeNetworkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Network> {
+    async describeNetwork(requestParameters: DescribeNetworkOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DescribeNetworkResponse> {
         const response = await this.describeNetworkRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -192,7 +207,7 @@ export class NetworkControllerApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/api/v1/networks/list`,
+            path: `/api/v1/network/list-networks`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
@@ -230,7 +245,7 @@ export class NetworkControllerApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/api/v1/networks/update-network`,
+            path: `/api/v1/network/update-network`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,

@@ -68,6 +68,12 @@ export interface Network {
      */
     peerIsolationEnabled?: boolean;
     /**
+     * default PersistentKeepalive in seconds for clients on this network, 0 disables it
+     * @type {number}
+     * @memberof Network
+     */
+    persistentKeepalive?: number;
+    /**
      * 
      * @type {string}
      * @memberof Network
@@ -116,6 +122,7 @@ export function NetworkFromJSONTyped(json: any, ignoreDiscriminator: boolean): N
         'networkPublicKeyValue': json['networkPublicKeyValue'] == null ? undefined : json['networkPublicKeyValue'],
         'networkTag': json['networkTag'] == null ? undefined : json['networkTag'],
         'peerIsolationEnabled': json['peerIsolationEnabled'] == null ? undefined : json['peerIsolationEnabled'],
+        'persistentKeepalive': json['persistentKeepalive'] == null ? undefined : json['persistentKeepalive'],
         'networkStatus': json['networkStatus'] == null ? undefined : json['networkStatus'],
     };
 }
@@ -139,6 +146,7 @@ export function NetworkToJSONTyped(value?: Network | null, ignoreDiscriminator: 
         'networkPublicKeyValue': value['networkPublicKeyValue'],
         'networkTag': value['networkTag'],
         'peerIsolationEnabled': value['peerIsolationEnabled'],
+        'persistentKeepalive': value['persistentKeepalive'],
         'networkStatus': value['networkStatus'],
     };
 }

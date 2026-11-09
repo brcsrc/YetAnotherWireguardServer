@@ -178,6 +178,13 @@ const Network = () => {
                   </Badge>
                 ),
               },
+              {
+                label: "Persistent Keepalive",
+                value:
+                  network?.persistentKeepalive && network.persistentKeepalive > 0
+                    ? `${network.persistentKeepalive}s`
+                    : "Disabled",
+              },
             ]}
           />
         </ColumnLayout>

@@ -170,6 +170,7 @@ public class NetworkClientService {
         client.setNetworkEndpoint(request.getNetworkEndpoint());
         client.setClientTag(request.getClientTag());
         client.setPeerIsolationEnabled(request.isPeerIsolationEnabled());
+        client.setPersistentKeepalive(request.getPersistentKeepalive());
 
         // get these from existing network
         client.setNetworkListenPort(existingNetwork.getNetworkListenPort());
@@ -215,7 +216,8 @@ public class NetworkClientService {
                         networkPublicKeyValue,
                         String.format("%s:%s", client.getNetworkEndpoint(), client.getNetworkListenPort()),
                         client.getAllowedIps()),
-                client.getClientDns());
+                client.getClientDns(),
+                resolvePersistentKeepalive(existingNetwork, client));
         this.wireguardService.writeClientConfig(
                 existingNetwork.getNetworkName(),
                 client.getClientName(),
@@ -421,6 +423,64 @@ public class NetworkClientService {
      * other. a client left isolated under a network wide deny simply has no visible effect until
      * the network wide deny is lifted.
      */
+    /**
+     * rewrites a client's config file from its stored attributes and existing key material.
+     *
+     * used when a setting that lives only in the client config changes, such as
+     * PersistentKeepalive. the keys are untouched so the peer entry on the server stays valid
+     * and no tunnel is interrupted. the client does need to re download the file.
+     */
+    private void regenerateClientConfig(Network network, Client client) {
+        final String clientPrivKeyPath = FilepathUtils.getClientKeyPath(
+                network.getNetworkName(),
+                client.getClientPrivateKeyName());
+        final String networkPubKeyPath = FilepathUtils.getNetworkKeyPath(
+                network.getNetworkName(),
+                network.getNetworkPublicKeyName());
+
+        final String clientPrivateKeyValue;
+        final String networkPublicKeyValue;
+        try {
+            clientPrivateKeyValue = Files.readString(java.nio.file.Path.of(clientPrivKeyPath)).trim();
+            networkPublicKeyValue = Files.readString(java.nio.file.Path.of(networkPubKeyPath)).trim();
+        } catch (IOException e) {
+            logger.error(
+                    "error reading key files to regenerate config for client '{}': {}",
+                    client.getClientName(),
+                    e.getMessage());
+            throw new InternalServerException("failed to regenerate client configuration");
+        }
+
+        ClientConfig clientConfig = new ClientConfig(
+                new NetworkInterface(
+                        client.getClientCidr(),
+                        client.getNetworkListenPort(),
+                        clientPrivateKeyValue),
+                new PeerConfig(
+                        networkPublicKeyValue,
+                        String.format("%s:%s", client.getNetworkEndpoint(), client.getNetworkListenPort()),
+                        client.getAllowedIps()),
+                client.getClientDns(),
+                resolvePersistentKeepalive(network, client));
+        this.wireguardService.writeClientConfig(
+                network.getNetworkName(),
+                client.getClientName(),
+                clientConfig);
+    }
+
+    /**
+     * the PersistentKeepalive to write into a client's config.
+     *
+     * the client's own value wins when set, including an explicit 0 to disable keepalive for a
+     * battery sensitive device. a null client value inherits the network default.
+     */
+    private Integer resolvePersistentKeepalive(Network network, Client client) {
+        if (client.getPersistentKeepalive() != null) {
+            return client.getPersistentKeepalive();
+        }
+        return network.getPersistentKeepalive();
+    }
+
     public NetworkClient updateNetworkClient(UpdateNetworkClientRequest request) {
         if (request == null) {
             String errMsg = "UpdateNetworkClientRequest cannot be null";
@@ -437,8 +497,10 @@ public class NetworkClientService {
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
-        if (request.getClientTag() == null && request.getPeerIsolationEnabled() == null) {
-            String errMsg = "At least one field (clientTag or peerIsolationEnabled) must be provided for update";
+        if (request.getClientTag() == null
+                && request.getPeerIsolationEnabled() == null
+                && request.getPersistentKeepalive() == null) {
+            String errMsg = "At least one field (clientTag, peerIsolationEnabled or persistentKeepalive) must be provided for update";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }
@@ -478,6 +540,17 @@ public class NetworkClientService {
             }
 
             client.setPeerIsolationEnabled(enabled);
+        }
+
+        if (request.getPersistentKeepalive() != null) {
+            logger.info(
+                    "setting persistent keepalive for client '{}' to {}s",
+                    client.getClientName(),
+                    request.getPersistentKeepalive());
+            client.setPersistentKeepalive(request.getPersistentKeepalive());
+            // keepalive lives only in the client config, so the file has to be rewritten.
+            // no tunnel is disturbed, but the client must re download to pick it up
+            regenerateClientConfig(network, client);
         }
 
         this.clientRepository.save(client);

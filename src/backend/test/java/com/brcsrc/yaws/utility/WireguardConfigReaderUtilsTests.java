@@ -113,6 +113,32 @@ public class WireguardConfigReaderUtilsTests {
     }
 
     @Test
+    public void testReadNetworkConfigPassesOnDashAndUnderscoreFileName() throws IOException {
+        // network names are created with dashes and underscores allowed, so the reader must accept them
+        String fileName = "user-net_1.conf";
+        String filePath = BASE_PATH + fileName;
+        String content = """
+                [Interface]
+                PrivateKey = ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890=
+                Address = 10.0.0.1/24
+                ListenPort = 51820
+                """;
+        createFile(filePath, content);
+
+        assertDoesNotThrow(() -> WireguardConfigReaderUtils.readNetworkConfig(fileName));
+
+        Files.delete(Paths.get(filePath));
+    }
+
+    @Test
+    public void testReadNetworkConfigThrowsExceptionOnDirectoryTraversal() {
+        WireguardConfigFileReadException exception = assertThrows(WireguardConfigFileReadException.class, () -> {
+            WireguardConfigReaderUtils.readNetworkConfig("../user-net.conf");
+        });
+        assertEquals("file does not match expected naming pattern", exception.getMessage());
+    }
+
+    @Test
     public void testReadNetworkConfigThrowsExceptionOnFileDoesNotExist() {
         String nonExistentFileName = "nonExistent.conf";
 

@@ -3,6 +3,8 @@ package com.brcsrc.yaws.model.requests;
 import com.brcsrc.yaws.model.Constants;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
@@ -33,4 +35,9 @@ public class CreateNetworkClientRequest {
     @Schema(description = "when true this client can neither reach nor be reached by any other "
             + "peer on the network. its traffic still routes through the server to the internet")
     private boolean peerIsolationEnabled;
+
+    @Min(0)
+    @Max(Constants.MAX_PERSISTENT_KEEPALIVE_SECONDS)
+    @Schema(description = "PersistentKeepalive in seconds for this client, 0 disables it, omit to inherit the network default")
+    private Integer persistentKeepalive;
 }

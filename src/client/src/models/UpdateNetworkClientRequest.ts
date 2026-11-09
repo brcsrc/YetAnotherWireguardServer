@@ -43,6 +43,12 @@ export interface UpdateNetworkClientRequest {
      * @memberof UpdateNetworkClientRequest
      */
     peerIsolationEnabled?: boolean;
+    /**
+     * PersistentKeepalive in seconds for this client, 0 disables it
+     * @type {number}
+     * @memberof UpdateNetworkClientRequest
+     */
+    persistentKeepalive?: number;
 }
 
 /**
@@ -68,6 +74,7 @@ export function UpdateNetworkClientRequestFromJSONTyped(json: any, ignoreDiscrim
         'clientName': json['clientName'],
         'clientTag': json['clientTag'] == null ? undefined : json['clientTag'],
         'peerIsolationEnabled': json['peerIsolationEnabled'] == null ? undefined : json['peerIsolationEnabled'],
+        'persistentKeepalive': json['persistentKeepalive'] == null ? undefined : json['persistentKeepalive'],
     };
 }
 
@@ -86,6 +93,7 @@ export function UpdateNetworkClientRequestToJSONTyped(value?: UpdateNetworkClien
         'clientName': value['clientName'],
         'clientTag': value['clientTag'],
         'peerIsolationEnabled': value['peerIsolationEnabled'],
+        'persistentKeepalive': value['persistentKeepalive'],
     };
 }
 

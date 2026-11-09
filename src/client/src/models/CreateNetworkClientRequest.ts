@@ -67,6 +67,12 @@ export interface CreateNetworkClientRequest {
      * @memberof CreateNetworkClientRequest
      */
     peerIsolationEnabled?: boolean;
+    /**
+     * PersistentKeepalive in seconds for this client, 0 disables it, omit to inherit the network default
+     * @type {number}
+     * @memberof CreateNetworkClientRequest
+     */
+    persistentKeepalive?: number;
 }
 
 /**
@@ -96,6 +102,7 @@ export function CreateNetworkClientRequestFromJSONTyped(json: any, ignoreDiscrim
         'networkEndpoint': json['networkEndpoint'] == null ? undefined : json['networkEndpoint'],
         'clientTag': json['clientTag'] == null ? undefined : json['clientTag'],
         'peerIsolationEnabled': json['peerIsolationEnabled'] == null ? undefined : json['peerIsolationEnabled'],
+        'persistentKeepalive': json['persistentKeepalive'] == null ? undefined : json['persistentKeepalive'],
     };
 }
 
@@ -118,6 +125,7 @@ export function CreateNetworkClientRequestToJSONTyped(value?: CreateNetworkClien
         'networkEndpoint': value['networkEndpoint'],
         'clientTag': value['clientTag'],
         'peerIsolationEnabled': value['peerIsolationEnabled'],
+        'persistentKeepalive': value['persistentKeepalive'],
     };
 }
 

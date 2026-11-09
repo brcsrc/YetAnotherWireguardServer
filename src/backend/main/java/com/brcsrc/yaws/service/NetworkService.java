@@ -96,6 +96,9 @@ public class NetworkService {
         network.setNetworkListenPort(request.getNetworkListenPort());
         network.setNetworkTag(request.getNetworkTag());
         network.setPeerIsolationEnabled(request.isPeerIsolationEnabled());
+        network.setPersistentKeepalive(request.getPersistentKeepalive() != null
+                ? request.getPersistentKeepalive()
+                : Constants.DEFAULT_PERSISTENT_KEEPALIVE_SECONDS);
         return createNetwork(network);
     }
 
@@ -378,6 +381,15 @@ public class NetworkService {
             updatePeerIsolation(network, updateNetworkRequest.getPeerIsolationEnabled());
         }
 
+        // applies to client configs generated after this point, existing ones are not rewritten
+        if (updateNetworkRequest.getPersistentKeepalive() != null) {
+            logger.info(
+                    "setting default persistent keepalive for network '{}' to {}s",
+                    networkName,
+                    updateNetworkRequest.getPersistentKeepalive());
+            network.setPersistentKeepalive(updateNetworkRequest.getPersistentKeepalive());
+        }
+
         // Save the updated network using a helper method
         return saveUpdatedNetwork(networkName, network);
     }
@@ -399,8 +411,9 @@ public class NetworkService {
 
         if (updateNetworkRequest.getNetworkTag() == null
                 && updateNetworkRequest.getNetworkStatus() == null
-                && updateNetworkRequest.getPeerIsolationEnabled() == null) {
-            String errMsg = "At least one field (networkTag, networkStatus or peerIsolationEnabled) must be provided for update";
+                && updateNetworkRequest.getPeerIsolationEnabled() == null
+                && updateNetworkRequest.getPersistentKeepalive() == null) {
+            String errMsg = "At least one field (networkTag, networkStatus, peerIsolationEnabled or persistentKeepalive) must be provided for update";
             logger.error(errMsg);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errMsg);
         }

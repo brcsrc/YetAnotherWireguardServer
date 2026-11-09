@@ -1,8 +1,11 @@
 package com.brcsrc.yaws.model.requests;
 
+import com.brcsrc.yaws.model.Constants;
 import com.brcsrc.yaws.model.NetworkStatus;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -28,4 +31,10 @@ public class UpdateNetworkRequest {
     // boxed so an omitted field can be distinguished from an explicit false
     @Schema(description = "when true, no peer on this network can reach any other peer on it")
     private Boolean peerIsolationEnabled;
+
+    @Min(0)
+    @Max(Constants.MAX_PERSISTENT_KEEPALIVE_SECONDS)
+    // only affects client configs generated after this change
+    @Schema(description = "default PersistentKeepalive in seconds for clients on this network, 0 disables it")
+    private Integer persistentKeepalive;
 }

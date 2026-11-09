@@ -1,6 +1,10 @@
 package com.brcsrc.yaws.model.requests;
 
+import com.brcsrc.yaws.model.Constants;
+
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
@@ -28,4 +32,10 @@ public class UpdateNetworkClientRequest {
     @Schema(description = "when true this client can neither reach nor be reached by any other "
             + "peer on the network. its traffic still routes through the server to the internet")
     private Boolean peerIsolationEnabled;
+
+    @Min(0)
+    @Max(Constants.MAX_PERSISTENT_KEEPALIVE_SECONDS)
+    // the client must re download its config before this takes effect
+    @Schema(description = "PersistentKeepalive in seconds for this client, 0 disables it")
+    private Integer persistentKeepalive;
 }

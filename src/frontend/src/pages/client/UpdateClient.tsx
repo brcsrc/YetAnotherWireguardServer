@@ -7,7 +7,7 @@ import {
   Input,
   ColumnLayout,
   KeyValuePairs,
-  Toggle,
+  Checkbox,
 } from "@cloudscape-design/components";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation, useParams } from "react-router";
@@ -26,6 +26,8 @@ const UpdateClient = () => {
   const [client, setClient] = useState<Client | undefined>(location.state);
   const [clientTag, setClientTag] = useState("");
   const [peerIsolationEnabled, setPeerIsolationEnabled] = useState(false);
+  const [keepaliveOverridden, setKeepaliveOverridden] = useState(false);
+  const [persistentKeepalive, setPersistentKeepalive] = useState("25");
 
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -61,6 +63,10 @@ const UpdateClient = () => {
     if (client) {
       setClientTag(client.clientTag || "");
       setPeerIsolationEnabled(client.peerIsolationEnabled ?? false);
+      const hasOverride =
+        client.persistentKeepalive !== undefined && client.persistentKeepalive !== null;
+      setKeepaliveOverridden(hasOverride);
+      setPersistentKeepalive(hasOverride ? String(client.persistentKeepalive) : "25");
     }
   }, [client]);
 
@@ -73,6 +79,9 @@ const UpdateClient = () => {
           clientName: clientName,
           clientTag: clientTag || undefined,
           peerIsolationEnabled,
+          persistentKeepalive: keepaliveOverridden
+            ? parseInt(persistentKeepalive)
+            : undefined,
         },
       });
       addFlashbarItem({
@@ -145,12 +154,35 @@ const UpdateClient = () => {
                   label="Peer isolation"
                   description="When enabled, this client cannot reach any other client on the network, and no other client can reach it. Its traffic still routes through the server to the internet. Changing this does not disconnect any client."
                 >
-                  <Toggle
+                  <Checkbox
                     checked={peerIsolationEnabled}
                     onChange={({ detail }) => setPeerIsolationEnabled(detail.checked)}
                   >
-                    Isolate this client from other peers
-                  </Toggle>
+                    Enabled
+                  </Checkbox>
+                </FormField>
+
+                <FormField
+                  label="Persistent keepalive"
+                  description="Leave unchecked to inherit the network default. Set 0 to disable for this client only. The client must re-download its configuration for a change here to take effect."
+                >
+                  <SpaceBetween direction="horizontal" size="s" alignItems="center">
+                    <Checkbox
+                      checked={keepaliveOverridden}
+                      onChange={({ detail }) => setKeepaliveOverridden(detail.checked)}
+                    >
+                      Override network default
+                    </Checkbox>
+                    <div style={{ width: "8em" }}>
+                      <Input
+                        type="number"
+                        value={persistentKeepalive}
+                        onChange={({ detail }) => setPersistentKeepalive(detail.value)}
+                        placeholder="25"
+                        disabled={!keepaliveOverridden}
+                      />
+                    </div>
+                  </SpaceBetween>
                 </FormField>
               </SpaceBetween>
             </Container>
@@ -189,6 +221,14 @@ const UpdateClient = () => {
                       {
                         label: "Peer isolation",
                         value: peerIsolationEnabled ? "Enabled" : "Disabled",
+                      },
+                      {
+                        label: "Persistent keepalive",
+                        value: !keepaliveOverridden
+                          ? "Network default"
+                          : parseInt(persistentKeepalive) > 0
+                            ? `${persistentKeepalive}s`
+                            : "Disabled",
                       },
                     ]}
                   />

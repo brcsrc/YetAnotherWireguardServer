@@ -7,7 +7,7 @@ import {
   Input,
   ColumnLayout,
   KeyValuePairs,
-  Toggle,
+  Checkbox,
   Popover,
   Icon,
 } from "@cloudscape-design/components";
@@ -29,6 +29,9 @@ const CreateClient = () => {
   const [networkEndpoint, setNetworkEndpoint] = useState("");
 
   const [peerIsolationEnabled, setPeerIsolationEnabled] = useState(false);
+  // unchecked inherits the network default
+  const [keepaliveOverridden, setKeepaliveOverridden] = useState(false);
+  const [persistentKeepalive, setPersistentKeepalive] = useState("25");
 
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [showErrorText, setShowErrorText] = useState(false);
@@ -47,6 +50,9 @@ const CreateClient = () => {
           networkName,
           networkEndpoint,
           peerIsolationEnabled,
+          persistentKeepalive: keepaliveOverridden
+            ? parseInt(persistentKeepalive)
+            : undefined,
         },
       });
       addFlashbarItem({
@@ -254,12 +260,35 @@ const CreateClient = () => {
                   label="Peer isolation"
                   description="When enabled, this client cannot reach any other client on the network, and no other client can reach it. Its traffic still routes through the server to the internet."
                 >
-                  <Toggle
+                  <Checkbox
                     checked={peerIsolationEnabled}
                     onChange={({ detail }) => setPeerIsolationEnabled(detail.checked)}
                   >
-                    Isolate this client from other peers
-                  </Toggle>
+                    Enabled
+                  </Checkbox>
+                </FormField>
+
+                <FormField
+                  label="Persistent keepalive"
+                  description="Leave unchecked to inherit the network default. Set 0 to disable for this client only, which saves battery on mobile devices but means this client cannot be reached by other peers while idle."
+                >
+                  <SpaceBetween direction="horizontal" size="s" alignItems="center">
+                    <Checkbox
+                      checked={keepaliveOverridden}
+                      onChange={({ detail }) => setKeepaliveOverridden(detail.checked)}
+                    >
+                      Override network default
+                    </Checkbox>
+                    <div style={{ width: "8em" }}>
+                      <Input
+                        type="number"
+                        value={persistentKeepalive}
+                        onChange={({ detail }) => setPersistentKeepalive(detail.value)}
+                        placeholder="25"
+                        disabled={!keepaliveOverridden}
+                      />
+                    </div>
+                  </SpaceBetween>
                 </FormField>
               </SpaceBetween>
             </Container>
@@ -306,6 +335,14 @@ const CreateClient = () => {
                       {
                         label: "Peer isolation",
                         value: peerIsolationEnabled ? "Enabled" : "Disabled",
+                      },
+                      {
+                        label: "Persistent keepalive",
+                        value: !keepaliveOverridden
+                          ? "Network default"
+                          : parseInt(persistentKeepalive) > 0
+                            ? `${persistentKeepalive}s`
+                            : "Disabled",
                       },
                       {
                         label: "Network endpoint",

@@ -15,9 +15,9 @@ import java.util.Scanner;
 
 public class WireguardConfigReaderUtils {
     public static NetworkConfig readNetworkConfig(String configFileName) {
-        // parameter 'configFileName' must be 64 alphanumeric chars with no spaces and end in .conf
-        // it must also prevent directory traversal
-        if (!configFileName.matches("^[a-zA-Z0-9]{1,64}\\.conf$")) {
+        // parameter 'configFileName' must be up to 64 alphanumeric, dash or underscore chars and end in .conf.
+        // this matches the character set network names are created with. it must also prevent directory traversal
+        if (!configFileName.matches("^[a-zA-Z0-9_-]{1,64}\\.conf$")) {
             throw new WireguardConfigFileReadException("file does not match expected naming pattern");
         }
         // we only want to read from this path and not provide any others
@@ -151,8 +151,9 @@ public class WireguardConfigReaderUtils {
     }
 
     public static ClientConfig readClientConfig(String networkName, String configName) {
-        // parameter 'configFileName' must be 64 alphanumeric chars with no spaces and end in .conf
-        if (!configName.matches("^[a-zA-Z0-9]{1,64}$")) {
+        // parameter 'configName' must be up to 64 alphanumeric, dash or underscore chars, matching the
+        // character set client names are created with
+        if (!configName.matches("^[a-zA-Z0-9_-]{1,64}$")) {
             throw new WireguardConfigFileReadException("file does not match expected naming pattern");
         }
         // we only want to read from this path and not provide any others

@@ -36,4 +36,9 @@ public class CreateNetworkRequest {
 
     @Schema(description = "when true, no peer on this network can reach any other peer on it")
     private boolean peerIsolationEnabled;
+
+    @Min(0)
+    @Max(Constants.MAX_PERSISTENT_KEEPALIVE_SECONDS)
+    @Schema(description = "default PersistentKeepalive in seconds for clients on this network, 0 disables it, omit for the server default")
+    private Integer persistentKeepalive;
 }

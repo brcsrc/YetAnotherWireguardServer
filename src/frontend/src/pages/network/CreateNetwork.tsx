@@ -7,7 +7,7 @@ import {
   Input,
   ColumnLayout,
   KeyValuePairs,
-  Toggle,
+  Checkbox,
 } from "@cloudscape-design/components";
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -79,6 +79,8 @@ const CreateNetwork = () => {
   const [networkListenPort, setNetworkListenPort] = useState("");
   const [networkTag, setNetworkTag] = useState("");
   const [peerIsolationEnabled, setPeerIsolationEnabled] = useState(false);
+  const [keepaliveEnabled, setKeepaliveEnabled] = useState(true);
+  const [persistentKeepalive, setPersistentKeepalive] = useState("25");
 
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [showErrorText, setShowErrorText] = useState(false);
@@ -123,6 +125,7 @@ const CreateNetwork = () => {
           networkListenPort: parseInt(networkListenPort),
           networkTag: networkTag || undefined,
           peerIsolationEnabled,
+          persistentKeepalive: keepaliveEnabled ? parseInt(persistentKeepalive) : 0,
         },
       });
       addFlashbarItem({
@@ -288,12 +291,35 @@ const CreateNetwork = () => {
                   label="Peer isolation"
                   description="When enabled, clients on this network cannot reach each other. Clients can still reach the internet and the server. This can be changed at any time without disconnecting clients."
                 >
-                  <Toggle
+                  <Checkbox
                     checked={peerIsolationEnabled}
                     onChange={({ detail }) => setPeerIsolationEnabled(detail.checked)}
                   >
-                    Prevent clients from reaching each other
-                  </Toggle>
+                    Enabled
+                  </Checkbox>
+                </FormField>
+
+                <FormField
+                  label="Persistent keepalive"
+                  description="Default for clients on this network. Keeps idle clients reachable by other peers. Disable to save battery on mobile clients, at the cost of an idle client being unreachable until it sends traffic."
+                >
+                  <SpaceBetween direction="horizontal" size="s" alignItems="center">
+                    <Checkbox
+                      checked={keepaliveEnabled}
+                      onChange={({ detail }) => setKeepaliveEnabled(detail.checked)}
+                    >
+                      Enabled
+                    </Checkbox>
+                    <div style={{ width: "8em" }}>
+                      <Input
+                        type="number"
+                        value={persistentKeepalive}
+                        onChange={({ detail }) => setPersistentKeepalive(detail.value)}
+                        placeholder="25"
+                        disabled={!keepaliveEnabled}
+                      />
+                    </div>
+                  </SpaceBetween>
                 </FormField>
               </SpaceBetween>
             </Container>
@@ -336,6 +362,10 @@ const CreateNetwork = () => {
                       {
                         label: "Peer isolation",
                         value: peerIsolationEnabled ? "Enabled" : "Disabled",
+                      },
+                      {
+                        label: "Persistent keepalive",
+                        value: keepaliveEnabled ? `${persistentKeepalive}s` : "Disabled",
                       },
                     ]}
                   />

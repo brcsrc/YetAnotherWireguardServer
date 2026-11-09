@@ -48,6 +48,10 @@ public class Network {
     @Schema(description = "when true, no peer on this network can reach any other peer on it")
     private boolean peerIsolationEnabled;
 
+    // clients may override this individually
+    @Schema(description = "default PersistentKeepalive in seconds for clients on this network, 0 disables it")
+    private Integer persistentKeepalive = Constants.DEFAULT_PERSISTENT_KEEPALIVE_SECONDS;
+
     // internal use only
     @Enumerated(EnumType.STRING)
     private NetworkStatus networkStatus;
@@ -117,6 +121,14 @@ public class Network {
         this.peerIsolationEnabled = peerIsolationEnabled;
     }
 
+    public Integer getPersistentKeepalive() {
+        return persistentKeepalive;
+    }
+
+    public void setPersistentKeepalive(Integer persistentKeepalive) {
+        this.persistentKeepalive = persistentKeepalive;
+    }
+
     public NetworkStatus getNetworkStatus() {
         return networkStatus;
     }
@@ -136,6 +148,7 @@ public class Network {
                 ", networkPublicKeyValue='" + networkPublicKeyValue + '\'' +
                 ", networkTag='" + networkTag + '\'' +
                 ", peerIsolationEnabled=" + peerIsolationEnabled +
+                ", persistentKeepalive=" + persistentKeepalive +
                 ", networkStatus=" + networkStatus +
                 '}';
     }

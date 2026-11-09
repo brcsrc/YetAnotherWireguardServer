@@ -49,6 +49,12 @@ export interface CreateNetworkRequest {
      * @memberof CreateNetworkRequest
      */
     peerIsolationEnabled?: boolean;
+    /**
+     * default PersistentKeepalive in seconds for clients on this network, 0 disables it, omit for the server default
+     * @type {number}
+     * @memberof CreateNetworkRequest
+     */
+    persistentKeepalive?: number;
 }
 
 /**
@@ -76,6 +82,7 @@ export function CreateNetworkRequestFromJSONTyped(json: any, ignoreDiscriminator
         'networkListenPort': json['networkListenPort'],
         'networkTag': json['networkTag'] == null ? undefined : json['networkTag'],
         'peerIsolationEnabled': json['peerIsolationEnabled'] == null ? undefined : json['peerIsolationEnabled'],
+        'persistentKeepalive': json['persistentKeepalive'] == null ? undefined : json['persistentKeepalive'],
     };
 }
 
@@ -95,6 +102,7 @@ export function CreateNetworkRequestToJSONTyped(value?: CreateNetworkRequest | n
         'networkListenPort': value['networkListenPort'],
         'networkTag': value['networkTag'],
         'peerIsolationEnabled': value['peerIsolationEnabled'],
+        'persistentKeepalive': value['persistentKeepalive'],
     };
 }
 

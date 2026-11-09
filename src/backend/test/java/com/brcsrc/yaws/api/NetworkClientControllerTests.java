@@ -12,6 +12,7 @@ import com.brcsrc.yaws.model.NetworkStatus;
 import com.brcsrc.yaws.model.requests.GetNetworkClientConfigFileRequest;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsRequest;
 import com.brcsrc.yaws.model.requests.UpdateNetworkRequest;
+import com.brcsrc.yaws.shell.ExecutionResult;
 import com.brcsrc.yaws.shell.Executor;
 import com.brcsrc.yaws.utility.PeerIsolationUtils;
 import com.brcsrc.yaws.model.requests.ListNetworkClientsResponse;
@@ -35,6 +36,7 @@ import org.junit.jupiter.api.*;
 import org.springframework.web.client.HttpClientErrorException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -231,6 +233,48 @@ public class NetworkClientControllerTests {
         assertEquals(testAllowedIps, clientConfig.getPeerConfig().getAllowedIps());
         assertEquals(String.format("%s:%s", testNetworkEndpoint, testNetworkListenPort), clientConfig.getPeerConfig().getEndpoint());
 
+    }
+
+    @Test
+    public void testCreateNetworkClientOnNetworkWithDashedName() {
+        // network and client names allow dashes and underscores on create, so adding a peer must
+        // be able to read the network config back for such a name
+        String dashedNetworkName = "user-net";
+        String dashedClientName = "my-phone";
+
+        Network network = new Network();
+        network.setNetworkName(dashedNetworkName);
+        network.setNetworkCidr("10.101.0.1/24");
+        network.setNetworkListenPort(51821);
+        networkService.createNetwork(network);
+
+        try {
+            CreateNetworkClientRequest createNetworkClientRequest = new CreateNetworkClientRequest();
+            createNetworkClientRequest.setNetworkName(dashedNetworkName);
+            createNetworkClientRequest.setClientName(dashedClientName);
+            createNetworkClientRequest.setClientCidr("10.101.0.2/32");
+            createNetworkClientRequest.setClientDns(testClientDns);
+            createNetworkClientRequest.setAllowedIps(testAllowedIps);
+            createNetworkClientRequest.setNetworkEndpoint(testNetworkEndpoint);
+
+            ResponseEntity<CreateNetworkClientResponse> createNetworkClientResponse = restClient.post()
+                    .uri(createClientUrl)
+                    .header("Cookie", String.format("accessToken=%s", jwt))
+                    .body(createNetworkClientRequest)
+                    .retrieve()
+                    .toEntity(CreateNetworkClientResponse.class);
+
+            assertEquals(HttpStatus.OK, createNetworkClientResponse.getStatusCode());
+            assertNotNull(netClientRepository.findNetworkClientByNetwork_NetworkNameAndClient_ClientName(
+                    dashedNetworkName,
+                    dashedClientName
+            ));
+        } finally {
+            for (NetworkClient nc : this.netClientRepository.findAllByNetwork_NetworkName(dashedNetworkName)) {
+                networkClientService.deleteNetworkClient(dashedNetworkName, nc.getClient().getClientName());
+            }
+            networkService.deleteNetwork(dashedNetworkName);
+        }
     }
 
     @Test
@@ -818,5 +862,96 @@ public class NetworkClientControllerTests {
                     .toEntity(UpdateNetworkClientResponse.class);
         });
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    // ---- persistent keepalive (issue #69) ----
+
+    /** the PersistentKeepalive line in a client's generated config, or null when absent */
+    private String keepaliveInConfig(String clientName) throws IOException {
+        String path = FilepathUtils.getClientConfigPath(testNetworkName, clientName);
+        for (String line : Files.readAllLines(Paths.get(path))) {
+            if (line.startsWith("PersistentKeepalive")) {
+                return line.split("=")[1].trim();
+            }
+        }
+        return null;
+    }
+
+    @Test
+    public void testClientInheritsNetworkKeepaliveDefault() throws IOException {
+        // the network defaults to 25s, so a client that does not specify one inherits it
+        createClient(clientRequest("InheritClient", "10.100.0.20/24", false));
+
+        assertEquals("25", keepaliveInConfig("InheritClient"),
+                "client should inherit the network default of 25s");
+    }
+
+    @Test
+    public void testClientCanOverrideKeepaliveToZeroForBatteryLife() throws IOException {
+        // zero is the knob for battery sensitive devices: it opts a single client out of the
+        // network default without changing anything for the others
+        CreateNetworkClientRequest r = clientRequest("BatteryClient", "10.100.0.21/24", false);
+        r.setPersistentKeepalive(0);
+        createClient(r);
+
+        assertNull(keepaliveInConfig("BatteryClient"),
+                "an explicit 0 should omit the directive entirely");
+    }
+
+    @Test
+    public void testClientCanOverrideKeepaliveToACustomValue() throws IOException {
+        CreateNetworkClientRequest r = clientRequest("CustomClient", "10.100.0.22/24", false);
+        r.setPersistentKeepalive(15);
+        createClient(r);
+
+        assertEquals("15", keepaliveInConfig("CustomClient"));
+    }
+
+    @Test
+    public void testUpdateClientKeepaliveRegeneratesTheConfigFile() throws IOException {
+        // keepalive lives only in the client config, so an update has to rewrite the file.
+        // without the rewrite the change would be recorded in the database and never reach
+        // anyone who downloads the config
+        createClient(clientRequest("RegenClient", "10.100.0.23/24", false));
+        assertEquals("25", keepaliveInConfig("RegenClient"));
+
+        UpdateNetworkClientRequest update = new UpdateNetworkClientRequest();
+        update.setNetworkName(testNetworkName);
+        update.setClientName("RegenClient");
+        update.setPersistentKeepalive(0);
+
+        ResponseEntity<UpdateNetworkClientResponse> response = restClient.post()
+                .uri(updateClientUrl)
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(update)
+                .retrieve()
+                .toEntity(UpdateNetworkClientResponse.class);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNull(keepaliveInConfig("RegenClient"),
+                "the config file should have been rewritten without the directive");
+    }
+
+    @Test
+    public void testUpdateClientKeepaliveDoesNotDisturbTheTunnel() throws IOException {
+        // the server side peer entry and keys are untouched, so the interface must stay up
+        createClient(clientRequest("NoBounceClient", "10.100.0.24/24", false));
+        ExecutionResult before = Executor.runCommand(List.of("wg", "show", testNetworkName));
+        assertEquals(0, before.getExitCode());
+
+        UpdateNetworkClientRequest update = new UpdateNetworkClientRequest();
+        update.setNetworkName(testNetworkName);
+        update.setClientName("NoBounceClient");
+        update.setPersistentKeepalive(30);
+        restClient.post()
+                .uri(updateClientUrl)
+                .header("Cookie", String.format("accessToken=%s", jwt))
+                .body(update)
+                .retrieve()
+                .toEntity(UpdateNetworkClientResponse.class);
+
+        assertEquals(0, Executor.runCommand(List.of("wg", "show", testNetworkName)).getExitCode(),
+                "changing keepalive must not bring the interface down");
+        assertEquals("30", keepaliveInConfig("NoBounceClient"));
     }
 }

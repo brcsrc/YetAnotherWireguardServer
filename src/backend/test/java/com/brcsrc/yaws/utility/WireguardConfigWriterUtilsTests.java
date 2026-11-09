@@ -228,4 +228,46 @@ public class WireguardConfigWriterUtilsTests {
         // restore permissions so the temp dir can be cleaned up
         Files.setPosixFilePermissions(readOnlyDir, PosixFilePermissions.fromString("rwxr-xr-x"));
     }
+
+    @Test
+    void testRenderClientConfigWritesPersistentKeepaliveWhenSet() {
+        ClientConfig clientConfig = new ClientConfig(
+                new NetworkInterface("10.100.0.2/32", 51820, "dummyClientPrivateKey"),
+                new PeerConfig("dummyNetworkPublicKey", "vpn.example.com:51820", "0.0.0.0/0"),
+                "1.1.1.1",
+                25);
+
+        String rendered = WireguardConfigWriterUtils.renderClientConfig(clientConfig);
+
+        assertTrue(rendered.contains("PersistentKeepalive = 25\n"));
+        // it belongs to the [Peer] section, not [Interface]
+        assertTrue(rendered.indexOf("PersistentKeepalive") > rendered.indexOf("[Peer]"));
+    }
+
+    @Test
+    void testRenderClientConfigOmitsPersistentKeepaliveWhenNull() {
+        ClientConfig clientConfig = new ClientConfig(
+                new NetworkInterface("10.100.0.2/32", 51820, "dummyClientPrivateKey"),
+                new PeerConfig("dummyNetworkPublicKey", "vpn.example.com:51820", "0.0.0.0/0"),
+                "1.1.1.1");
+
+        String rendered = WireguardConfigWriterUtils.renderClientConfig(clientConfig);
+
+        assertTrue(!rendered.contains("PersistentKeepalive"));
+    }
+
+    @Test
+    void testRenderClientConfigOmitsPersistentKeepaliveWhenZero() {
+        // zero means off. wireguard treats a missing directive as off, so writing
+        // "PersistentKeepalive = 0" would be a confusing way to express the same thing
+        ClientConfig clientConfig = new ClientConfig(
+                new NetworkInterface("10.100.0.2/32", 51820, "dummyClientPrivateKey"),
+                new PeerConfig("dummyNetworkPublicKey", "vpn.example.com:51820", "0.0.0.0/0"),
+                "1.1.1.1",
+                0);
+
+        String rendered = WireguardConfigWriterUtils.renderClientConfig(clientConfig);
+
+        assertTrue(!rendered.contains("PersistentKeepalive"));
+    }
 }

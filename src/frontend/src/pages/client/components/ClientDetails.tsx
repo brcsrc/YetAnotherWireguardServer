@@ -73,6 +73,16 @@ const ClientDetails = (props: ClientDetailsProps): JSX.Element => {
                 </Badge>
               ),
             },
+            {
+              label: "Persistent Keepalive",
+              value:
+                client?.persistentKeepalive === undefined ||
+                client?.persistentKeepalive === null
+                  ? "Network default"
+                  : client.persistentKeepalive > 0
+                    ? `${client.persistentKeepalive}s`
+                    : "Disabled",
+            },
           ]}
         />
         <KeyValuePairs

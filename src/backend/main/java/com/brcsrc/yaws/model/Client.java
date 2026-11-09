@@ -26,12 +26,23 @@ public class Client {
     // its traffic still routes through the server to the internet
     private boolean peerIsolationEnabled;
 
+    // null inherits the network default, 0 disables keepalive for this client
+    private Integer persistentKeepalive;
+
     public boolean isPeerIsolationEnabled() {
         return peerIsolationEnabled;
     }
 
     public void setPeerIsolationEnabled(boolean peerIsolationEnabled) {
         this.peerIsolationEnabled = peerIsolationEnabled;
+    }
+
+    public Integer getPersistentKeepalive() {
+        return persistentKeepalive;
+    }
+
+    public void setPersistentKeepalive(Integer persistentKeepalive) {
+        this.persistentKeepalive = persistentKeepalive;
     }
 
     public String getClientName() {
@@ -137,6 +148,7 @@ public class Client {
                 ", networkListenPort='" + networkListenPort + '\'' +
                 ", clientTag='" + clientTag + '\'' +
                 ", peerIsolationEnabled=" + peerIsolationEnabled +
+                ", persistentKeepalive=" + persistentKeepalive +
                 '}';
     }
 }

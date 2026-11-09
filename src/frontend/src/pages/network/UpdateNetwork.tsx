@@ -8,9 +8,9 @@ import {
   Select,
   ColumnLayout,
   KeyValuePairs,
-  Toggle,
+  Checkbox,
 } from "@cloudscape-design/components";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation, useParams } from "react-router";
 import { networkClient } from "../../api/HTTPClients";
 import { useFlashbarContext } from "../../context/FlashbarContextProvider";
@@ -22,18 +22,68 @@ const UpdateNetwork = () => {
   const { networkName } = useParams<{ networkName: string }>();
   const { addFlashbarItem } = useFlashbarContext();
 
-  const network: Network = location.state;
-
-  const [networkTag, setNetworkTag] = useState(network?.networkTag || "");
-  const [networkStatus, setNetworkStatus] = useState(network?.networkStatus);
-  const [peerIsolationEnabled, setPeerIsolationEnabled] = useState(
-    network?.peerIsolationEnabled ?? false
-  );
+  // the network may be passed through navigation state from the detail page, otherwise it is
+  // fetched so this page works on a direct link or a refresh
+  const [network, setNetwork] = useState<Network | undefined>(location.state);
+  const [networkTag, setNetworkTag] = useState("");
+  const [networkStatus, setNetworkStatus] = useState<
+    UpdateNetworkRequestNetworkStatusEnum | undefined
+  >(undefined);
+  const [peerIsolationEnabled, setPeerIsolationEnabled] = useState(false);
+  const [keepaliveEnabled, setKeepaliveEnabled] = useState(true);
+  const [persistentKeepalive, setPersistentKeepalive] = useState("25");
 
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    (async function () {
+      if (!network) {
+        try {
+          const response = await networkClient.describeNetwork({
+            describeNetworkRequest: { networkName: networkName },
+          });
+          setNetwork(response.network);
+        } catch (error) {
+          const errorMessage =
+            error.response?.data?.message || error.response?.data?.error || error.message;
+          addFlashbarItem({
+            type: "error",
+            header: "Failure in DescribeNetwork",
+            content: errorMessage,
+            dismissLabel: "Dismiss",
+            duration: 10000,
+          });
+        }
+      }
+    })();
+  }, [network, networkName, addFlashbarItem]);
+
+  // seed the form from the network once it is available
+  useEffect(() => {
+    if (network) {
+      setNetworkTag(network.networkTag || "");
+      setNetworkStatus(network.networkStatus);
+      setPeerIsolationEnabled(network.peerIsolationEnabled ?? false);
+      setKeepaliveEnabled((network.persistentKeepalive ?? 25) > 0);
+      setPersistentKeepalive(String(network.persistentKeepalive || 25));
+    }
+  }, [network]);
+
   const handleSubmit = async () => {
+    // an unloaded network means the form holds defaults rather than current values, and
+    // submitting those would overwrite fields the user never saw
+    if (!network) {
+      addFlashbarItem({
+        type: "error",
+        header: "Update Network Failed",
+        content: `Network "${networkName}" has not loaded yet.`,
+        dismissLabel: "Dismiss",
+        duration: 10000,
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       await networkClient.updateNetwork({
@@ -42,6 +92,7 @@ const UpdateNetwork = () => {
           networkTag: networkTag || undefined,
           networkStatus: networkStatus,
           peerIsolationEnabled,
+          persistentKeepalive: keepaliveEnabled ? parseInt(persistentKeepalive) : 0,
         },
       });
       addFlashbarItem({
@@ -121,7 +172,9 @@ const UpdateNetwork = () => {
                       statusOptions.find((opt) => opt.value === networkStatus) || null
                     }
                     onChange={({ detail }) =>
-                      setNetworkStatus(detail.selectedOption.value as NetworkStatusEnum)
+                      setNetworkStatus(
+                        detail.selectedOption.value as UpdateNetworkRequestNetworkStatusEnum
+                      )
                     }
                     options={statusOptions}
                   />
@@ -129,14 +182,37 @@ const UpdateNetwork = () => {
 
                 <FormField
                   label="Peer isolation"
-                  description="When enabled, clients on this network cannot reach each other. Clients can still reach the internet and the server. Changing this does not disconnect any client."
+                  description="When enabled, clients on this network cannot reach each other. Clients can still reach the internet and the server. This can be changed at any time without disconnecting clients."
                 >
-                  <Toggle
+                  <Checkbox
                     checked={peerIsolationEnabled}
                     onChange={({ detail }) => setPeerIsolationEnabled(detail.checked)}
                   >
-                    Prevent clients from reaching each other
-                  </Toggle>
+                    Enabled
+                  </Checkbox>
+                </FormField>
+
+                <FormField
+                  label="Persistent keepalive"
+                  description="Default for clients on this network. Only applies to client configurations generated after this change; existing clients must re-download their configuration."
+                >
+                  <SpaceBetween direction="horizontal" size="s" alignItems="center">
+                    <Checkbox
+                      checked={keepaliveEnabled}
+                      onChange={({ detail }) => setKeepaliveEnabled(detail.checked)}
+                    >
+                      Enabled
+                    </Checkbox>
+                    <div style={{ width: "8em" }}>
+                      <Input
+                        type="number"
+                        value={persistentKeepalive}
+                        onChange={({ detail }) => setPersistentKeepalive(detail.value)}
+                        placeholder="25"
+                        disabled={!keepaliveEnabled}
+                      />
+                    </div>
+                  </SpaceBetween>
                 </FormField>
               </SpaceBetween>
             </Container>
@@ -179,6 +255,10 @@ const UpdateNetwork = () => {
                       {
                         label: "Peer isolation",
                         value: peerIsolationEnabled ? "Enabled" : "Disabled",
+                      },
+                      {
+                        label: "Persistent keepalive",
+                        value: keepaliveEnabled ? `${persistentKeepalive}s` : "Disabled",
                       },
                     ]}
                   />

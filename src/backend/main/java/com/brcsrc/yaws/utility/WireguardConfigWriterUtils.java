@@ -127,6 +127,11 @@ public class WireguardConfigWriterUtils {
         config.append(String.format("PublicKey = %s%n", clientConfig.getPeerConfig().getPublicKey()));
         config.append(String.format("Endpoint = %s%n", clientConfig.getPeerConfig().getEndpoint()));
         config.append(String.format("AllowedIPs = %s%n", clientConfig.getPeerConfig().getAllowedIps()));
+        // wireguard treats a missing directive as off, so zero is written as an omission
+        Integer keepalive = clientConfig.getPersistentKeepalive();
+        if (keepalive != null && keepalive > 0) {
+            config.append(String.format("PersistentKeepalive = %s%n", keepalive));
+        }
         return config.toString();
     }
 
